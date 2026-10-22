@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Academic Assistant Settings</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="header">
+      <div class="logo-area">
+        <div class="dot-indicator"></div>
+        <h1>Academic Assistant</h1>
+      </div>
+      <div id="statusBadge" class="status-badge status-missing">
+        <span class="status-dot"></span>
+        <span id="statusText">No Key</span>
+      </div>
+    </header>
+
+    <div class="section-desc">
+      Choose your active AI provider and configure API keys with smart auto-failover.
+    </div>
+
+    <div class="form-group">
+      <label>Active AI Provider</label>
+      <div class="provider-nav">
+        <button type="button" class="provider-btn active" data-provider="gemini" id="btn-provider-gemini">
+          <span class="provider-dot" id="dot-gemini"></span>
+          <span>Use Google</span>
+        </button>
+        <button type="button" class="provider-btn" data-provider="openai" id="btn-provider-openai">
+          <span class="provider-dot" id="dot-openai"></span>
+          <span>Use OpenAI</span>
+        </button>
+        <button type="button" class="provider-btn" data-provider="anthropic" id="btn-provider-anthropic">
+          <span class="provider-dot" id="dot-anthropic"></span>
+          <span>Use Anthropic</span>
+        </button>
+        <button type="button" class="provider-btn" data-provider="deepseek" id="btn-provider-deepseek">
+          <span class="provider-dot" id="dot-deepseek"></span>
+          <span>Use DeepSeek</span>
+        </button>
+        <button type="button" class="provider-btn" data-provider="openrouter" id="btn-provider-openrouter">
+          <span class="provider-dot" id="dot-openrouter"></span>
+          <span>Use OpenRouter</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="provider-cards-container">
+      
+      <div class="provider-card" id="card-gemini">
+        <div class="card-header">
+          <span class="card-title">Google Gemini Configuration</span>
+          <span class="card-badge" id="badge-gemini">Active</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="apiKey-gemini">Gemini API Key (GEMINI_API_KEY)</label>
+          <div class="input-wrapper">
+            <input type="password" id="apiKey-gemini" placeholder="AIzaSy..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="icon-btn toggle-visibility" data-target="apiKey-gemini" title="Toggle visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p class="api-help">Get key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="google-models">Model / Failover Strategy</label>
+          <select id="google-models">
+            <option value="auto_free" selected>Auto (Free) — gemini-3.8-flash / 3.5-flash-lite</option>
+            <option value="auto_paid">Auto (Free + Paid) — gemini-4-argon with 3.8-flash fallback on 429</option>
+            <option value="gemini-4-argon">gemini-4-argon [Paid] (Flagship deep reasoning & long decode)</option>
+            <option value="gemini-3.8-flash">gemini-3.8-flash [Free] (Default high-speed vision/text - Google AI Studio tier)</option>
+            <option value="gemini-3.6-flash">gemini-3.6-flash [Free] (Rapid agent loops & spatial reasoning)</option>
+            <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite [Free] (Ultra low-cost, fast inference)</option>
+            <option value="gemini-2.5-flash">gemini-2.5-flash [Free] (Legacy workhorse fast endpoint)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro [Paid] (Legacy reasoning endpoint)</option>
+            <option value="gemini-3.8-live">gemini-3.8-live [Free] (Real-time audio/multimodal stream)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="provider-card" id="card-openai" style="display: none;">
+        <div class="card-header">
+          <span class="card-title">OpenAI Configuration</span>
+          <span class="card-badge" id="badge-openai">Inactive</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="apiKey-openai">OpenAI API Key (OPENAI_API_KEY)</label>
+          <div class="input-wrapper">
+            <input type="password" id="apiKey-openai" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="icon-btn toggle-visibility" data-target="apiKey-openai" title="Toggle visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p class="api-help">Get key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">OpenAI Platform</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="openai-models">Model / Failover Strategy</label>
+          <select id="openai-models">
+            <option value="auto_free" selected>Auto (Free) — gpt-5.4-mini / OpenRouter free router</option>
+            <option value="auto_paid">Auto (Free + Paid) — gpt-5.5 with gpt-5.4-mini fallback on 429</option>
+            <option value="gpt-5.5">gpt-5.5 [Paid] (Flagship reasoning & agentic tasks)</option>
+            <option value="gpt-5.5-pro">gpt-5.5-pro [Paid] (Extended reasoning tier)</option>
+            <option value="gpt-5.4">gpt-5.4 [Paid] (Standard production workhorse)</option>
+            <option value="gpt-5.4-mini">gpt-5.4-mini [Paid] (High-volume efficient tier)</option>
+            <option value="gpt-5.4-nano">gpt-5.4-nano [Paid] (Fastest low-cost endpoint)</option>
+            <option value="o3">o3 [Paid] (Deep mathematical proofs & planning)</option>
+            <option value="o3-pro">o3-pro [Paid] (Maximum compute reasoning tier)</option>
+            <option value="o4-mini">o4-mini [Paid] (Fast step-by-step reasoning)</option>
+            <option value="gpt-4o">gpt-4o [Paid] (Legacy multimodal workhorse)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="provider-card" id="card-anthropic" style="display: none;">
+        <div class="card-header">
+          <span class="card-title">Anthropic Claude Configuration</span>
+          <span class="card-badge" id="badge-anthropic">Inactive</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="apiKey-anthropic">Anthropic API Key (ANTHROPIC_API_KEY)</label>
+          <div class="input-wrapper">
+            <input type="password" id="apiKey-anthropic" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="icon-btn toggle-visibility" data-target="apiKey-anthropic" title="Toggle visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p class="api-help">Get key at <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">Anthropic Console</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="anthropic-models">Model / Failover Strategy</label>
+          <select id="anthropic-models">
+            <option value="auto_paid" selected>Auto (Free + Paid) — claude-fable-5.1 with claude-sonnet-5.5 fallback</option>
+            <option value="claude-fable-5.1">claude-fable-5.1 [Paid] (Mythos-class multi-hour agent reasoning)</option>
+            <option value="claude-opus-5.5">claude-opus-5.5 [Paid] (Supreme deep logic & creative synthesis)</option>
+            <option value="claude-sonnet-5.5">claude-sonnet-5.5 [Paid] (Industry lead for coding & visual analysis)</option>
+            <option value="claude-haiku-5.5">claude-haiku-5.5 [Paid] (Lightning fast lightweight execution)</option>
+            <option value="claude-sonnet-5">claude-sonnet-5 [Paid] (Balanced multimodal production)</option>
+            <option value="claude-opus-4.8">claude-opus-4.8 [Paid] (High parameter scientific reasoning)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="provider-card" id="card-deepseek" style="display: none;">
+        <div class="card-header">
+          <span class="card-title">DeepSeek Configuration</span>
+          <span class="card-badge" id="badge-deepseek">Inactive</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="apiKey-deepseek">DeepSeek API Key (DEEPSEEK_API_KEY)</label>
+          <div class="input-wrapper">
+            <input type="password" id="apiKey-deepseek" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="icon-btn toggle-visibility" data-target="apiKey-deepseek" title="Toggle visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p class="api-help">Get key at <a href="https://platform.deepseek.com/" target="_blank" rel="noopener noreferrer">DeepSeek Platform</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="deepseek-models">Model / Failover Strategy</label>
+          <select id="deepseek-models">
+            <option value="auto_free" selected>Auto (Free) — deepseek-v4-flash</option>
+            <option value="auto_paid">Auto (Free + Paid) — deepseek-v4-pro with v4-flash fallback on 429</option>
+            <option value="deepseek-v4-pro">deepseek-v4-pro [Paid] (Flagship 1.6T parameter reasoning & coding model)</option>
+            <option value="deepseek-v4-flash">deepseek-v4-flash [Free] (V4.1 ultra-fast vision & text endpoint)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="provider-card" id="card-openrouter" style="display: none;">
+        <div class="card-header">
+          <span class="card-title">OpenRouter Configuration</span>
+          <span class="card-badge" id="badge-openrouter">Inactive</span>
+        </div>
+        
+        <div class="form-group">
+          <label for="apiKey-openrouter">OpenRouter API Key (OPENROUTER_API_KEY)</label>
+          <div class="input-wrapper">
+            <input type="password" id="apiKey-openrouter" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false" />
+            <button type="button" class="icon-btn toggle-visibility" data-target="apiKey-openrouter" title="Toggle visibility">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </button>
+          </div>
+          <p class="api-help">Get key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">OpenRouter.ai</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="openrouter-models">Model / Failover Strategy</label>
+          <select id="openrouter-models">
+            <option value="auto_free" selected>Auto (Free) — openrouter/free</option>
+            <option value="auto_paid">Auto (Free + Paid) — openrouter/auto with free fallback on 429</option>
+            <option value="openrouter/auto">openrouter/auto [Paid] (Paid dynamic best model router)</option>
+            <option value="openrouter/free">openrouter/free [Free] (Free dynamic best model router)</option>
+            <option value="deepseek/deepseek-r1:free">deepseek/deepseek-r1:free [Free] (Free step-by-step reasoning)</option>
+            <option value="meta-llama/llama-3.3-70b-instruct:free">meta-llama/llama-3.3-70b-instruct:free [Free] (Free general instruction)</option>
+            <option value="qwen/qwq-32b:free">qwen/qwq-32b:free [Free] (Free competitive math & logic)</option>
+            <option value="google/gemini-2.5-flash:free">google/gemini-2.5-flash:free [Free] (Free multimodal vision)</option>
+          </select>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="settings-section">
+      <div class="section-title-row">
+        <h2>UI &amp; Appearance Settings</h2>
+      </div>
+
+      <div class="appearance-item toggle-row">
+        <label for="enable-prompt-input" class="toggle-label">
+          <span class="toggle-title">Enable Custom Prompt Input Area</span>
+          <span class="subtext">Shows prompt bar beside capture button</span>
+        </label>
+        <label class="switch">
+          <input type="checkbox" id="enable-prompt-input" checked>
+          <span class="slider round"></span>
+        </label>
+      </div>
+
+      <div class="appearance-card">
+        <div class="appearance-card-title">Answer Text Styling</div>
+        <div class="appearance-row">
+          <label>Text Color</label>
+          <div class="color-picker-group">
+            <input type="color" id="answer-color-picker" value="#FFFFFF">
+            <input type="text" id="answer-color-hex" class="hex-text-input" value="#FFFFFF" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="appearance-row">
+          <div class="slider-label-row">
+            <label for="answer-font-size">Font Size</label>
+            <span class="val-badge" id="answer-font-size-val">13px</span>
+          </div>
+          <input type="range" id="answer-font-size" min="10" max="24" step="1" value="13">
+        </div>
+      </div>
+
+      <div class="appearance-card">
+        <div class="appearance-card-title">Screenshot Button Styling</div>
+        <div class="appearance-row">
+          <label>Button Background</label>
+          <div class="color-picker-group">
+            <input type="color" id="button-color-picker" value="#000000">
+            <input type="text" id="button-color-hex" class="hex-text-input" value="#000000" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="appearance-row">
+          <div class="slider-label-row">
+            <label for="button-size">Button Size</label>
+            <span class="val-badge" id="button-size-val">30px</span>
+          </div>
+          <input type="range" id="button-size" min="20" max="60" step="2" value="30">
+        </div>
+      </div>
+
+      <div class="appearance-card" id="card-prompt-input-styling">
+        <div class="appearance-card-title">Prompt Input Area Styling</div>
+        <div class="appearance-row">
+          <label>Background Color</label>
+          <div class="color-picker-group">
+            <input type="color" id="prompt-color-picker" value="#1A1A1A">
+            <input type="text" id="prompt-color-hex" class="hex-text-input" value="#1A1A1A" maxlength="7" spellcheck="false">
+          </div>
+        </div>
+        <div class="appearance-row">
+          <div class="slider-label-row">
+            <label for="prompt-width">Bar Width</label>
+            <span class="val-badge" id="prompt-width-val">180px</span>
+          </div>
+          <input type="range" id="prompt-width" min="120" max="350" step="10" value="180">
+        </div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button type="button" id="saveBtn" class="btn btn-primary">Save Settings</button>
+      <button type="button" id="testBtn" class="btn btn-secondary">Test Connection</button>
+    </div>
+
+    <div id="feedbackMessage" class="feedback-message"></div>
+
+    <hr class="divider">
+
+    <div class="guide-box">
+      <h3>Quick Controls</h3>
+      <ul>
+        <li><strong>Capture Button:</strong> Circular button in bottom-right corner. Flashes on click.</li>
+        <li><strong>Answer Display:</strong> Formatted above the bottom bar with clear legible font.</li>
+        <li><strong>Hidden Toggle:</strong> Click invisible 2% &times; 2% bottom-left corner to show/hide overlay.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
