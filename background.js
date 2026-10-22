@@ -175,7 +175,7 @@ async function routeProviderRequest(provider, apiKey, modelMode, base64Data, pro
 }
 
 async function handleGeminiRouting(apiKey, modelMode, base64Data, promptText) {
-  if (modelMode === 'auto_free') {
+  if (modelMode === 'auto_free' || modelMode === 'auto') {
     const freeModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-2.5-flash'];
     return tryModelsInOrder(freeModels, (m) => callGeminiAPI(apiKey, m, base64Data, promptText));
   } else if (modelMode === 'auto_paid') {
@@ -191,8 +191,9 @@ async function handleGeminiRouting(apiKey, modelMode, base64Data, promptText) {
       throw err;
     }
   } else {
-    const ans = await callGeminiAPI(apiKey, modelMode, base64Data, promptText);
-    return { answer: ans, modelUsed: modelMode };
+    const safeModel = (!modelMode || modelMode.startsWith('auto')) ? 'gemini-2.5-flash' : modelMode;
+    const ans = await callGeminiAPI(apiKey, safeModel, base64Data, promptText);
+    return { answer: ans, modelUsed: safeModel };
   }
 }
 

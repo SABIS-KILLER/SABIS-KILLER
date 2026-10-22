@@ -240,22 +240,21 @@
 
       #answer-display-container {
         position: fixed !important;
-        bottom: 45px !important;
+        bottom: 0px !important;
         left: 0px !important;
-        width: 100vw !important;
-        max-height: 25vh !important;
-        min-height: 22px !important;
+        width: calc(100% - 120px) !important;
+        height: 38px !important;
         background: transparent !important;
         pointer-events: none !important;
-        z-index: 2147483645 !important;
+        z-index: 2147483646 !important;
         display: flex !important;
-        align-items: flex-end !important;
-        justify-content: center !important;
-        padding: 4px 30px 2px 25px !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 0 16px !important;
         box-sizing: border-box !important;
-        text-align: center !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
+        white-space: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
       }
 
       #answer-text {
@@ -266,18 +265,11 @@
         line-height: 1.5 !important;
         text-shadow: none !important;
         user-select: none !important;
-        white-space: pre-wrap !important;
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
-        overflow-y: auto !important;
-        scrollbar-width: none !important;
+        white-space: nowrap !important;
         max-width: 100% !important;
         width: 100% !important;
       }
 
-      #answer-text::-webkit-scrollbar {
-        display: none !important;
-      }
     `;
 
     hiddenToggleZone = document.createElement('div');
