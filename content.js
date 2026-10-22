@@ -76,7 +76,7 @@
 
       const svg = captureButton.querySelector('svg');
       if (svg) {
-        const iconSize = Math.max(12, Math.round(btnSize * 0.46));
+        const iconSize = Math.max(5, Math.round(btnSize * 0.46));
         svg.setAttribute('width', iconSize);
         svg.setAttribute('height', iconSize);
         svg.style.setProperty('stroke', contrast, 'important');
