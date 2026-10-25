@@ -23,6 +23,35 @@ const CUSTOM_SYSTEM_PROMPT =
   "6. Plain text only: Do NOT use LaTeX ($...$), markdown bolding (**...**), bullet points, or unnecessary formatting.\n" +
   "7. Do NOT include anything extra that the user did not explicitly ask for.";
 
+const GEMINI_MODELS_CATALOG = {
+  'gemini-3.8-flash':      { tier: 'paid', fallback: 'gemini-3.6-flash' },
+  'gemini-3.8-flash-lite': { tier: 'paid', fallback: 'gemini-3.6-flash' },
+  'gemini-3.7-flash':      { tier: 'paid', deprecationFallback: 'gemini-3.8-flash', fallback: 'gemini-3.8-flash' },
+  'gemini-3.7-flash-lite': { tier: 'paid', fallback: 'gemini-3.6-flash-lite' },
+  'gemini-3.6-flash':      { tier: 'free', fallback: 'gemini-3.6-flash-lite' },
+  'gemini-3.6-flash-lite': { tier: 'free', fallback: 'gemini-3.5-flash' },
+  'gemini-3.5-flash':      { tier: 'free', fallback: 'gemini-3.5-flash-lite' },
+  'gemini-3.5-flash-lite': { tier: 'free', fallback: 'gemini-2.5-flash' }
+};
+
+function isComplexTask(prompt) {
+  if (!prompt || typeof prompt !== 'string') return false;
+  const text = prompt.trim();
+  const lower = text.toLowerCase();
+  if (text.length > 500) return true;
+  const complexityPhrases = ['explain step by step','step by step','deep analysis','verify accuracy','double check','recheck each','multi-step','show work','detailed explanation','proof','prove that','derive'];
+  for (const p of complexityPhrases) { if (lower.includes(p)) return true; }
+  const mathSymbols = ['\u222b','\u03a3','\u221a','d/dx','\u2202','lim','matrix','matrices','calculus','integral','derivative'];
+  for (const s of mathSymbols) { if (lower.includes(s)) return true; }
+  if (/\b(solve\s+for|evaluate|integrate|differentiate|eigenvalue|polynomial|determinant|quadratic)\b/i.test(text)) return true;
+  if (/[0-9a-zA-Z]\s*[\^]\s*[0-9]/.test(text)) return true;
+  const codeKeywords = ['function','class','import','const','let','def','async','refactor','fix bug','sql','firestore','debugging','algorithm','lambda','return','console.log','git'];
+  const codeRegex = new RegExp(`\\b(${codeKeywords.join('|')})\\b`, 'i');
+  if (codeRegex.test(text)) return true;
+  if (text.includes('```') || /\{[\s\S]*;[\s\S]*\}/.test(text) || /=>\s*\{/.test(text)) return true;
+  return false;
+}
+
 const PROVIDER_NAMES = {
   gemini: 'Google Gemini',
   openai: 'OpenAI',
@@ -69,7 +98,7 @@ async function handleSolveRequest(sender, message) {
 
   if (activeProvider === 'gemini') {
     apiKey = storage.GEMINI_API_KEY || storage.geminiApiKey || '';
-    modelMode = storage.gemini_model || storage.geminiModel || 'auto_free';
+    modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic_paid';
   } else if (activeProvider === 'openai') {
     apiKey = storage.OPENAI_API_KEY || '';
     modelMode = storage.openai_model || 'auto_free';
@@ -139,11 +168,13 @@ async function handleSolveRequest(sender, message) {
   const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
 
   try {
-    const result = await routeProviderRequest(activeProvider, apiKey.trim(), modelMode, base64Data, systemPrompt, userPrompt);
+    const result = await routeProviderRequest(activeProvider, apiKey.trim(), modelMode, base64Data, systemPrompt, userPrompt, customPrompt);
     return {
       success: true,
       answer: result.answer,
-      modelUsed: result.modelUsed
+      modelUsed: result.modelUsed,
+      modeActive: result.modeActive,
+      wasFallbackTriggered: result.wasFallbackTriggered
     };
   } catch (err) {
     const errorDetails = errStr(err.message || err);
@@ -173,10 +204,10 @@ function isQuotaOrRateLimitError(err) {
   );
 }
 
-async function routeProviderRequest(provider, apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
+async function routeProviderRequest(provider, apiKey, modelMode, base64Data, systemPrompt, userPrompt, customPrompt) {
   switch (provider) {
     case 'gemini':
-      return handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
+      return handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, customPrompt);
     case 'openai':
       return handleOpenAIRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     case 'anthropic':
@@ -190,45 +221,79 @@ async function routeProviderRequest(provider, apiKey, modelMode, base64Data, sys
   }
 }
 
-async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
-  if (modelMode === 'auto_free' || modelMode === 'auto') {
-    const freeModels = ['gemini-3.5-flash', 'gemini-3.5-flash-lite', 'gemini-2.5-flash'];
-    return tryModelsInOrder(freeModels, (m) => callGeminiAPI(apiKey, m, base64Data, systemPrompt, userPrompt));
-  } else if (modelMode === 'auto_paid') {
+async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, customPrompt) {
+  // Legacy alias mapping
+  let currentMode = modelMode;
+  if (currentMode === 'auto_paid') currentMode = 'auto_dynamic_paid';
+  if (currentMode === 'auto_free' || currentMode === 'auto') currentMode = 'auto_dynamic_free';
+
+  const promptForHeuristic = customPrompt || userPrompt || '';
+
+  async function tryModel(model, isFallback) {
+    // Handle gemini-3.7-flash deprecation fallback
+    const resolvedModel = (model === 'gemini-3.7-flash') ? 'gemini-3.8-flash' : model;
+    console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', resolvedModel, '| Fallback Triggered:', isFallback);
+    const answer = await callGeminiAPI(apiKey, resolvedModel, base64Data, systemPrompt, userPrompt);
+    return { answer, modelUsed: resolvedModel, modeActive: currentMode, wasFallbackTriggered: isFallback };
+  }
+
+  async function runFreeFallbackWaterfall(isFallback) {
+    const isComplex = isComplexTask(promptForHeuristic);
+    const primaryFree = isComplex ? 'gemini-3.6-flash' : 'gemini-3.5-flash-lite';
     try {
-      const ans = await callGeminiAPI(apiKey, 'gemini-4-argon', base64Data, systemPrompt, userPrompt);
-      return { answer: ans, modelUsed: 'gemini-4-argon' };
+      return await tryModel(primaryFree, isFallback);
+    } catch (err2) {
+      console.warn(`[Gemini Router] Free primary ${primaryFree} failed (${err2.message}), degrading to gemini-3.5-flash-lite`);
+      try {
+        const answer = await callGeminiAPI(apiKey, 'gemini-3.5-flash-lite', base64Data, systemPrompt, userPrompt);
+        return { answer, modelUsed: 'gemini-3.5-flash-lite', modeActive: currentMode, wasFallbackTriggered: true };
+      } catch (err3) {
+        console.warn(`[Gemini Router] gemini-3.5-flash-lite failed (${err3.message}), last resort gemini-2.5-flash`);
+        const answer = await callGeminiAPI(apiKey, 'gemini-2.5-flash', base64Data, systemPrompt, userPrompt);
+        return { answer, modelUsed: 'gemini-2.5-flash', modeActive: currentMode, wasFallbackTriggered: true };
+      }
+    }
+  }
+
+  if (currentMode === 'auto_dynamic_paid') {
+    const isComplex = isComplexTask(promptForHeuristic);
+    const chosenModel = isComplex ? 'gemini-3.8-flash' : 'gemini-3.8-flash-lite';
+    try {
+      return await tryModel(chosenModel, false);
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
-        console.warn('gemini-4-argon failover to gemini-3.5-flash');
-        try {
-          const ans = await callGeminiAPI(apiKey, 'gemini-3.5-flash', base64Data, systemPrompt, userPrompt);
-          return { answer: ans, modelUsed: 'gemini-3.5-flash (failover)' };
-        } catch (_) {
-          const ans = await callGeminiAPI(apiKey, 'gemini-3.5-flash-lite', base64Data, systemPrompt, userPrompt);
-          return { answer: ans, modelUsed: 'gemini-3.5-flash-lite (failover)' };
-        }
+        console.warn(`[Gemini Router] Paid model ${chosenModel} unavailable (${err.message}), failing over to free waterfall`);
+        return runFreeFallbackWaterfall(true);
       }
       throw err;
     }
-  } else {
-    const safeModel = (!modelMode || modelMode.startsWith('auto')) ? 'gemini-3.5-flash' : modelMode;
-    try {
-      const ans = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
-      return { answer: ans, modelUsed: safeModel };
-    } catch (err) {
-      if ((err.status === 404 || isQuotaOrRateLimitError(err)) && safeModel === 'gemini-3.5-flash') {
-        console.warn(`gemini-3.5-flash unavailable (${err.status}), switching to gemini-3.5-flash-lite...`);
-        try {
-          const liteAns = await callGeminiAPI(apiKey, 'gemini-3.5-flash-lite', base64Data, systemPrompt, userPrompt);
-          return { answer: liteAns, modelUsed: 'gemini-3.5-flash-lite (failover)' };
-        } catch (_) {
-          const fallbackAns = await callGeminiAPI(apiKey, 'gemini-2.5-flash', base64Data, systemPrompt, userPrompt);
-          return { answer: fallbackAns, modelUsed: 'gemini-2.5-flash (fallback)' };
-        }
-      }
-      throw err;
+  }
+
+  if (currentMode === 'auto_dynamic_free') {
+    return runFreeFallbackWaterfall(false);
+  }
+
+  // Manual model selection
+  let safeModel = modelMode;
+  if (!safeModel || safeModel.startsWith('auto')) safeModel = 'gemini-3.5-flash';
+  // gemini-3.7-flash deprecation: explicitly remap
+  if (safeModel === 'gemini-3.7-flash') {
+    console.warn('[Gemini Router] gemini-3.7-flash is deprecated, redirecting to gemini-3.8-flash');
+    safeModel = 'gemini-3.8-flash';
+  }
+  console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', safeModel, '| Fallback Triggered:', false);
+  try {
+    const answer = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
+    return { answer, modelUsed: safeModel, modeActive: currentMode, wasFallbackTriggered: false };
+  } catch (err) {
+    if ((err.status === 404 || isQuotaOrRateLimitError(err)) && GEMINI_MODELS_CATALOG[safeModel]) {
+      const fallbackModel = GEMINI_MODELS_CATALOG[safeModel].fallback;
+      console.warn(`[Gemini Router] ${safeModel} failed (${err.message}), catalog fallback to ${fallbackModel}`);
+      console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', fallbackModel, '| Fallback Triggered:', true);
+      const answer = await callGeminiAPI(apiKey, fallbackModel, base64Data, systemPrompt, userPrompt);
+      return { answer, modelUsed: fallbackModel, modeActive: currentMode, wasFallbackTriggered: true };
     }
+    throw err;
   }
 }
 

@@ -35,9 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       altKey: 'geminiApiKey',
       modelKey: 'gemini_model',
       altModelKey: 'geminiModel',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic_paid',
       getTestConfig: (key, model) => {
-        let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gemini-3.5-flash' : (model || 'gemini-3.5-flash');
+        let testModel = (model === 'auto_dynamic_paid' || model === 'auto_paid') ? 'gemini-3.8-flash' : (model === 'auto_dynamic_free' || model === 'auto_free') ? 'gemini-3.5-flash-lite' : (model || 'gemini-3.8-flash');
         return {
           url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
           method: 'POST',
@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       badgeId: 'badge-openai',
       storageKey: 'OPENAI_API_KEY',
       modelKey: 'openai_model',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic_paid',
       getTestConfig: (key, model) => {
         let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gpt-5.4-mini' : model;
         const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
@@ -120,7 +120,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       badgeId: 'badge-deepseek',
       storageKey: 'DEEPSEEK_API_KEY',
       modelKey: 'deepseek_model',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic_paid',
       getTestConfig: (key, model) => {
         let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'deepseek-v4-flash' : model;
         return {
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       badgeId: 'badge-openrouter',
       storageKey: 'OPENROUTER_API_KEY',
       modelKey: 'openrouter_model',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic_paid',
       getTestConfig: (key, model) => {
         let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'openrouter/free' : model;
         return {
@@ -188,12 +188,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const geminiKey = data.GEMINI_API_KEY || data.geminiApiKey || '';
     document.getElementById('apiKey-gemini').value = geminiKey;
-    const geminiModel = data.gemini_model || data.geminiModel || 'auto_free';
+    const rawGeminiModel = data.gemini_model || data.geminiModel || 'auto_dynamic_paid';
+    const geminiModel = (rawGeminiModel === 'auto_free') ? 'auto_dynamic_free' : (rawGeminiModel === 'auto_paid') ? 'auto_dynamic_paid' : rawGeminiModel;
     const geminiSelect = document.getElementById('google-models');
     if (optionExists(geminiSelect, geminiModel)) {
       geminiSelect.value = geminiModel;
     } else {
-      geminiSelect.value = 'auto_free';
+      geminiSelect.value = 'auto_dynamic_paid';
     }
 
     const openaiKey = data.OPENAI_API_KEY || '';

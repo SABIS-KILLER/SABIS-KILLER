@@ -23,6 +23,7 @@
   let captureButton = null;
   let answerContainer = null;
   let answerText = null;
+  let modelBadge = null;
   let uiWrapper = null;
   let hiddenToggleZone = null;
 
@@ -270,6 +271,28 @@
         width: 100% !important;
       }
 
+      #answer-display-container { gap: 8px !important; }
+
+      #model-badge {
+        display: none !important;
+        font-size: 9px !important;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+        padding: 1px 5px !important;
+        border-radius: 3px !important;
+        background: rgba(0,0,0,0.08) !important;
+        color: #555 !important;
+        white-space: nowrap !important;
+        flex-shrink: 0 !important;
+        user-select: none !important;
+        cursor: default !important;
+        pointer-events: auto !important;
+      }
+
+      #model-badge.fallback {
+        background: rgba(180,70,0,0.12) !important;
+        color: #a04000 !important;
+      }
+
     `;
 
     hiddenToggleZone = document.createElement('div');
@@ -325,6 +348,11 @@
     answerText.textContent = formatAnswerForBar(currentAnswerText);
 
     answerContainer.appendChild(answerText);
+
+    modelBadge = document.createElement('span');
+    modelBadge.id = 'model-badge';
+    answerContainer.appendChild(modelBadge);
+
     uiWrapper.appendChild(bottomControlsBar);
     uiWrapper.appendChild(answerContainer);
 
@@ -382,10 +410,20 @@
             currentAnswerText = response.error || 'Failed to analyze screenshot.';
           } else {
             currentAnswerText = response.answer;
+            if (modelBadge && response.modelUsed) {
+              modelBadge.textContent = response.modelUsed;
+              modelBadge.style.setProperty('display', 'inline-block', 'important');
+              modelBadge.title = `Mode: ${response.modeActive || ''}${response.wasFallbackTriggered ? ' [Fallback]' : ''}`;
+              if (response.wasFallbackTriggered) { modelBadge.classList.add('fallback'); }
+              else { modelBadge.classList.remove('fallback'); }
+            }
           }
 
           if (answerText) {
             answerText.textContent = formatAnswerForBar(currentAnswerText);
+          }
+          if (modelBadge && !response?.success) {
+            modelBadge.style.setProperty('display', 'none', 'important');
           }
         });
       } catch (err) {
