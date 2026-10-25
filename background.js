@@ -8,6 +8,19 @@ const SYSTEM_PROMPT =
   "- Example Output format:\n" +
   "  Part a: Blank 1: 3, Blank 2: 24, Blank 3: 45 | Part b: Blank 1: 3, Blank 2: 4, Blank 3: 5, Blank 4: 0 | Part c: Blank 1: 2, Blank 2: 5, Blank 3: 8";
 
+const DEFAULT_USER_PROMPT =
+  "Solve all academic/quiz questions visible in this screenshot according to instructions.";
+
+const CUSTOM_SYSTEM_PROMPT =
+  "You are a visual assistant analyzing a screenshot. The user has provided a custom instruction or question regarding the screen content.\n" +
+  "CRITICAL RULES:\n" +
+  "1. DO NOT perform the default quiz-solving behavior: do NOT solve or answer the questions shown on the screen unless the user's custom instruction explicitly asks you to solve them.\n" +
+  "2. Strictly focus on answering the user's custom prompt about what is visible on screen (e.g. verifying answers, checking true/false, inspecting a specific item, etc.).\n" +
+  "3. Answer in the simplest, most direct, ultra-concise way possible.\n" +
+  "4. Output ONLY the answer itself. Do NOT include introductory greetings (e.g., 'Sure!', 'Here is...'), polite conversation, step-by-step reasoning, or sign-offs.\n" +
+  "5. Plain text only: Do NOT use LaTeX ($...$), markdown bolding (**...**), bullet points, or unnecessary formatting.\n" +
+  "6. Do NOT include anything extra that the user did not explicitly ask for.";
+
 const PROVIDER_NAMES = {
   gemini: 'Google Gemini',
   openai: 'OpenAI',
@@ -32,9 +45,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function handleSolveRequest(sender, message) {
   const customPrompt = (message && typeof message.customPrompt === 'string') ? message.customPrompt.trim() : '';
-  const promptText = customPrompt
-    ? `${SYSTEM_PROMPT}\n\nUSER CUSTOM INSTRUCTION: ${customPrompt}`
-    : SYSTEM_PROMPT;
+  const systemPrompt = customPrompt ? CUSTOM_SYSTEM_PROMPT : SYSTEM_PROMPT;
+  const userPrompt = customPrompt
+    ? `USER INSTRUCTION: ${customPrompt}\n\nAnalyze the screenshot and answer ONLY the user instruction above in the simplest way possible without anything extra.`
+    : DEFAULT_USER_PROMPT;
 
   const storage = await chrome.storage.local.get([
     'active_provider',
@@ -123,7 +137,7 @@ async function handleSolveRequest(sender, message) {
   const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
 
   try {
-    const result = await routeProviderRequest(activeProvider, apiKey.trim(), modelMode, base64Data, promptText);
+    const result = await routeProviderRequest(activeProvider, apiKey.trim(), modelMode, base64Data, systemPrompt, userPrompt);
     return {
       success: true,
       answer: result.answer,
@@ -157,116 +171,116 @@ function isQuotaOrRateLimitError(err) {
   );
 }
 
-async function routeProviderRequest(provider, apiKey, modelMode, base64Data, promptText) {
+async function routeProviderRequest(provider, apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   switch (provider) {
     case 'gemini':
-      return handleGeminiRouting(apiKey, modelMode, base64Data, promptText);
+      return handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     case 'openai':
-      return handleOpenAIRouting(apiKey, modelMode, base64Data, promptText);
+      return handleOpenAIRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     case 'anthropic':
-      return handleAnthropicRouting(apiKey, modelMode, base64Data, promptText);
+      return handleAnthropicRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     case 'deepseek':
-      return handleDeepSeekRouting(apiKey, modelMode, base64Data, promptText);
+      return handleDeepSeekRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     case 'openrouter':
-      return handleOpenRouterRouting(apiKey, modelMode, base64Data, promptText);
+      return handleOpenRouterRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
 }
 
-async function handleGeminiRouting(apiKey, modelMode, base64Data, promptText) {
+async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   if (modelMode === 'auto_free' || modelMode === 'auto') {
     const freeModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-2.5-flash'];
-    return tryModelsInOrder(freeModels, (m) => callGeminiAPI(apiKey, m, base64Data, promptText));
+    return tryModelsInOrder(freeModels, (m) => callGeminiAPI(apiKey, m, base64Data, systemPrompt, userPrompt));
   } else if (modelMode === 'auto_paid') {
     try {
-      const ans = await callGeminiAPI(apiKey, 'gemini-4-argon', base64Data, promptText);
+      const ans = await callGeminiAPI(apiKey, 'gemini-4-argon', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'gemini-4-argon' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
         console.warn('gemini-4-argon failover to gemini-3.8-flash');
-        const ans = await callGeminiAPI(apiKey, 'gemini-3.8-flash', base64Data, promptText);
+        const ans = await callGeminiAPI(apiKey, 'gemini-3.8-flash', base64Data, systemPrompt, userPrompt);
         return { answer: ans, modelUsed: 'gemini-3.8-flash (failover)' };
       }
       throw err;
     }
   } else {
     const safeModel = (!modelMode || modelMode.startsWith('auto')) ? 'gemini-2.5-flash' : modelMode;
-    const ans = await callGeminiAPI(apiKey, safeModel, base64Data, promptText);
+    const ans = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: safeModel };
   }
 }
 
-async function handleOpenAIRouting(apiKey, modelMode, base64Data, promptText) {
+async function handleOpenAIRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   if (modelMode === 'auto_free') {
     try {
-      const ans = await callOpenAIAPI(apiKey, 'gpt-5.4-mini', base64Data, promptText);
+      const ans = await callOpenAIAPI(apiKey, 'gpt-5.4-mini', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'gpt-5.4-mini' };
     } catch (err) {
       console.warn('gpt-5.4-mini failover to gpt-4o-mini');
-      const ans = await callOpenAIAPI(apiKey, 'gpt-4o-mini', base64Data, promptText);
+      const ans = await callOpenAIAPI(apiKey, 'gpt-4o-mini', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'gpt-4o-mini (failover)' };
     }
   } else if (modelMode === 'auto_paid') {
     try {
-      const ans = await callOpenAIAPI(apiKey, 'gpt-5.5', base64Data, promptText);
+      const ans = await callOpenAIAPI(apiKey, 'gpt-5.5', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'gpt-5.5' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
         console.warn('gpt-5.5 failover to gpt-5.4-mini');
-        const ans = await callOpenAIAPI(apiKey, 'gpt-5.4-mini', base64Data, promptText);
+        const ans = await callOpenAIAPI(apiKey, 'gpt-5.4-mini', base64Data, systemPrompt, userPrompt);
         return { answer: ans, modelUsed: 'gpt-5.4-mini (failover)' };
       }
       throw err;
     }
   } else {
-    const ans = await callOpenAIAPI(apiKey, modelMode, base64Data, promptText);
+    const ans = await callOpenAIAPI(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: modelMode };
   }
 }
 
-async function handleAnthropicRouting(apiKey, modelMode, base64Data, promptText) {
+async function handleAnthropicRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   if (modelMode === 'auto_paid') {
     try {
-      const ans = await callAnthropicAPI(apiKey, 'claude-fable-5.1', base64Data, promptText);
+      const ans = await callAnthropicAPI(apiKey, 'claude-fable-5.1', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'claude-fable-5.1' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
         console.warn('claude-fable-5.1 failover to claude-sonnet-5.5');
-        const ans = await callAnthropicAPI(apiKey, 'claude-sonnet-5.5', base64Data, promptText);
+        const ans = await callAnthropicAPI(apiKey, 'claude-sonnet-5.5', base64Data, systemPrompt, userPrompt);
         return { answer: ans, modelUsed: 'claude-sonnet-5.5 (failover)' };
       }
       throw err;
     }
   } else {
-    const ans = await callAnthropicAPI(apiKey, modelMode, base64Data, promptText);
+    const ans = await callAnthropicAPI(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: modelMode };
   }
 }
 
-async function handleDeepSeekRouting(apiKey, modelMode, base64Data, promptText) {
+async function handleDeepSeekRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   if (modelMode === 'auto_free') {
-    const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-flash', base64Data, promptText);
+    const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-flash', base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: 'deepseek-v4-flash' };
   } else if (modelMode === 'auto_paid') {
     try {
-      const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-pro', base64Data, promptText);
+      const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-pro', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'deepseek-v4-pro' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
         console.warn('deepseek-v4-pro failover to deepseek-v4-flash');
-        const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-flash', base64Data, promptText);
+        const ans = await callDeepSeekAPI(apiKey, 'deepseek-v4-flash', base64Data, systemPrompt, userPrompt);
         return { answer: ans, modelUsed: 'deepseek-v4-flash (failover)' };
       }
       throw err;
     }
   } else {
-    const ans = await callDeepSeekAPI(apiKey, modelMode, base64Data, promptText);
+    const ans = await callDeepSeekAPI(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: modelMode };
   }
 }
 
-async function handleOpenRouterRouting(apiKey, modelMode, base64Data, promptText) {
+async function handleOpenRouterRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   const freeVariants = [
     'openrouter/free',
     'deepseek/deepseek-r1:free',
@@ -276,20 +290,20 @@ async function handleOpenRouterRouting(apiKey, modelMode, base64Data, promptText
   ];
 
   if (modelMode === 'auto_free') {
-    return tryModelsInOrder(freeVariants, (m) => callOpenRouterAPI(apiKey, m, base64Data, promptText));
+    return tryModelsInOrder(freeVariants, (m) => callOpenRouterAPI(apiKey, m, base64Data, systemPrompt, userPrompt));
   } else if (modelMode === 'auto_paid') {
     try {
-      const ans = await callOpenRouterAPI(apiKey, 'openrouter/auto', base64Data, promptText);
+      const ans = await callOpenRouterAPI(apiKey, 'openrouter/auto', base64Data, systemPrompt, userPrompt);
       return { answer: ans, modelUsed: 'openrouter/auto' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
         console.warn('openrouter/auto failover to openrouter/free variants');
-        return tryModelsInOrder(freeVariants, (m) => callOpenRouterAPI(apiKey, m, base64Data, promptText));
+        return tryModelsInOrder(freeVariants, (m) => callOpenRouterAPI(apiKey, m, base64Data, systemPrompt, userPrompt));
       }
       throw err;
     }
   } else {
-    const ans = await callOpenRouterAPI(apiKey, modelMode, base64Data, promptText);
+    const ans = await callOpenRouterAPI(apiKey, modelMode, base64Data, systemPrompt, userPrompt);
     return { answer: ans, modelUsed: modelMode };
   }
 }
@@ -308,18 +322,18 @@ async function tryModelsInOrder(modelList, callFn) {
   throw lastErr || new Error('All models in fallback list failed.');
 }
 
-async function callGeminiAPI(apiKey, model, base64Image, promptText = SYSTEM_PROMPT) {
+async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   const payload = {
     systemInstruction: {
-      parts: [{ text: promptText }]
+      parts: [{ text: systemPrompt }]
     },
     contents: [
       {
         role: 'user',
         parts: [
-          { text: promptText },
+          { text: userPrompt },
           {
             inlineData: {
               mimeType: 'image/png',
@@ -354,18 +368,18 @@ async function callGeminiAPI(apiKey, model, base64Image, promptText = SYSTEM_PRO
     if (data.promptFeedback?.blockReason) {
       throw new Error(`Generation blocked: ${data.promptFeedback.blockReason}`);
     }
-    return 'No questions detected or answer could not be generated.';
+    return 'No response generated.';
   }
 
   const textPart = candidate.content?.parts?.find((p) => p.text)?.text;
   if (!textPart || !textPart.trim()) {
-    return 'No academic questions detected in this screenshot.';
+    return 'No response generated from screenshot.';
   }
 
   return textPart.trim();
 }
 
-async function callOpenAIAPI(apiKey, model, base64Image, promptText = SYSTEM_PROMPT) {
+async function callOpenAIAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT) {
   const isReasoning = model.startsWith('o1') || model.startsWith('o3') || model.startsWith('o4');
 
   const messages = isReasoning
@@ -373,17 +387,17 @@ async function callOpenAIAPI(apiKey, model, base64Image, promptText = SYSTEM_PRO
         {
           role: 'user',
           content: [
-            { type: 'text', text: `${promptText}\n\nSolve all academic/quiz questions visible in this screenshot.` },
+            { type: 'text', text: `${systemPrompt}\n\n${userPrompt}` },
             { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } }
           ]
         }
       ]
     : [
-        { role: 'system', content: promptText },
+        { role: 'system', content: systemPrompt },
         {
           role: 'user',
           content: [
-            { type: 'text', text: 'Solve all academic/quiz questions visible in this screenshot according to instructions.' },
+            { type: 'text', text: userPrompt },
             { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } }
           ]
         }
@@ -426,7 +440,7 @@ async function callOpenAIAPI(apiKey, model, base64Image, promptText = SYSTEM_PRO
   return answer.trim();
 }
 
-async function callAnthropicAPI(apiKey, model, base64Image, promptText = SYSTEM_PROMPT) {
+async function callAnthropicAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT) {
   let resolvedModel = model;
   if (model === 'claude-3-5-sonnet') resolvedModel = 'claude-3-5-sonnet-20241022';
   else if (model === 'claude-3-5-haiku') resolvedModel = 'claude-3-5-haiku-20241022';
@@ -434,7 +448,7 @@ async function callAnthropicAPI(apiKey, model, base64Image, promptText = SYSTEM_
 
   const payload = {
     model: resolvedModel,
-    system: promptText,
+    system: systemPrompt,
     max_tokens: 2048,
     messages: [
       {
@@ -450,7 +464,7 @@ async function callAnthropicAPI(apiKey, model, base64Image, promptText = SYSTEM_
           },
           {
             type: 'text',
-            text: 'Solve all academic/quiz questions visible in this screenshot according to instructions.'
+            text: userPrompt
           }
         ]
       }
@@ -484,15 +498,15 @@ async function callAnthropicAPI(apiKey, model, base64Image, promptText = SYSTEM_
   return textBlock.text.trim();
 }
 
-async function callDeepSeekAPI(apiKey, model, base64Image, promptText = SYSTEM_PROMPT) {
+async function callDeepSeekAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT) {
   const payload = {
     model: model,
     messages: [
-      { role: 'system', content: promptText },
+      { role: 'system', content: systemPrompt },
       {
         role: 'user',
         content: [
-          { type: 'text', text: 'Solve all academic/quiz questions visible in this screenshot according to instructions.' },
+          { type: 'text', text: userPrompt },
           { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } }
         ]
       }
@@ -526,15 +540,15 @@ async function callDeepSeekAPI(apiKey, model, base64Image, promptText = SYSTEM_P
   return answer.trim();
 }
 
-async function callOpenRouterAPI(apiKey, model, base64Image, promptText = SYSTEM_PROMPT) {
+async function callOpenRouterAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT) {
   const payload = {
     model: model,
     messages: [
-      { role: 'system', content: promptText },
+      { role: 'system', content: systemPrompt },
       {
         role: 'user',
         content: [
-          { type: 'text', text: 'Solve all academic/quiz questions visible in this screenshot according to instructions.' },
+          { type: 'text', text: userPrompt },
           { type: 'image_url', image_url: { url: `data:image/png;base64,${base64Image}` } }
         ]
       }
