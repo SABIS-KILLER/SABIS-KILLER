@@ -8,11 +8,11 @@
 
   let appearance = {
     enable_prompt_input: true,
-    answer_text_color: '#FFFFFF',
+    answer_text_color: '#000000',
     answer_font_size: 13,
-    button_bg_color: '#000000',
+    button_bg_color: '#FFFFFF',
     button_size: 30,
-    prompt_bg_color: '#1A1A1A',
+    prompt_bg_color: '#FFFFFF',
     prompt_width: 180
   };
 
@@ -65,7 +65,7 @@
     }
 
     if (captureButton) {
-      const btnColor = appearance.button_bg_color || '#000000';
+      const btnColor = appearance.button_bg_color || '#FFFFFF';
       const btnSize = parseInt(appearance.button_size, 10) || 30;
       const contrast = getContrastColor(btnColor);
 
@@ -87,7 +87,7 @@
       const isEnabled = appearance.enable_prompt_input !== false;
       promptInput.style.display = isEnabled ? 'block' : 'none';
 
-      const pColor = appearance.prompt_bg_color || '#1A1A1A';
+      const pColor = appearance.prompt_bg_color || '#FFFFFF';
       const pWidth = parseInt(appearance.prompt_width, 10) || 180;
       const pContrast = getContrastColor(pColor);
 
@@ -171,9 +171,9 @@
       }
 
       #prompt-input {
-        background-color: #1a1a1a !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
         border-radius: 14px !important;
         padding: 4px 10px !important;
         font-size: 11px !important;
@@ -183,17 +183,17 @@
         max-width: 60vw !important;
         box-sizing: border-box !important;
         pointer-events: auto !important;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease, width 0.15s ease !important;
       }
 
       #prompt-input:focus {
-        border-color: #58a6ff !important;
-        box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.3) !important;
+        border-color: #0969da !important;
+        box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2) !important;
       }
 
       #prompt-input::placeholder {
-        color: rgba(255, 255, 255, 0.45) !important;
+        color: rgba(0, 0, 0, 0.45) !important;
         font-style: italic !important;
       }
 
@@ -204,9 +204,9 @@
         width: 30px !important;
         height: 30px !important;
         border-radius: 50% !important;
-        background-color: #000000 !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
-        box-shadow: none !important;
+        background-color: #ffffff !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -228,7 +228,7 @@
       }
 
       #capture-button svg {
-        stroke: #ffffff !important;
+        stroke: #000000 !important;
         transition: stroke 0.1s ease !important;
         display: block !important;
         pointer-events: none !important;
@@ -258,7 +258,7 @@
       }
 
       #answer-text {
-        color: #ffffff !important;
+        color: #000000 !important;
         font-weight: 400 !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         font-size: 13px !important;

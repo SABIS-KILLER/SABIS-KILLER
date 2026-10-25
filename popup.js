@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isPromptEnabled = data.enable_prompt_input !== false;
     enablePromptInput.checked = isPromptEnabled;
 
-    const answerColor = data.answer_text_color || '#FFFFFF';
+    const answerColor = data.answer_text_color || '#000000';
     answerColorPicker.value = answerColor;
     answerColorHex.value = answerColor.toUpperCase();
 
@@ -241,7 +241,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     answerFontSize.value = answerSize;
     answerFontSizeVal.textContent = `${answerSize}px`;
 
-    const buttonColor = data.button_bg_color || '#000000';
+    const buttonColor = data.button_bg_color || '#FFFFFF';
     buttonColorPicker.value = buttonColor;
     buttonColorHex.value = buttonColor.toUpperCase();
 
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     buttonSize.value = btnSize;
     buttonSizeVal.textContent = `${btnSize}px`;
 
-    const promptColor = data.prompt_bg_color || '#1A1A1A';
+    const promptColor = data.prompt_bg_color || '#FFFFFF';
     promptColorPicker.value = promptColor;
     promptColorHex.value = promptColor.toUpperCase();
 
@@ -404,11 +404,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const openrouterModel = document.getElementById('openrouter-models').value;
 
     const isPromptEnabled = enablePromptInput.checked;
-    const answerColor = answerColorHex.value.trim() || '#FFFFFF';
+    const answerColor = answerColorHex.value.trim() || '#000000';
     const answerSize = parseInt(answerFontSize.value, 10) || 13;
-    const buttonColor = buttonColorHex.value.trim() || '#000000';
+    const buttonColor = buttonColorHex.value.trim() || '#FFFFFF';
     const btnSize = parseInt(buttonSize.value, 10) || 30;
-    const promptColor = promptColorHex.value.trim() || '#1A1A1A';
+    const promptColor = promptColorHex.value.trim() || '#FFFFFF';
     const pWidth = parseInt(promptWidth.value, 10) || 180;
 
     const dataToSave = {
