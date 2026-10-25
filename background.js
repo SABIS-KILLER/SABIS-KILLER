@@ -69,7 +69,7 @@ async function handleSolveRequest(sender, message) {
 
   if (activeProvider === 'gemini') {
     apiKey = storage.GEMINI_API_KEY || storage.geminiApiKey || '';
-    modelMode = storage.gemini_model || storage.geminiModel || 'auto_free';
+    modelMode = storage.gemini_model || storage.geminiModel || 'gemini-3.5-flash';
   } else if (activeProvider === 'openai') {
     apiKey = storage.OPENAI_API_KEY || '';
     modelMode = storage.openai_model || 'auto_free';
@@ -192,7 +192,7 @@ async function routeProviderRequest(provider, apiKey, modelMode, base64Data, sys
 
 async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt) {
   if (modelMode === 'auto_free' || modelMode === 'auto') {
-    const freeModels = ['gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-2.5-flash'];
+    const freeModels = ['gemini-3.5-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite', 'gemini-3.6-flash', 'gemini-2.5-flash'];
     return tryModelsInOrder(freeModels, (m) => callGeminiAPI(apiKey, m, base64Data, systemPrompt, userPrompt));
   } else if (modelMode === 'auto_paid') {
     try {
@@ -200,16 +200,25 @@ async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, 
       return { answer: ans, modelUsed: 'gemini-4-argon' };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
-        console.warn('gemini-4-argon failover to gemini-3.8-flash');
-        const ans = await callGeminiAPI(apiKey, 'gemini-3.8-flash', base64Data, systemPrompt, userPrompt);
-        return { answer: ans, modelUsed: 'gemini-3.8-flash (failover)' };
+        console.warn('gemini-4-argon failover to gemini-3.5-flash');
+        const ans = await callGeminiAPI(apiKey, 'gemini-3.5-flash', base64Data, systemPrompt, userPrompt);
+        return { answer: ans, modelUsed: 'gemini-3.5-flash (failover)' };
       }
       throw err;
     }
   } else {
-    const safeModel = (!modelMode || modelMode.startsWith('auto')) ? 'gemini-2.5-flash' : modelMode;
-    const ans = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
-    return { answer: ans, modelUsed: safeModel };
+    const safeModel = (!modelMode || modelMode.startsWith('auto')) ? 'gemini-3.5-flash' : modelMode;
+    try {
+      const ans = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
+      return { answer: ans, modelUsed: safeModel };
+    } catch (err) {
+      if ((err.status === 404 || isQuotaOrRateLimitError(err)) && (safeModel === 'gemini-3.5-flash' || safeModel === 'gemini-3.5-flash-lite')) {
+        console.warn(`${safeModel} returned ${err.status}, falling back to gemini-2.5-flash...`);
+        const fallbackAns = await callGeminiAPI(apiKey, 'gemini-2.5-flash', base64Data, systemPrompt, userPrompt);
+        return { answer: fallbackAns, modelUsed: 'gemini-2.5-flash (fallback)' };
+      }
+      throw err;
+    }
   }
 }
 

@@ -35,9 +35,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       altKey: 'geminiApiKey',
       modelKey: 'gemini_model',
       altModelKey: 'geminiModel',
-      defaultModel: 'auto_free',
+      defaultModel: 'gemini-3.5-flash',
       getTestConfig: (key, model) => {
-        let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gemini-3.8-flash' : model;
+        let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gemini-3.5-flash' : (model || 'gemini-3.5-flash');
         return {
           url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
           method: 'POST',
@@ -188,12 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const geminiKey = data.GEMINI_API_KEY || data.geminiApiKey || '';
     document.getElementById('apiKey-gemini').value = geminiKey;
-    const geminiModel = data.gemini_model || data.geminiModel || 'auto_free';
+    const geminiModel = data.gemini_model || data.geminiModel || 'gemini-3.5-flash';
     const geminiSelect = document.getElementById('google-models');
     if (optionExists(geminiSelect, geminiModel)) {
       geminiSelect.value = geminiModel;
     } else {
-      geminiSelect.value = 'auto_free';
+      geminiSelect.value = 'gemini-3.5-flash';
     }
 
     const openaiKey = data.OPENAI_API_KEY || '';
