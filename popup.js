@@ -35,7 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       altKey: 'geminiApiKey',
       modelKey: 'gemini_model',
       altModelKey: 'geminiModel',
-      defaultModel: 'gemini-3.5-flash',
+      defaultModel: 'auto_free',
       getTestConfig: (key, model) => {
         let testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gemini-3.5-flash' : (model || 'gemini-3.5-flash');
         return {
@@ -188,12 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const geminiKey = data.GEMINI_API_KEY || data.geminiApiKey || '';
     document.getElementById('apiKey-gemini').value = geminiKey;
-    const geminiModel = data.gemini_model || data.geminiModel || 'gemini-3.5-flash';
+    const geminiModel = data.gemini_model || data.geminiModel || 'auto_free';
     const geminiSelect = document.getElementById('google-models');
     if (optionExists(geminiSelect, geminiModel)) {
       geminiSelect.value = geminiModel;
     } else {
-      geminiSelect.value = 'gemini-3.5-flash';
+      geminiSelect.value = 'auto_free';
     }
 
     const openaiKey = data.OPENAI_API_KEY || '';
