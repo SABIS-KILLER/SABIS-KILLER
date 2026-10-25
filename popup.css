@@ -66,6 +66,17 @@ body {
   color: #ffffff;
 }
 
+.version-tag {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: #21262d;
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
 .status-badge {
   display: inline-flex;
   align-items: center;

@@ -1,4 +1,4 @@
-# Academic Assistant Overlay - Chrome Extension (Manifest V3)
+# SABIS KILLER v1.5 - Chrome Extension (Manifest V3)
 
 A minimal screen-capture academic assistant overlay for Google Chrome supporting multiple AI providers (**Google Gemini**, **OpenAI**, **Anthropic**, **DeepSeek**, and **OpenRouter**) with dynamic model selection and automatic 429 quota failover routing.
 
