@@ -8,8 +8,8 @@
 
   let appearance = {
     enable_prompt_input: true,
-    answer_text_color: '#000000',
-    answer_font_size: 13,
+    answer_text_color: '#FFFFFF',
+    answer_font_size: 14,
     button_bg_color: '#FFFFFF',
     button_size: 30,
     prompt_bg_color: '#FFFFFF',
@@ -79,19 +79,28 @@
     if (!newSettings) return;
     appearance = { ...appearance, ...newSettings };
 
+    if (answerContainer) {
+      answerContainer.style.setProperty('background', 'transparent', 'important');
+      answerContainer.style.setProperty('backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('border', 'none', 'important');
+      answerContainer.style.setProperty('box-shadow', 'none', 'important');
+      answerContainer.style.setProperty('padding', '0', 'important');
+    }
+
     if (answerText) {
-      if (appearance.answer_text_color) {
-        answerText.style.setProperty('color', appearance.answer_text_color, 'important');
-      } else {
-        answerText.style.setProperty('color', '#FFFFFF', 'important');
-      }
+      const textColor = appearance.answer_text_color || '#FFFFFF';
+      const fontSize = appearance.answer_font_size || 14;
+      answerText.style.setProperty('color', textColor, 'important');
+      answerText.style.setProperty('font-size', `${fontSize}px`, 'important');
+      answerText.style.setProperty('font-weight', '600', 'important');
+      answerText.style.setProperty('background', 'transparent', 'important');
       answerText.style.setProperty('opacity', '1', 'important');
       answerText.style.setProperty('backdrop-filter', 'none', 'important');
       answerText.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
-      answerText.style.setProperty('text-shadow', '0 1px 3px rgba(0, 0, 0, 0.8)', 'important');
-      if (appearance.answer_font_size) {
-        answerText.style.setProperty('font-size', `${appearance.answer_font_size}px`, 'important');
-      }
+      answerText.style.setProperty('border', 'none', 'important');
+      answerText.style.setProperty('box-shadow', 'none', 'important');
+      answerText.style.setProperty('text-shadow', '0px 1px 4px rgba(0, 0, 0, 0.9), 0px 0px 8px rgba(0, 0, 0, 0.8)', 'important');
     }
 
     if (captureButton) {
@@ -160,6 +169,11 @@
       answerContainer.style.setProperty('right', 'auto', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
       answerContainer.style.setProperty('max-width', '90vw', 'important');
+      answerContainer.style.setProperty('background', 'transparent', 'important');
+      answerContainer.style.setProperty('backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('border', 'none', 'important');
+      answerContainer.style.setProperty('box-shadow', 'none', 'important');
       answerContainer.style.setProperty('z-index', '2147483646', 'important');
     }
   }
@@ -186,7 +200,12 @@
       answerContainer.style.setProperty('position', 'fixed', 'important');
       answerContainer.style.setProperty('bottom', '8px', 'important');
       answerContainer.style.setProperty('left', '8px', 'important');
-      answerContainer.style.setProperty('width', 'calc(100% - 140px)', 'important');
+      answerContainer.style.setProperty('width', 'auto', 'important');
+      answerContainer.style.setProperty('background', 'transparent', 'important');
+      answerContainer.style.setProperty('backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+      answerContainer.style.setProperty('border', 'none', 'important');
+      answerContainer.style.setProperty('box-shadow', 'none', 'important');
       answerContainer.style.setProperty('z-index', '2147483646', 'important');
     }
   }
@@ -457,45 +476,52 @@
         filter: invert(1) !important;
       }
 
-      #answer-display-container {
+      #answer-display-container,
+      #answer-container,
+      #output-text {
         position: fixed !important;
         bottom: 8px !important;
         left: 8px !important;
-        width: calc(100% - 140px) !important;
-        height: 38px !important;
-        background: rgba(255, 255, 255, 0.72) !important;
-        backdrop-filter: blur(24px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.4) !important;
-        border-radius: 14px !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+        width: auto !important;
+        max-width: calc(100vw - 140px) !important;
+        height: auto !important;
+        min-height: 0 !important;
+        background: transparent !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
         pointer-events: none !important;
         z-index: 2147483646 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        padding: 0 14px !important;
+        padding: 0 !important;
+        margin: 0 !important;
         box-sizing: border-box !important;
         white-space: nowrap !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
+        overflow: visible !important;
         gap: 8px !important;
       }
 
       #answer-text {
+        background: transparent !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
+        border: none !important;
+        box-shadow: none !important;
         opacity: 1 !important;
         color: #FFFFFF !important;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+        font-size: 14px !important;
         font-weight: 600 !important;
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-        font-size: 13px !important;
-        line-height: 1.5 !important;
+        line-height: 1.4 !important;
+        text-shadow: 0px 1px 4px rgba(0, 0, 0, 0.9), 0px 0px 8px rgba(0, 0, 0, 0.8) !important;
         user-select: none !important;
         white-space: nowrap !important;
         max-width: 100% !important;
-        width: 100% !important;
+        width: auto !important;
+        display: inline-block !important;
       }
 
       #model-badge {
@@ -505,11 +531,12 @@
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-monospace, SFMono-Regular, monospace !important;
         padding: 2px 7px !important;
         border-radius: 6px !important;
-        background: rgba(0, 122, 255, 0.15) !important;
-        backdrop-filter: blur(12px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
-        border: 1px solid rgba(0, 122, 255, 0.3) !important;
+        background: rgba(0, 0, 0, 0.45) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
         color: #007aff !important;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8) !important;
         white-space: nowrap !important;
         flex-shrink: 0 !important;
         user-select: none !important;
@@ -518,8 +545,8 @@
       }
 
       #model-badge.fallback {
-        background: rgba(255, 149, 0, 0.18) !important;
-        border-color: rgba(255, 149, 0, 0.35) !important;
+        background: rgba(255, 149, 0, 0.3) !important;
+        border-color: rgba(255, 149, 0, 0.5) !important;
         color: #ff9500 !important;
       }
 

@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (answerColorPicker) answerColorPicker.value = answerColor;
     if (answerColorHex) answerColorHex.value = answerColor.toUpperCase();
 
-    const answerSize = data.answer_font_size || 13;
+    const answerSize = data.answer_font_size || 14;
     if (answerFontSize) answerFontSize.value = answerSize;
     if (answerFontSizeVal) answerFontSizeVal.textContent = `${answerSize}px`;
 
