@@ -358,15 +358,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       const badge = document.getElementById(cfg.badgeId);
 
       if (key === providerId) {
-        btn.classList.add('active');
-        card.style.display = 'flex';
-        badge.textContent = 'Active';
-        badge.className = 'card-badge active';
+        if (btn) btn.classList.add('active');
+        if (card) card.style.display = 'flex';
+        if (badge) {
+          badge.textContent = 'Active';
+          badge.className = 'card-badge active';
+        }
       } else {
-        btn.classList.remove('active');
-        card.style.display = 'none';
-        badge.textContent = 'Inactive';
-        badge.className = 'card-badge';
+        if (btn) btn.classList.remove('active');
+        if (card) card.style.display = 'none';
+        if (badge) {
+          badge.textContent = 'Inactive';
+          badge.className = 'card-badge';
+        }
       }
     });
 
@@ -376,12 +380,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   function updateDots() {
     Object.keys(PROVIDERS).forEach((key) => {
       const cfg = PROVIDERS[key];
-      const val = document.getElementById(cfg.keyInputId).value.trim();
+      const el = document.getElementById(cfg.keyInputId);
+      const val = el ? el.value.trim() : '';
       const dot = document.getElementById(cfg.dotId);
-      if (val) {
-        dot.classList.add('configured');
-      } else {
-        dot.classList.remove('configured');
+      if (dot) {
+        if (val) {
+          dot.classList.add('configured');
+        } else {
+          dot.classList.remove('configured');
+        }
       }
     });
     updateHeaderStatus();
@@ -389,14 +396,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   function updateHeaderStatus() {
     const cfg = PROVIDERS[activeProvider];
-    const keyVal = document.getElementById(cfg.keyInputId).value.trim();
+    if (!cfg) return;
+    const el = document.getElementById(cfg.keyInputId);
+    const keyVal = el ? el.value.trim() : '';
 
-    if (keyVal) {
-      statusBadge.className = 'status-badge status-configured';
-      statusText.textContent = `Active: ${cfg.name}`;
-    } else {
-      statusBadge.className = 'status-badge status-missing';
-      statusText.textContent = `${cfg.name}: No Key`;
+    if (statusBadge && statusText) {
+      if (keyVal) {
+        statusBadge.className = 'status-badge status-configured';
+        statusText.textContent = `Active: ${cfg.name}`;
+      } else {
+        statusBadge.className = 'status-badge status-missing';
+        statusText.textContent = `${cfg.name}: No Key`;
+      }
     }
   }
 
