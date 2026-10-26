@@ -16,6 +16,16 @@
     prompt_width: 180
   };
 
+  // Stored positions for each repositionable element
+  let positions = {
+    button: null,    // { x, y } in px from viewport top-left
+    prompt: null,
+    answer: null
+  };
+
+  let activePickerTarget = null; // 'button' | 'prompt' | 'answer' | null
+  let pickerOverlay = null;      // full-viewport transparent div injected into <body>
+
   let host = document.getElementById('academic-solver-root');
   let shadow = null;
   let bottomControlsBar = null;
@@ -99,6 +109,60 @@
     }
   }
 
+  function applyPositions() {
+    // If prompt is individually positioned
+    if (promptInput) {
+      if (positions.prompt) {
+        promptInput.style.setProperty('position', 'fixed', 'important');
+        promptInput.style.setProperty('top', `${positions.prompt.y}px`, 'important');
+        promptInput.style.setProperty('left', `${positions.prompt.x}px`, 'important');
+        promptInput.style.setProperty('right', 'auto', 'important');
+        promptInput.style.setProperty('bottom', 'auto', 'important');
+        promptInput.style.setProperty('z-index', '2147483647', 'important');
+      } else {
+        promptInput.style.removeProperty('position');
+        promptInput.style.removeProperty('top');
+        promptInput.style.removeProperty('left');
+        promptInput.style.removeProperty('right');
+        promptInput.style.removeProperty('bottom');
+        promptInput.style.removeProperty('z-index');
+      }
+    }
+
+    // Button / Controls Bar
+    if (bottomControlsBar) {
+      if (positions.button) {
+        bottomControlsBar.style.setProperty('bottom', 'auto', 'important');
+        bottomControlsBar.style.setProperty('right', 'auto', 'important');
+        bottomControlsBar.style.setProperty('top', `${positions.button.y}px`, 'important');
+        bottomControlsBar.style.setProperty('left', `${positions.button.x}px`, 'important');
+      } else {
+        bottomControlsBar.style.removeProperty('top');
+        bottomControlsBar.style.removeProperty('left');
+        bottomControlsBar.style.setProperty('bottom', '0px', 'important');
+        bottomControlsBar.style.setProperty('right', '0px', 'important');
+      }
+    }
+
+    // Answer container
+    if (answerContainer) {
+      if (positions.answer) {
+        answerContainer.style.setProperty('bottom', 'auto', 'important');
+        answerContainer.style.setProperty('left', 'auto', 'important');
+        answerContainer.style.setProperty('width', 'auto', 'important');
+        answerContainer.style.setProperty('max-width', '90vw', 'important');
+        answerContainer.style.setProperty('top', `${positions.answer.y}px`, 'important');
+        answerContainer.style.setProperty('left', `${positions.answer.x}px`, 'important');
+      } else {
+        answerContainer.style.removeProperty('top');
+        answerContainer.style.setProperty('bottom', '0px', 'important');
+        answerContainer.style.setProperty('left', '0px', 'important');
+        answerContainer.style.setProperty('width', 'calc(100% - 120px)', 'important');
+        answerContainer.style.removeProperty('max-width');
+      }
+    }
+  }
+
   function loadStoredSettings() {
     if (!isRuntimeValid() || !chrome.storage || !chrome.storage.local) return;
     try {
@@ -106,10 +170,125 @@
         'enable_prompt_input',
         'answer_text_color', 'answer_font_size',
         'button_bg_color', 'button_size',
-        'prompt_bg_color', 'prompt_width'
+        'prompt_bg_color', 'prompt_width',
+        'pos_button', 'pos_prompt', 'pos_answer'
       ], (data) => {
         if (chrome.runtime.lastError) return;
         applyAppearanceSettings(data);
+        if (data.pos_button) positions.button = data.pos_button;
+        if (data.pos_prompt) positions.prompt = data.pos_prompt;
+        if (data.pos_answer) positions.answer = data.pos_answer;
+        applyPositions();
+      });
+    } catch (_) {}
+  }
+
+  // ── Position Picker ─────────────────────────────────────────────────────────
+
+  function activatePositionPicker(target) {
+    if (activePickerTarget) deactivatePositionPicker();
+
+    activePickerTarget = target;
+
+    pickerOverlay = document.createElement('div');
+    pickerOverlay.id = '__solver_picker_overlay__';
+    pickerOverlay.style.cssText = [
+      'position: fixed',
+      'top: 0',
+      'left: 0',
+      'width: 100vw',
+      'height: 100vh',
+      'z-index: 2147483647',
+      'cursor: crosshair',
+      'background: rgba(0, 122, 255, 0.08)',
+      'backdrop-filter: blur(2px)',
+      '-webkit-backdrop-filter: blur(2px)',
+      'pointer-events: all'
+    ].join(' !important;') + ' !important;';
+
+    document.documentElement.appendChild(pickerOverlay);
+
+    window.addEventListener('click', onPickerClick, { capture: true });
+    window.addEventListener('keydown', onPickerKeydown, { capture: true });
+  }
+
+  function deactivatePositionPicker() {
+    activePickerTarget = null;
+    window.removeEventListener('click', onPickerClick, { capture: true });
+    window.removeEventListener('keydown', onPickerKeydown, { capture: true });
+    if (pickerOverlay && pickerOverlay.parentNode) {
+      pickerOverlay.parentNode.removeChild(pickerOverlay);
+    }
+    pickerOverlay = null;
+
+    try {
+      chrome.runtime.sendMessage({ action: 'POSITION_PICKER_DONE' });
+    } catch (_) {}
+  }
+
+  function onPickerKeydown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      deactivatePositionPicker();
+    }
+  }
+
+  function onPickerClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rawX = e.clientX;
+    const rawY = e.clientY;
+    const target = activePickerTarget;
+
+    deactivatePositionPicker();
+
+    let px = rawX;
+    let py = rawY;
+    if (target === 'button') {
+      const btnSize = parseInt(appearance.button_size, 10) || 30;
+      px = Math.round(rawX - btnSize / 2);
+      py = Math.round(rawY - btnSize / 2);
+    } else if (target === 'prompt') {
+      const pWidth = parseInt(appearance.prompt_width, 10) || 180;
+      px = Math.round(rawX - pWidth / 2);
+      py = Math.round(rawY - 16);
+    } else if (target === 'answer') {
+      px = Math.round(rawX);
+      py = Math.round(rawY - 18);
+    }
+
+    px = Math.max(0, Math.min(window.innerWidth - 30, px));
+    py = Math.max(0, Math.min(window.innerHeight - 30, py));
+
+    const pos = { x: px, y: py };
+    positions[target] = pos;
+
+    const storageKey = `pos_${target}`;
+    try {
+      chrome.storage.local.set({ [storageKey]: pos });
+    } catch (_) {}
+
+    applyPositions();
+  }
+
+  // Listen for messages from popup
+  if (isRuntimeValid()) {
+    try {
+      chrome.runtime.onMessage.addListener((msg) => {
+        if (!msg) return;
+        if (msg.action === 'ACTIVATE_POSITION_PICKER' && msg.target) {
+          activatePositionPicker(msg.target);
+        }
+        if (msg.action === 'RESET_POSITION' && msg.target) {
+          positions[msg.target] = null;
+          try { chrome.storage.local.remove(`pos_${msg.target}`); } catch (_) {}
+          applyPositions();
+        }
+        if (msg.action === 'UPDATE_SETTINGS' && msg.settings) {
+          applyAppearanceSettings(msg.settings);
+        }
       });
     } catch (_) {}
   }
@@ -159,55 +338,61 @@
 
       #bottom-controls-bar {
         position: fixed !important;
-        bottom: 0px !important;
-        right: 0px !important;
+        bottom: 8px !important;
+        right: 8px !important;
         display: flex !important;
         align-items: center !important;
-        gap: 6px !important;
+        gap: 8px !important;
         z-index: 2147483647 !important;
-        padding: 4px 6px !important;
+        padding: 6px 8px !important;
         box-sizing: border-box !important;
         max-width: 90vw !important;
         pointer-events: auto !important;
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
       }
 
       #prompt-input {
         background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 1px solid rgba(0, 0, 0, 0.2) !important;
-        border-radius: 14px !important;
-        padding: 4px 10px !important;
-        font-size: 11px !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        color: #1c1c1e !important;
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        border-radius: 12px !important;
+        padding: 5px 12px !important;
+        font-size: 11.5px !important;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         outline: none !important;
         width: 180px !important;
         max-width: 60vw !important;
         box-sizing: border-box !important;
         pointer-events: auto !important;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease, width 0.15s ease !important;
       }
 
       #prompt-input:focus {
-        border-color: #0969da !important;
-        box-shadow: 0 0 0 2px rgba(9, 105, 218, 0.2) !important;
+        border-color: #007aff !important;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
       }
 
       #prompt-input::placeholder {
-        color: rgba(0, 0, 0, 0.45) !important;
-        font-style: italic !important;
+        color: rgba(60, 60, 67, 0.5) !important;
+        font-style: normal !important;
       }
 
       #capture-button {
         position: relative !important;
         margin: 0 !important;
         padding: 0 !important;
-        width: 30px !important;
-        height: 30px !important;
+        width: 32px !important;
+        height: 32px !important;
         border-radius: 50% !important;
         background-color: #ffffff !important;
-        border: 1px solid rgba(0, 0, 0, 0.2) !important;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -216,20 +401,21 @@
         outline: none !important;
         pointer-events: auto !important;
         flex-shrink: 0 !important;
-        transition: background-color 0.1s ease, transform 0.1s ease, opacity 0.1s ease !important;
+        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease, background-color 0.15s ease !important;
         -webkit-tap-highlight-color: transparent;
       }
 
       #capture-button:hover {
-        opacity: 0.88 !important;
+        opacity: 0.92 !important;
+        transform: scale(1.04) !important;
       }
 
       #capture-button:active {
-        transform: scale(0.92) !important;
+        transform: scale(0.94) !important;
       }
 
       #capture-button svg {
-        stroke: #000000 !important;
+        stroke: #1c1c1e !important;
         transition: stroke 0.1s ease !important;
         display: block !important;
         pointer-events: none !important;
@@ -241,27 +427,33 @@
 
       #answer-display-container {
         position: fixed !important;
-        bottom: 0px !important;
-        left: 0px !important;
-        width: calc(100% - 120px) !important;
+        bottom: 8px !important;
+        left: 8px !important;
+        width: calc(100% - 140px) !important;
         height: 38px !important;
-        background: transparent !important;
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        border-radius: 14px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
         pointer-events: none !important;
         z-index: 2147483646 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
-        padding: 0 16px !important;
+        padding: 0 14px !important;
         box-sizing: border-box !important;
         white-space: nowrap !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
+        gap: 8px !important;
       }
 
       #answer-text {
-        color: #000000 !important;
-        font-weight: 400 !important;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+        color: #1c1c1e !important;
+        font-weight: 500 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         font-size: 13px !important;
         line-height: 1.5 !important;
         text-shadow: none !important;
@@ -271,16 +463,15 @@
         width: 100% !important;
       }
 
-      #answer-display-container { gap: 8px !important; }
-
       #model-badge {
         display: none !important;
-        font-size: 9px !important;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-        padding: 1px 5px !important;
-        border-radius: 3px !important;
-        background: rgba(0,0,0,0.08) !important;
-        color: #555 !important;
+        font-size: 10px !important;
+        font-weight: 600 !important;
+        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-monospace, SFMono-Regular, monospace !important;
+        padding: 2px 7px !important;
+        border-radius: 6px !important;
+        background: rgba(0, 122, 255, 0.12) !important;
+        color: #007aff !important;
         white-space: nowrap !important;
         flex-shrink: 0 !important;
         user-select: none !important;
@@ -289,8 +480,8 @@
       }
 
       #model-badge.fallback {
-        background: rgba(180,70,0,0.12) !important;
-        color: #a04000 !important;
+        background: rgba(255, 149, 0, 0.16) !important;
+        color: #ff9500 !important;
       }
 
     `;
@@ -360,7 +551,7 @@
     shadow.appendChild(hiddenToggleZone);
     shadow.appendChild(uiWrapper);
 
-    loadStoredSettings();
+    loadStoredSettings(); // also calls applyPositions() once storage is read
 
     hiddenToggleZone.addEventListener('click', (e) => {
       e.stopPropagation();

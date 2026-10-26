@@ -172,6 +172,7 @@ async function handleSolveRequest(sender, message) {
     return {
       success: true,
       answer: result.answer,
+      response: result.answer,
       modelUsed: result.modelUsed,
       modeActive: result.modeActive,
       wasFallbackTriggered: result.wasFallbackTriggered
@@ -234,7 +235,7 @@ async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, 
     const resolvedModel = (model === 'gemini-3.7-flash') ? 'gemini-3.8-flash' : model;
     console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', resolvedModel, '| Fallback Triggered:', isFallback);
     const answer = await callGeminiAPI(apiKey, resolvedModel, base64Data, systemPrompt, userPrompt);
-    return { answer, modelUsed: resolvedModel, modeActive: currentMode, wasFallbackTriggered: isFallback };
+    return { answer, response: answer, modelUsed: resolvedModel, modeActive: currentMode, wasFallbackTriggered: isFallback };
   }
 
   async function runFreeFallbackWaterfall(isFallback) {
@@ -246,11 +247,11 @@ async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, 
       console.warn(`[Gemini Router] Free primary ${primaryFree} failed (${err2.message}), degrading to gemini-3.5-flash-lite`);
       try {
         const answer = await callGeminiAPI(apiKey, 'gemini-3.5-flash-lite', base64Data, systemPrompt, userPrompt);
-        return { answer, modelUsed: 'gemini-3.5-flash-lite', modeActive: currentMode, wasFallbackTriggered: true };
+        return { answer, response: answer, modelUsed: 'gemini-3.5-flash-lite', modeActive: currentMode, wasFallbackTriggered: true };
       } catch (err3) {
         console.warn(`[Gemini Router] gemini-3.5-flash-lite failed (${err3.message}), last resort gemini-2.5-flash`);
         const answer = await callGeminiAPI(apiKey, 'gemini-2.5-flash', base64Data, systemPrompt, userPrompt);
-        return { answer, modelUsed: 'gemini-2.5-flash', modeActive: currentMode, wasFallbackTriggered: true };
+        return { answer, response: answer, modelUsed: 'gemini-2.5-flash', modeActive: currentMode, wasFallbackTriggered: true };
       }
     }
   }
@@ -284,14 +285,14 @@ async function handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, 
   console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', safeModel, '| Fallback Triggered:', false);
   try {
     const answer = await callGeminiAPI(apiKey, safeModel, base64Data, systemPrompt, userPrompt);
-    return { answer, modelUsed: safeModel, modeActive: currentMode, wasFallbackTriggered: false };
+    return { answer, response: answer, modelUsed: safeModel, modeActive: currentMode, wasFallbackTriggered: false };
   } catch (err) {
     if ((err.status === 404 || isQuotaOrRateLimitError(err)) && GEMINI_MODELS_CATALOG[safeModel]) {
       const fallbackModel = GEMINI_MODELS_CATALOG[safeModel].fallback;
       console.warn(`[Gemini Router] ${safeModel} failed (${err.message}), catalog fallback to ${fallbackModel}`);
       console.log('[Gemini Router] Mode:', currentMode, '| Selected Model:', fallbackModel, '| Fallback Triggered:', true);
       const answer = await callGeminiAPI(apiKey, fallbackModel, base64Data, systemPrompt, userPrompt);
-      return { answer, modelUsed: fallbackModel, modeActive: currentMode, wasFallbackTriggered: true };
+      return { answer, response: answer, modelUsed: fallbackModel, modeActive: currentMode, wasFallbackTriggered: true };
     }
     throw err;
   }

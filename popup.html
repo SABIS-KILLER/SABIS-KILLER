@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -8,6 +8,13 @@
 </head>
 <body>
   <div class="popup-container">
+    <div id="saveToast" class="save-toast" aria-live="polite">
+      <svg class="toast-check" viewBox="0 0 20 20" width="13" height="13" fill="currentColor">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+      <span>Saved</span>
+    </div>
+
     <header class="header">
       <div class="logo-area">
         <div class="dot-indicator"></div>
@@ -270,6 +277,10 @@
           </div>
           <input type="range" id="answer-font-size" min="2" max="24" step="1" value="13">
         </div>
+        <div class="appearance-row position-row">
+          <button type="button" class="change-pos-btn" id="pos-btn-answer" data-target="answer">📍 Change Position</button>
+          <button type="button" class="reset-pos-btn" id="reset-btn-answer" data-target="answer" title="Reset to default position">↺ Reset</button>
+        </div>
       </div>
 
       <div class="appearance-card">
@@ -287,6 +298,10 @@
             <span class="val-badge" id="button-size-val">30px</span>
           </div>
           <input type="range" id="button-size" min="5" max="60" step="1" value="30">
+        </div>
+        <div class="appearance-row position-row">
+          <button type="button" class="change-pos-btn" id="pos-btn-button" data-target="button">📍 Change Position</button>
+          <button type="button" class="reset-pos-btn" id="reset-btn-button" data-target="button" title="Reset to default position">↺ Reset</button>
         </div>
       </div>
 
@@ -306,11 +321,14 @@
           </div>
           <input type="range" id="prompt-width" min="30" max="350" step="5" value="180">
         </div>
+        <div class="appearance-row position-row">
+          <button type="button" class="change-pos-btn" id="pos-btn-prompt" data-target="prompt">📍 Change Position</button>
+          <button type="button" class="reset-pos-btn" id="reset-btn-prompt" data-target="prompt" title="Reset to default position">↺ Reset</button>
+        </div>
       </div>
     </div>
 
     <div class="actions">
-      <button type="button" id="saveBtn" class="btn btn-primary">Save Settings</button>
       <button type="button" id="testBtn" class="btn btn-secondary">Test Connection</button>
     </div>
 

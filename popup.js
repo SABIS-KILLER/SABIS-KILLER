@@ -2,8 +2,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const statusBadge = document.getElementById('statusBadge');
   const statusText = document.getElementById('statusText');
   const feedbackMsg = document.getElementById('feedbackMessage');
-  const saveBtn = document.getElementById('saveBtn');
   const testBtn = document.getElementById('testBtn');
+  const saveToast = document.getElementById('saveToast');
 
   const enablePromptInput = document.getElementById('enable-prompt-input');
 
@@ -169,7 +169,84 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   let activeProvider = 'gemini';
+  let toastTimer = null;
 
+  function showSaveToast() {
+    if (!saveToast) return;
+    saveToast.classList.add('visible');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      saveToast.classList.remove('visible');
+    }, 1200);
+  }
+
+  function autoSave() {
+    const geminiKey = document.getElementById('apiKey-gemini').value.trim();
+    const openaiKey = document.getElementById('apiKey-openai').value.trim();
+    const anthropicKey = document.getElementById('apiKey-anthropic').value.trim();
+    const deepseekKey = document.getElementById('apiKey-deepseek').value.trim();
+    const openrouterKey = document.getElementById('apiKey-openrouter').value.trim();
+
+    const geminiModel = document.getElementById('google-models').value;
+    const openaiModel = document.getElementById('openai-models').value;
+    const anthropicModel = document.getElementById('anthropic-models').value;
+    const deepseekModel = document.getElementById('deepseek-models').value;
+    const openrouterModel = document.getElementById('openrouter-models').value;
+
+    const isPromptEnabled = enablePromptInput.checked;
+    const answerColor = answerColorHex.value.trim() || '#000000';
+    const answerSize = parseInt(answerFontSize.value, 10) || 13;
+    const buttonColor = buttonColorHex.value.trim() || '#FFFFFF';
+    const btnSize = parseInt(buttonSize.value, 10) || 30;
+    const promptColor = promptColorHex.value.trim() || '#FFFFFF';
+    const pWidth = parseInt(promptWidth.value, 10) || 180;
+
+    const dataToSave = {
+      active_provider: activeProvider,
+      GEMINI_API_KEY: geminiKey,
+      geminiApiKey: geminiKey,
+      gemini_model: geminiModel,
+      geminiModel: geminiModel,
+
+      OPENAI_API_KEY: openaiKey,
+      openai_model: openaiModel,
+
+      ANTHROPIC_API_KEY: anthropicKey,
+      anthropic_model: anthropicModel,
+
+      DEEPSEEK_API_KEY: deepseekKey,
+      deepseek_model: deepseekModel,
+
+      OPENROUTER_API_KEY: openrouterKey,
+      openrouter_model: openrouterModel,
+
+      enable_prompt_input: isPromptEnabled,
+      answer_text_color: answerColor,
+      answer_font_size: answerSize,
+      button_bg_color: buttonColor,
+      button_size: btnSize,
+      prompt_bg_color: promptColor,
+      prompt_width: pWidth
+    };
+
+    chrome.storage.local.set(dataToSave, () => {
+      updateDots();
+      showSaveToast();
+    });
+
+    try {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'UPDATE_SETTINGS',
+            settings: dataToSave
+          }).catch(() => {});
+        }
+      });
+    } catch (_) {}
+  }
+
+  // Load stored settings on popup open
   chrome.storage.local.get([
     'active_provider',
     'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel',
@@ -272,9 +349,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const providerId = btn.getAttribute('data-provider');
       if (PROVIDERS[providerId]) {
         activeProvider = providerId;
-        chrome.storage.local.set({ active_provider: activeProvider });
         switchActiveProvider(activeProvider);
-        showFeedback(`Switched active provider to ${PROVIDERS[activeProvider].name}.`, true);
+        autoSave();
       }
     });
   });
@@ -341,11 +417,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   });
 
-  function setupColorSync(picker, hexInput, storageKey) {
+  function setupColorSync(picker, hexInput) {
     picker.addEventListener('input', () => {
       const val = picker.value.toUpperCase();
       hexInput.value = val;
-      chrome.storage.local.set({ [storageKey]: val });
+      autoSave();
     });
 
     hexInput.addEventListener('input', () => {
@@ -353,7 +429,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!val.startsWith('#') && val.length > 0) val = '#' + val;
       if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
         picker.value = val;
-        chrome.storage.local.set({ [storageKey]: val.toUpperCase() });
+        autoSave();
       }
     });
 
@@ -366,86 +442,110 @@ document.addEventListener('DOMContentLoaded', async () => {
         const upper = val.toUpperCase();
         hexInput.value = upper;
         picker.value = upper;
-        chrome.storage.local.set({ [storageKey]: upper });
+        autoSave();
       }
     });
   }
 
-  function setupSliderSync(slider, valBadge, unit, storageKey) {
+  function setupSliderSync(slider, valBadge, unit) {
     slider.addEventListener('input', () => {
       valBadge.textContent = `${slider.value}${unit}`;
-      chrome.storage.local.set({ [storageKey]: parseInt(slider.value, 10) });
+      autoSave();
     });
   }
 
-  setupColorSync(answerColorPicker, answerColorHex, 'answer_text_color');
-  setupSliderSync(answerFontSize, answerFontSizeVal, 'px', 'answer_font_size');
+  setupColorSync(answerColorPicker, answerColorHex);
+  setupSliderSync(answerFontSize, answerFontSizeVal, 'px');
 
-  setupColorSync(buttonColorPicker, buttonColorHex, 'button_bg_color');
-  setupSliderSync(buttonSize, buttonSizeVal, 'px', 'button_size');
+  setupColorSync(buttonColorPicker, buttonColorHex);
+  setupSliderSync(buttonSize, buttonSizeVal, 'px');
 
-  setupColorSync(promptColorPicker, promptColorHex, 'prompt_bg_color');
-  setupSliderSync(promptWidth, promptWidthVal, 'px', 'prompt_width');
+  setupColorSync(promptColorPicker, promptColorHex);
+  setupSliderSync(promptWidth, promptWidthVal, 'px');
 
   enablePromptInput.addEventListener('change', () => {
-    chrome.storage.local.set({ enable_prompt_input: enablePromptInput.checked });
+    autoSave();
   });
 
-  saveBtn.addEventListener('click', () => {
-    const geminiKey = document.getElementById('apiKey-gemini').value.trim();
-    const openaiKey = document.getElementById('apiKey-openai').value.trim();
-    const anthropicKey = document.getElementById('apiKey-anthropic').value.trim();
-    const deepseekKey = document.getElementById('apiKey-deepseek').value.trim();
-    const openrouterKey = document.getElementById('apiKey-openrouter').value.trim();
+  // Attach instant auto-save to all key inputs and selects
+  [
+    'apiKey-gemini', 'apiKey-openai', 'apiKey-anthropic', 'apiKey-deepseek', 'apiKey-openrouter',
+    'google-models', 'openai-models', 'anthropic-models', 'deepseek-models', 'openrouter-models'
+  ].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('input', () => autoSave());
+      el.addEventListener('change', () => autoSave());
+      el.addEventListener('blur', () => autoSave());
+    }
+  });
 
-    const geminiModel = document.getElementById('google-models').value;
-    const openaiModel = document.getElementById('openai-models').value;
-    const anthropicModel = document.getElementById('anthropic-models').value;
-    const deepseekModel = document.getElementById('deepseek-models').value;
-    const openrouterModel = document.getElementById('openrouter-models').value;
+  // ── Change Position Screen-Picker Handling ──
+  const changePosButtons = document.querySelectorAll('.change-pos-btn');
 
-    const isPromptEnabled = enablePromptInput.checked;
-    const answerColor = answerColorHex.value.trim() || '#000000';
-    const answerSize = parseInt(answerFontSize.value, 10) || 13;
-    const buttonColor = buttonColorHex.value.trim() || '#FFFFFF';
-    const btnSize = parseInt(buttonSize.value, 10) || 30;
-    const promptColor = promptColorHex.value.trim() || '#FFFFFF';
-    const pWidth = parseInt(promptWidth.value, 10) || 180;
+  function clearPickerButtons() {
+    changePosButtons.forEach(btn => {
+      btn.classList.remove('active-picker');
+      btn.textContent = '📍 Change Position';
+    });
+  }
 
-    const dataToSave = {
-      active_provider: activeProvider,
-      GEMINI_API_KEY: geminiKey,
-      geminiApiKey: geminiKey,
-      gemini_model: geminiModel,
-      geminiModel: geminiModel,
+  changePosButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = btn.getAttribute('data-target');
+      const isAlreadyActive = btn.classList.contains('active-picker');
 
-      OPENAI_API_KEY: openaiKey,
-      openai_model: openaiModel,
+      clearPickerButtons();
 
-      ANTHROPIC_API_KEY: anthropicKey,
-      anthropic_model: anthropicModel,
+      if (!isAlreadyActive) {
+        btn.classList.add('active-picker');
+        btn.textContent = '🎯 Click on screen...';
 
-      DEEPSEEK_API_KEY: deepseekKey,
-      deepseek_model: deepseekModel,
-
-      OPENROUTER_API_KEY: openrouterKey,
-      openrouter_model: openrouterModel,
-
-      enable_prompt_input: isPromptEnabled,
-      answer_text_color: answerColor,
-      answer_font_size: answerSize,
-      button_bg_color: buttonColor,
-      button_size: btnSize,
-      prompt_bg_color: promptColor,
-      prompt_width: pWidth
-    };
-
-    chrome.storage.local.set(dataToSave, () => {
-      updateDots();
-      showFeedback(`Settings and keys saved! Active provider: ${PROVIDERS[activeProvider].name}`, true);
+        // Dispatch placement mode to active tab
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0]?.id) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'ACTIVATE_POSITION_PICKER',
+              target: target
+            }).catch(() => {});
+          }
+        });
+      }
     });
   });
 
+  // Reset Position Buttons
+  document.querySelectorAll('.reset-pos-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const target = btn.getAttribute('data-target');
+      clearPickerButtons();
+
+      chrome.storage.local.remove(`pos_${target}`, () => {
+        showSaveToast();
+      });
+
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'RESET_POSITION',
+            target: target
+          }).catch(() => {});
+        }
+      });
+    });
+  });
+
+  // Listen for message from content script when placement completes
+  chrome.runtime.onMessage.addListener((msg) => {
+    if (msg && msg.action === 'POSITION_PICKER_DONE') {
+      clearPickerButtons();
+      showSaveToast();
+    }
+  });
+
+  // Test connection button
   testBtn.addEventListener('click', async () => {
     const cfg = PROVIDERS[activeProvider];
     const key = document.getElementById(cfg.keyInputId).value.trim();
