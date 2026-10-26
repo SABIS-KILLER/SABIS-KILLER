@@ -1,23 +1,23 @@
 :root {
-  --bg-color: rgba(255, 255, 255, 0.72);
-  --card-bg: rgba(255, 255, 255, 0.68);
+  --bg-color: rgba(245, 245, 247, 0.68);
+  --card-bg: rgba(255, 255, 255, 0.45);
   --text-primary: #1C1C1E;
   --text-secondary: #636366;
   --text-tertiary: #8E8E93;
-  --border-color: #8E8E93;
-  --border-dark: #8E8E93;
-  --border-medium: #AEAEB2;
-  --border-subtle: #C7C7CC;
-  --border-divider: #D1D1D6;
+  --border-color: rgba(209, 213, 219, 0.4);
+  --border-dark: rgba(209, 213, 219, 0.5);
+  --border-medium: rgba(209, 213, 219, 0.4);
+  --border-subtle: rgba(209, 213, 219, 0.35);
+  --border-divider: rgba(0, 0, 0, 0.08);
   --apple-blue: #007AFF;
   --apple-blue-pressed: #0062CC;
   --apple-blue-soft: rgba(0, 122, 255, 0.14);
   --apple-green: #34C759;
   --apple-red: #FF3B30;
-  --apple-gray-btn: rgba(229, 229, 234, 0.75);
-  --apple-gray-btn-hover: rgba(216, 216, 220, 0.85);
-  --shadow-card: 0 1px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
-  --shadow-ambient: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.05);
+  --apple-gray-btn: rgba(229, 229, 234, 0.65);
+  --apple-gray-btn-hover: rgba(216, 216, 220, 0.8);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  --shadow-ambient: 0 20px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 * {
@@ -34,7 +34,7 @@ html {
   padding: 0 !important;
   background: transparent !important;
   overflow: hidden !important;
-  border-radius: 20px !important;
+  border-radius: 24px !important;
 }
 
 body {
@@ -49,22 +49,22 @@ body {
   line-height: 1.45;
   user-select: none;
   overflow: hidden !important;
-  border-radius: 20px !important;
+  border-radius: 24px !important;
 }
 
 .popup-container {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+  margin: 0 !important;
+  padding: 0 !important;
   position: relative;
-  background: rgba(246, 246, 246, 0.72) !important;
-  backdrop-filter: blur(25px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-  border-radius: 20px !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2) !important;
+  background: rgba(245, 245, 247, 0.68) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
@@ -80,7 +80,7 @@ body {
   gap: 14px;
   overflow-y: auto;
   overflow-x: hidden;
-  border-radius: 20px;
+  border-radius: 24px !important;
 }
 
 /* ── Sleek macOS Scrollbar on popup-content ── */
@@ -242,12 +242,12 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  background: rgba(229, 229, 234, 0.75);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1.5px solid var(--border-dark);
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(209, 213, 219, 0.4) !important;
   padding: 4px;
-  border-radius: 12px;
+  border-radius: 14px !important;
 }
 
 .provider-btn {
@@ -261,7 +261,7 @@ body {
   background: transparent;
   color: var(--text-primary);
   border: 1px solid transparent;
-  border-radius: 9px;
+  border-radius: 10px;
   padding: 6px 8px;
   font-size: 11.5px;
   font-weight: 500;
@@ -279,12 +279,12 @@ body {
 }
 
 .provider-btn.active {
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
   color: var(--apple-blue);
   font-weight: 600;
-  border: 1.5px solid var(--apple-blue);
+  border: 1px solid rgba(0, 122, 255, 0.4);
   box-shadow: 0 2px 8px rgba(0, 122, 255, 0.22);
 }
 
@@ -309,16 +309,16 @@ body {
 }
 
 .provider-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1.5px solid var(--border-dark);
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(209, 213, 219, 0.4) !important;
+  border-radius: 14px !important;
   padding: 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  box-shadow: var(--shadow-card), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
 .card-header {
@@ -354,9 +354,10 @@ body {
 
 /* ── Form Inputs & Selects ── */
 .input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
 }
 
 input[type="text"],
@@ -369,7 +370,7 @@ input[type="password"] {
   color: var(--text-primary);
   border: 1px solid rgba(142, 142, 147, 0.4) !important;
   border-radius: 12px !important;
-  padding: 8px 12px !important;
+  padding: 8px 12px;
   font-size: 12.5px;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
@@ -379,16 +380,24 @@ input[type="password"] {
   box-sizing: border-box;
 }
 
+.input-wrapper input[type="text"],
+.input-wrapper input[type="password"],
+.input-wrapper input {
+  padding-right: 44px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  box-sizing: border-box !important;
+}
+
 select {
   width: 100%;
   min-height: 38px;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
   background: rgba(255, 255, 255, 0.6) !important;
   backdrop-filter: blur(15px) !important;
   -webkit-backdrop-filter: blur(15px) !important;
   border: 1px solid rgba(142, 142, 147, 0.4) !important;
   padding: 8px 12px !important;
-  padding-right: 32px !important;
+  padding-right: 36px !important;
   color: var(--text-primary);
   font-size: 12.5px;
   outline: none;
@@ -399,7 +408,7 @@ select {
   cursor: pointer;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23636366' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
   background-repeat: no-repeat !important;
-  background-position: right 10px center !important;
+  background-position: right 12px center !important;
   background-size: 14px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
   overflow: hidden !important;
@@ -414,48 +423,56 @@ input[type="password"]:focus {
 }
 
 select option {
-  background: rgba(255, 255, 255, 0.85) !important;
-  background-color: #F6F6F6;
+  background: rgba(245, 245, 247, 0.85) !important;
+  background-color: #F5F5F7 !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   color: #1C1C1E !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
   padding: 8px 12px !important;
   font-size: 12px !important;
   font-family: inherit !important;
 }
 
 select optgroup {
-  background: rgba(246, 246, 246, 0.95) !important;
+  background: rgba(245, 245, 247, 0.95) !important;
   color: #636366 !important;
   font-weight: 700 !important;
   font-size: 11.5px !important;
-  border-radius: 12px !important;
+  border-radius: 14px !important;
+  overflow: hidden !important;
   padding: 6px 10px !important;
 }
 
-.input-wrapper input {
-  padding-right: 36px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.icon-btn {
-  position: absolute;
-  right: 6px;
-  background: transparent;
-  border: none;
+.icon-btn,
+.toggle-visibility {
+  position: absolute !important;
+  right: 12px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 5 !important;
+  background: transparent !important;
+  border: none !important;
   color: var(--text-secondary);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  border-radius: 8px;
-  transition: color 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+  border-radius: 8px !important;
+  transition: color 0.15s ease, transform 0.1s ease !important;
+  outline: none !important;
 }
 
-.icon-btn:hover {
-  color: var(--text-primary);
+.icon-btn:hover,
+.toggle-visibility:hover {
+  color: var(--text-primary) !important;
+}
+
+.icon-btn:active,
+.toggle-visibility:active {
+  transform: translateY(-50%) scale(0.92) !important;
 }
 
 .api-help {
@@ -479,13 +496,13 @@ select optgroup {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: var(--card-bg);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border: 1.5px solid var(--border-dark);
-  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(209, 213, 219, 0.4) !important;
+  border-radius: 14px !important;
   padding: 14px 16px;
-  box-shadow: var(--shadow-card), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
 .section-title-row h2 {
@@ -573,16 +590,16 @@ input:checked + .slider:before {
 
 /* ── Appearance Inset Cards ── */
 .appearance-card {
-  background: var(--card-bg);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1.5px solid var(--border-dark);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(209, 213, 219, 0.4) !important;
+  border-radius: 14px !important;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
 .appearance-card-title {
@@ -875,14 +892,14 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 /* ── Guide Box ── */
 .guide-box {
-  background: var(--card-bg);
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  border: 1.5px solid var(--border-dark);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(16px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+  border: 1px solid rgba(209, 213, 219, 0.4) !important;
+  border-radius: 14px !important;
   padding: 12px 14px;
   font-size: 11.5px;
-  box-shadow: var(--shadow-card), inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
 }
 
 .guide-box h3 {
