@@ -62,6 +62,19 @@
     return yiq >= 140 ? '#000000' : '#FFFFFF';
   }
 
+  function hexToRgba(hexColor, alpha = 0.65) {
+    if (!hexColor || typeof hexColor !== 'string') return `rgba(255, 255, 255, ${alpha})`;
+    let hex = hexColor.replace('#', '').trim();
+    if (hex.length === 3) {
+      hex = hex.split('').map(c => c + c).join('');
+    }
+    if (hex.length !== 6) return `rgba(255, 255, 255, ${alpha})`;
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   function applyAppearanceSettings(newSettings) {
     if (!newSettings) return;
     appearance = { ...appearance, ...newSettings };
@@ -69,7 +82,13 @@
     if (answerText) {
       if (appearance.answer_text_color) {
         answerText.style.setProperty('color', appearance.answer_text_color, 'important');
+      } else {
+        answerText.style.setProperty('color', '#FFFFFF', 'important');
       }
+      answerText.style.setProperty('opacity', '1', 'important');
+      answerText.style.setProperty('backdrop-filter', 'none', 'important');
+      answerText.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
+      answerText.style.setProperty('text-shadow', '0 1px 3px rgba(0, 0, 0, 0.8)', 'important');
       if (appearance.answer_font_size) {
         answerText.style.setProperty('font-size', `${appearance.answer_font_size}px`, 'important');
       }
@@ -79,11 +98,15 @@
       const btnColor = appearance.button_bg_color || '#FFFFFF';
       const btnSize = parseInt(appearance.button_size, 10) || 30;
       const contrast = getContrastColor(btnColor);
+      const translucentBg = hexToRgba(btnColor, 0.65);
 
-      captureButton.style.setProperty('background-color', btnColor, 'important');
+      captureButton.style.setProperty('background', translucentBg, 'important');
+      captureButton.style.setProperty('backdrop-filter', 'blur(20px) saturate(180%)', 'important');
+      captureButton.style.setProperty('-webkit-backdrop-filter', 'blur(20px) saturate(180%)', 'important');
+      captureButton.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.4)', 'important');
+      captureButton.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.12)', 'important');
       captureButton.style.setProperty('width', `${btnSize}px`, 'important');
       captureButton.style.setProperty('height', `${btnSize}px`, 'important');
-      captureButton.style.setProperty('border-color', contrast === '#000000' ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.25)', 'important');
 
       const svg = captureButton.querySelector('svg');
       if (svg) {
@@ -101,11 +124,15 @@
       const pColor = appearance.prompt_bg_color || '#FFFFFF';
       const pWidth = parseInt(appearance.prompt_width, 10) || 180;
       const pContrast = getContrastColor(pColor);
+      const translucentPromptBg = hexToRgba(pColor, 0.65);
 
-      promptInput.style.setProperty('background-color', pColor, 'important');
+      promptInput.style.setProperty('background', translucentPromptBg, 'important');
+      promptInput.style.setProperty('backdrop-filter', 'blur(20px) saturate(180%)', 'important');
+      promptInput.style.setProperty('-webkit-backdrop-filter', 'blur(20px) saturate(180%)', 'important');
+      promptInput.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.3)', 'important');
+      promptInput.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.1)', 'important');
       promptInput.style.setProperty('color', pContrast, 'important');
       promptInput.style.setProperty('width', `${pWidth}px`, 'important');
-      promptInput.style.setProperty('border-color', pContrast === '#000000' ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.25)', 'important');
     }
   }
 
@@ -226,7 +253,9 @@
       'height: 100vh',
       'z-index: 2147483647',
       'cursor: crosshair',
-      'background: rgba(0, 0, 0, 0.05)',
+      'background: rgba(0, 0, 0, 0.12)',
+      'backdrop-filter: blur(4px) saturate(140%)',
+      '-webkit-backdrop-filter: blur(4px) saturate(140%)',
       'pointer-events: auto'
     ].join(' !important;') + ' !important;';
 
@@ -355,9 +384,11 @@
       }
 
       #prompt-input {
-        background-color: #ffffff !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
         color: #1c1c1e !important;
-        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
         border-radius: 12px !important;
         padding: 5px 12px !important;
         font-size: 11.5px !important;
@@ -367,17 +398,17 @@
         max-width: 60vw !important;
         box-sizing: border-box !important;
         pointer-events: auto !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease, width 0.15s ease !important;
       }
 
       #prompt-input:focus {
         border-color: #007aff !important;
-        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
+        box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.25), 0 8px 24px rgba(0, 0, 0, 0.12) !important;
       }
 
       #prompt-input::placeholder {
-        color: rgba(60, 60, 67, 0.5) !important;
+        color: rgba(60, 60, 67, 0.6) !important;
         font-style: normal !important;
       }
 
@@ -388,9 +419,11 @@
         width: 32px !important;
         height: 32px !important;
         border-radius: 50% !important;
-        background-color: #ffffff !important;
-        border: 1px solid rgba(0, 0, 0, 0.15) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+        background: rgba(255, 255, 255, 0.65) !important;
+        backdrop-filter: blur(20px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.06) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -399,13 +432,14 @@
         outline: none !important;
         pointer-events: auto !important;
         flex-shrink: 0 !important;
-        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease, background-color 0.15s ease !important;
+        transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease, background 0.15s ease, box-shadow 0.15s ease !important;
         -webkit-tap-highlight-color: transparent;
       }
 
       #capture-button:hover {
-        opacity: 0.92 !important;
-        transform: scale(1.04) !important;
+        opacity: 0.95 !important;
+        transform: scale(1.05) !important;
+        box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16) !important;
       }
 
       #capture-button:active {
@@ -429,12 +463,12 @@
         left: 8px !important;
         width: calc(100% - 140px) !important;
         height: 38px !important;
-        background: rgba(255, 255, 255, 0.85) !important;
-        backdrop-filter: blur(20px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.6) !important;
+        background: rgba(255, 255, 255, 0.72) !important;
+        backdrop-filter: blur(24px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
         border-radius: 14px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.05) !important;
         pointer-events: none !important;
         z-index: 2147483646 !important;
         display: flex !important;
@@ -449,12 +483,15 @@
       }
 
       #answer-text {
-        color: #1c1c1e !important;
-        font-weight: 500 !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        opacity: 1 !important;
+        color: #FFFFFF !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+        font-weight: 600 !important;
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
         font-size: 13px !important;
         line-height: 1.5 !important;
-        text-shadow: none !important;
         user-select: none !important;
         white-space: nowrap !important;
         max-width: 100% !important;
@@ -468,7 +505,10 @@
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-monospace, SFMono-Regular, monospace !important;
         padding: 2px 7px !important;
         border-radius: 6px !important;
-        background: rgba(0, 122, 255, 0.12) !important;
+        background: rgba(0, 122, 255, 0.15) !important;
+        backdrop-filter: blur(12px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+        border: 1px solid rgba(0, 122, 255, 0.3) !important;
         color: #007aff !important;
         white-space: nowrap !important;
         flex-shrink: 0 !important;
@@ -478,7 +518,8 @@
       }
 
       #model-badge.fallback {
-        background: rgba(255, 149, 0, 0.16) !important;
+        background: rgba(255, 149, 0, 0.18) !important;
+        border-color: rgba(255, 149, 0, 0.35) !important;
         color: #ff9500 !important;
       }
 
