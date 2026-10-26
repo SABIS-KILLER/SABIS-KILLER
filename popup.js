@@ -264,76 +264,71 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const geminiKey = data.GEMINI_API_KEY || data.geminiApiKey || '';
-    document.getElementById('apiKey-gemini').value = geminiKey;
+    const geminiInput = document.getElementById('apiKey-gemini');
+    if (geminiInput) geminiInput.value = geminiKey;
     const rawGeminiModel = data.gemini_model || data.geminiModel || 'auto_dynamic_paid';
     const geminiModel = (rawGeminiModel === 'auto_free') ? 'auto_dynamic_free' : (rawGeminiModel === 'auto_paid') ? 'auto_dynamic_paid' : rawGeminiModel;
     const geminiSelect = document.getElementById('google-models');
-    if (optionExists(geminiSelect, geminiModel)) {
-      geminiSelect.value = geminiModel;
-    } else {
-      geminiSelect.value = 'auto_dynamic_paid';
+    if (geminiSelect) {
+      geminiSelect.value = optionExists(geminiSelect, geminiModel) ? geminiModel : 'auto_dynamic_paid';
     }
 
     const openaiKey = data.OPENAI_API_KEY || '';
-    document.getElementById('apiKey-openai').value = openaiKey;
+    const openaiInput = document.getElementById('apiKey-openai');
+    if (openaiInput) openaiInput.value = openaiKey;
     const openaiSelect = document.getElementById('openai-models');
-    if (optionExists(openaiSelect, data.openai_model)) {
-      openaiSelect.value = data.openai_model;
-    } else {
-      openaiSelect.value = 'auto_free';
+    if (openaiSelect) {
+      openaiSelect.value = optionExists(openaiSelect, data.openai_model) ? data.openai_model : 'auto_free';
     }
 
     const anthropicKey = data.ANTHROPIC_API_KEY || '';
-    document.getElementById('apiKey-anthropic').value = anthropicKey;
+    const anthropicInput = document.getElementById('apiKey-anthropic');
+    if (anthropicInput) anthropicInput.value = anthropicKey;
     const anthropicSelect = document.getElementById('anthropic-models');
-    if (data.anthropic_model && optionExists(anthropicSelect, data.anthropic_model)) {
-      anthropicSelect.value = data.anthropic_model;
-    } else {
-      anthropicSelect.value = 'auto_paid';
+    if (anthropicSelect) {
+      anthropicSelect.value = (data.anthropic_model && optionExists(anthropicSelect, data.anthropic_model)) ? data.anthropic_model : 'auto_paid';
     }
 
-    document.getElementById('apiKey-deepseek').value = data.DEEPSEEK_API_KEY || '';
+    const deepseekInput = document.getElementById('apiKey-deepseek');
+    if (deepseekInput) deepseekInput.value = data.DEEPSEEK_API_KEY || '';
     const deepseekSelect = document.getElementById('deepseek-models');
-    if (data.deepseek_model && optionExists(deepseekSelect, data.deepseek_model)) {
-      deepseekSelect.value = data.deepseek_model;
-    } else {
-      deepseekSelect.value = 'auto_free';
+    if (deepseekSelect) {
+      deepseekSelect.value = (data.deepseek_model && optionExists(deepseekSelect, data.deepseek_model)) ? data.deepseek_model : 'auto_free';
     }
 
-    document.getElementById('apiKey-openrouter').value = data.OPENROUTER_API_KEY || '';
+    const openrouterInput = document.getElementById('apiKey-openrouter');
+    if (openrouterInput) openrouterInput.value = data.OPENROUTER_API_KEY || '';
     const openrouterSelect = document.getElementById('openrouter-models');
-    if (data.openrouter_model && optionExists(openrouterSelect, data.openrouter_model)) {
-      openrouterSelect.value = data.openrouter_model;
-    } else {
-      openrouterSelect.value = 'auto_free';
+    if (openrouterSelect) {
+      openrouterSelect.value = (data.openrouter_model && optionExists(openrouterSelect, data.openrouter_model)) ? data.openrouter_model : 'auto_free';
     }
 
     const isPromptEnabled = data.enable_prompt_input !== false;
-    enablePromptInput.checked = isPromptEnabled;
+    if (enablePromptInput) enablePromptInput.checked = isPromptEnabled;
 
     const answerColor = data.answer_text_color || '#000000';
-    answerColorPicker.value = answerColor;
-    answerColorHex.value = answerColor.toUpperCase();
+    if (answerColorPicker) answerColorPicker.value = answerColor;
+    if (answerColorHex) answerColorHex.value = answerColor.toUpperCase();
 
     const answerSize = data.answer_font_size || 13;
-    answerFontSize.value = answerSize;
-    answerFontSizeVal.textContent = `${answerSize}px`;
+    if (answerFontSize) answerFontSize.value = answerSize;
+    if (answerFontSizeVal) answerFontSizeVal.textContent = `${answerSize}px`;
 
     const buttonColor = data.button_bg_color || '#FFFFFF';
-    buttonColorPicker.value = buttonColor;
-    buttonColorHex.value = buttonColor.toUpperCase();
+    if (buttonColorPicker) buttonColorPicker.value = buttonColor;
+    if (buttonColorHex) buttonColorHex.value = buttonColor.toUpperCase();
 
     const btnSize = data.button_size || 30;
-    buttonSize.value = btnSize;
-    buttonSizeVal.textContent = `${btnSize}px`;
+    if (buttonSize) buttonSize.value = btnSize;
+    if (buttonSizeVal) buttonSizeVal.textContent = `${btnSize}px`;
 
     const promptColor = data.prompt_bg_color || '#FFFFFF';
-    promptColorPicker.value = promptColor;
-    promptColorHex.value = promptColor.toUpperCase();
+    if (promptColorPicker) promptColorPicker.value = promptColor;
+    if (promptColorHex) promptColorHex.value = promptColor.toUpperCase();
 
     const pWidth = data.prompt_width || 180;
-    promptWidth.value = pWidth;
-    promptWidthVal.textContent = `${pWidth}px`;
+    if (promptWidth) promptWidth.value = pWidth;
+    if (promptWidthVal) promptWidthVal.textContent = `${pWidth}px`;
 
     switchActiveProvider(activeProvider);
     updateDots();
@@ -418,6 +413,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   function setupColorSync(picker, hexInput) {
+    if (!picker || !hexInput) return;
+
     picker.addEventListener('input', () => {
       const val = picker.value.toUpperCase();
       hexInput.value = val;
@@ -448,6 +445,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function setupSliderSync(slider, valBadge, unit) {
+    if (!slider || !valBadge) return;
     slider.addEventListener('input', () => {
       valBadge.textContent = `${slider.value}${unit}`;
       autoSave();
@@ -463,9 +461,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupColorSync(promptColorPicker, promptColorHex);
   setupSliderSync(promptWidth, promptWidthVal, 'px');
 
-  enablePromptInput.addEventListener('change', () => {
-    autoSave();
-  });
+  if (enablePromptInput) {
+    enablePromptInput.addEventListener('change', () => {
+      autoSave();
+    });
+  }
 
   // Attach instant auto-save to all key inputs and selects
   [
@@ -546,43 +546,48 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // Test connection button
-  testBtn.addEventListener('click', async () => {
-    const cfg = PROVIDERS[activeProvider];
-    const key = document.getElementById(cfg.keyInputId).value.trim();
-    const model = document.getElementById(cfg.modelSelectId).value;
+  if (testBtn) {
+    testBtn.addEventListener('click', async () => {
+      const cfg = PROVIDERS[activeProvider];
+      if (!cfg) return;
+      const keyInput = document.getElementById(cfg.keyInputId);
+      const key = keyInput ? keyInput.value.trim() : '';
+      const modelSelect = document.getElementById(cfg.modelSelectId);
+      const model = modelSelect ? modelSelect.value : '';
 
-    if (!key) {
-      showFeedback(`Please enter an API Key for ${cfg.name} first.`, false);
-      return;
-    }
-
-    testBtn.disabled = true;
-    testBtn.textContent = 'Testing...';
-    showFeedback(`Verifying connection to ${cfg.name}...`, true);
-
-    try {
-      const req = cfg.getTestConfig(key, model);
-      const res = await fetch(req.url, {
-        method: req.method,
-        headers: req.headers,
-        body: req.body
-      });
-
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const errorMsg = json.error?.message || json.message || `HTTP ${res.status}`;
-        throw new Error(errorMsg);
+      if (!key) {
+        showFeedback(`Please enter an API Key for ${cfg.name} first.`, false);
+        return;
       }
 
-      showFeedback(`Connection successful! ${cfg.name} responded properly.`, true);
-      updateHeaderStatus();
-    } catch (err) {
-      showFeedback(`Verification failed: ${err.message}`, false);
-    } finally {
-      testBtn.disabled = false;
-      testBtn.textContent = 'Test Connection';
-    }
-  });
+      testBtn.disabled = true;
+      testBtn.textContent = 'Testing...';
+      showFeedback(`Verifying connection to ${cfg.name}...`, true);
+
+      try {
+        const req = cfg.getTestConfig(key, model);
+        const res = await fetch(req.url, {
+          method: req.method,
+          headers: req.headers,
+          body: req.body
+        });
+
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const errorMsg = json.error?.message || json.message || `HTTP ${res.status}`;
+          throw new Error(errorMsg);
+        }
+
+        showFeedback(`Connection successful! ${cfg.name} responded properly.`, true);
+        updateHeaderStatus();
+      } catch (err) {
+        showFeedback(`Verification failed: ${err.message}`, false);
+      } finally {
+        testBtn.disabled = false;
+        testBtn.textContent = 'Test Connection';
+      }
+    });
+  }
 
   function showFeedback(message, isSuccess) {
     feedbackMsg.textContent = message;
