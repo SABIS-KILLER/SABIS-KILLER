@@ -32,8 +32,9 @@ html {
   height: 590px;
   margin: 0;
   padding: 0;
-  background: transparent;
+  background: transparent !important;
   overflow: hidden;
+  border-radius: 18px;
 }
 
 body {
@@ -41,7 +42,7 @@ body {
   height: 590px;
   margin: 0;
   padding: 0;
-  background-color: var(--bg-color);
+  background: transparent !important;
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui, sans-serif;
   font-size: 13px;
@@ -55,33 +56,44 @@ body {
   width: 100%;
   height: 100%;
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  position: relative;
+  background-color: var(--bg-color);
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: inset 0 0 0 1.5px var(--border-dark), var(--shadow-ambient);
+}
+
+.popup-content {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  position: relative;
-  background-color: var(--bg-color);
-  border-radius: 18px;
   overflow-y: auto;
   overflow-x: hidden;
-  box-shadow: inset 0 0 0 1.5px var(--border-dark), var(--shadow-ambient);
 }
 
-/* ── Sleek macOS Scrollbar ── */
-.popup-container::-webkit-scrollbar {
+/* ── Sleek macOS Scrollbar on popup-content ── */
+.popup-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.popup-container::-webkit-scrollbar-track {
+.popup-content::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.popup-container::-webkit-scrollbar-thumb {
+.popup-content::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.22);
   border-radius: 6px;
 }
 
-.popup-container::-webkit-scrollbar-thumb:hover {
+.popup-content::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 0, 0, 0.38);
 }
 
