@@ -109,57 +109,78 @@
     }
   }
 
+  function applyTargetPosition(target, x, y) {
+    if (x == null || y == null) return;
+    if (target === 'button' && captureButton) {
+      captureButton.style.setProperty('position', 'fixed', 'important');
+      captureButton.style.setProperty('top', `${y}px`, 'important');
+      captureButton.style.setProperty('left', `${x}px`, 'important');
+      captureButton.style.setProperty('bottom', 'auto', 'important');
+      captureButton.style.setProperty('right', 'auto', 'important');
+      captureButton.style.setProperty('z-index', '2147483647', 'important');
+    } else if (target === 'prompt' && promptInput) {
+      promptInput.style.setProperty('position', 'fixed', 'important');
+      promptInput.style.setProperty('top', `${y}px`, 'important');
+      promptInput.style.setProperty('left', `${x}px`, 'important');
+      promptInput.style.setProperty('bottom', 'auto', 'important');
+      promptInput.style.setProperty('right', 'auto', 'important');
+      promptInput.style.setProperty('z-index', '2147483647', 'important');
+    } else if (target === 'answer' && answerContainer) {
+      answerContainer.style.setProperty('position', 'fixed', 'important');
+      answerContainer.style.setProperty('top', `${y}px`, 'important');
+      answerContainer.style.setProperty('left', `${x}px`, 'important');
+      answerContainer.style.setProperty('bottom', 'auto', 'important');
+      answerContainer.style.setProperty('right', 'auto', 'important');
+      answerContainer.style.setProperty('width', 'auto', 'important');
+      answerContainer.style.setProperty('max-width', '90vw', 'important');
+      answerContainer.style.setProperty('z-index', '2147483646', 'important');
+    }
+  }
+
+  function resetTargetPosition(target) {
+    if (target === 'button' && captureButton) {
+      captureButton.style.removeProperty('position');
+      captureButton.style.removeProperty('top');
+      captureButton.style.removeProperty('left');
+      captureButton.style.removeProperty('bottom');
+      captureButton.style.removeProperty('right');
+      captureButton.style.removeProperty('z-index');
+    } else if (target === 'prompt' && promptInput) {
+      promptInput.style.removeProperty('position');
+      promptInput.style.removeProperty('top');
+      promptInput.style.removeProperty('left');
+      promptInput.style.removeProperty('bottom');
+      promptInput.style.removeProperty('right');
+      promptInput.style.removeProperty('z-index');
+    } else if (target === 'answer' && answerContainer) {
+      answerContainer.style.removeProperty('top');
+      answerContainer.style.removeProperty('right');
+      answerContainer.style.removeProperty('max-width');
+      answerContainer.style.setProperty('position', 'fixed', 'important');
+      answerContainer.style.setProperty('bottom', '8px', 'important');
+      answerContainer.style.setProperty('left', '8px', 'important');
+      answerContainer.style.setProperty('width', 'calc(100% - 140px)', 'important');
+      answerContainer.style.setProperty('z-index', '2147483646', 'important');
+    }
+  }
+
   function applyPositions() {
-    // If prompt is individually positioned
-    if (promptInput) {
-      if (positions.prompt) {
-        promptInput.style.setProperty('position', 'fixed', 'important');
-        promptInput.style.setProperty('top', `${positions.prompt.y}px`, 'important');
-        promptInput.style.setProperty('left', `${positions.prompt.x}px`, 'important');
-        promptInput.style.setProperty('right', 'auto', 'important');
-        promptInput.style.setProperty('bottom', 'auto', 'important');
-        promptInput.style.setProperty('z-index', '2147483647', 'important');
-      } else {
-        promptInput.style.removeProperty('position');
-        promptInput.style.removeProperty('top');
-        promptInput.style.removeProperty('left');
-        promptInput.style.removeProperty('right');
-        promptInput.style.removeProperty('bottom');
-        promptInput.style.removeProperty('z-index');
-      }
+    if (positions.button) {
+      applyTargetPosition('button', positions.button.x, positions.button.y);
+    } else {
+      resetTargetPosition('button');
     }
 
-    // Button / Controls Bar
-    if (bottomControlsBar) {
-      if (positions.button) {
-        bottomControlsBar.style.setProperty('bottom', 'auto', 'important');
-        bottomControlsBar.style.setProperty('right', 'auto', 'important');
-        bottomControlsBar.style.setProperty('top', `${positions.button.y}px`, 'important');
-        bottomControlsBar.style.setProperty('left', `${positions.button.x}px`, 'important');
-      } else {
-        bottomControlsBar.style.removeProperty('top');
-        bottomControlsBar.style.removeProperty('left');
-        bottomControlsBar.style.setProperty('bottom', '0px', 'important');
-        bottomControlsBar.style.setProperty('right', '0px', 'important');
-      }
+    if (positions.prompt) {
+      applyTargetPosition('prompt', positions.prompt.x, positions.prompt.y);
+    } else {
+      resetTargetPosition('prompt');
     }
 
-    // Answer container
-    if (answerContainer) {
-      if (positions.answer) {
-        answerContainer.style.setProperty('bottom', 'auto', 'important');
-        answerContainer.style.setProperty('left', 'auto', 'important');
-        answerContainer.style.setProperty('width', 'auto', 'important');
-        answerContainer.style.setProperty('max-width', '90vw', 'important');
-        answerContainer.style.setProperty('top', `${positions.answer.y}px`, 'important');
-        answerContainer.style.setProperty('left', `${positions.answer.x}px`, 'important');
-      } else {
-        answerContainer.style.removeProperty('top');
-        answerContainer.style.setProperty('bottom', '0px', 'important');
-        answerContainer.style.setProperty('left', '0px', 'important');
-        answerContainer.style.setProperty('width', 'calc(100% - 120px)', 'important');
-        answerContainer.style.removeProperty('max-width');
-      }
+    if (positions.answer) {
+      applyTargetPosition('answer', positions.answer.x, positions.answer.y);
+    } else {
+      resetTargetPosition('answer');
     }
   }
 
@@ -171,13 +192,18 @@
         'answer_text_color', 'answer_font_size',
         'button_bg_color', 'button_size',
         'prompt_bg_color', 'prompt_width',
-        'pos_button', 'pos_prompt', 'pos_answer'
+        'button_position', 'pos_button',
+        'prompt_position', 'pos_prompt',
+        'answer_position', 'pos_answer'
       ], (data) => {
         if (chrome.runtime.lastError) return;
         applyAppearanceSettings(data);
-        if (data.pos_button) positions.button = data.pos_button;
-        if (data.pos_prompt) positions.prompt = data.pos_prompt;
-        if (data.pos_answer) positions.answer = data.pos_answer;
+        const btnPos = data.button_position || data.pos_button;
+        const pPos = data.prompt_position || data.pos_prompt;
+        const ansPos = data.answer_position || data.pos_answer;
+        if (btnPos && btnPos.x != null && btnPos.y != null) positions.button = btnPos;
+        if (pPos && pPos.x != null && pPos.y != null) positions.prompt = pPos;
+        if (ansPos && ansPos.x != null && ansPos.y != null) positions.answer = ansPos;
         applyPositions();
       });
     } catch (_) {}
@@ -185,14 +211,14 @@
 
   // ── Position Picker ─────────────────────────────────────────────────────────
 
-  function activatePositionPicker(target) {
-    if (activePickerTarget) deactivatePositionPicker();
+  function startPositionPicker(targetElement) {
+    // Remove any lingering picker overlay
+    const existing = document.getElementById('position-picker-overlay');
+    if (existing) existing.remove();
 
-    activePickerTarget = target;
-
-    pickerOverlay = document.createElement('div');
-    pickerOverlay.id = '__solver_picker_overlay__';
-    pickerOverlay.style.cssText = [
+    const overlay = document.createElement('div');
+    overlay.id = 'position-picker-overlay';
+    overlay.style.cssText = [
       'position: fixed',
       'top: 0',
       'left: 0',
@@ -200,77 +226,49 @@
       'height: 100vh',
       'z-index: 2147483647',
       'cursor: crosshair',
-      'background: rgba(0, 122, 255, 0.08)',
-      'backdrop-filter: blur(2px)',
-      '-webkit-backdrop-filter: blur(2px)',
-      'pointer-events: all'
+      'background: rgba(0, 0, 0, 0.05)',
+      'pointer-events: auto'
     ].join(' !important;') + ' !important;';
 
-    document.documentElement.appendChild(pickerOverlay);
+    const targetDoc = document.body || document.documentElement;
+    if (targetDoc) targetDoc.appendChild(overlay);
 
-    window.addEventListener('click', onPickerClick, { capture: true });
-    window.addEventListener('keydown', onPickerKeydown, { capture: true });
-  }
-
-  function deactivatePositionPicker() {
-    activePickerTarget = null;
-    window.removeEventListener('click', onPickerClick, { capture: true });
-    window.removeEventListener('keydown', onPickerKeydown, { capture: true });
-    if (pickerOverlay && pickerOverlay.parentNode) {
-      pickerOverlay.parentNode.removeChild(pickerOverlay);
-    }
-    pickerOverlay = null;
-
-    try {
-      chrome.runtime.sendMessage({ action: 'POSITION_PICKER_DONE' });
-    } catch (_) {}
-  }
-
-  function onPickerKeydown(e) {
-    if (e.key === 'Escape') {
+    function handleScreenClick(e) {
       e.preventDefault();
       e.stopPropagation();
-      deactivatePositionPicker();
-    }
-  }
 
-  function onPickerClick(e) {
-    e.preventDefault();
-    e.stopPropagation();
+      const posX = e.clientX;
+      const posY = e.clientY;
 
-    const rawX = e.clientX;
-    const rawY = e.clientY;
-    const target = activePickerTarget;
+      const overlayEl = document.getElementById('position-picker-overlay');
+      if (overlayEl) overlayEl.remove();
 
-    deactivatePositionPicker();
+      positions[targetElement] = { x: posX, y: posY };
+      applyTargetPosition(targetElement, posX, posY);
 
-    let px = rawX;
-    let py = rawY;
-    if (target === 'button') {
-      const btnSize = parseInt(appearance.button_size, 10) || 30;
-      px = Math.round(rawX - btnSize / 2);
-      py = Math.round(rawY - btnSize / 2);
-    } else if (target === 'prompt') {
-      const pWidth = parseInt(appearance.prompt_width, 10) || 180;
-      px = Math.round(rawX - pWidth / 2);
-      py = Math.round(rawY - 16);
-    } else if (target === 'answer') {
-      px = Math.round(rawX);
-      py = Math.round(rawY - 18);
+      try {
+        chrome.storage.local.set({
+          [targetElement + '_position']: { x: posX, y: posY },
+          ['pos_' + targetElement]: { x: posX, y: posY }
+        });
+      } catch (_) {}
+
+      window.removeEventListener('keydown', handleKeydown, { capture: true });
     }
 
-    px = Math.max(0, Math.min(window.innerWidth - 30, px));
-    py = Math.max(0, Math.min(window.innerHeight - 30, py));
+    function handleKeydown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        const overlayEl = document.getElementById('position-picker-overlay');
+        if (overlayEl) overlayEl.remove();
+        window.removeEventListener('click', handleScreenClick, { capture: true });
+        window.removeEventListener('keydown', handleKeydown, { capture: true });
+      }
+    }
 
-    const pos = { x: px, y: py };
-    positions[target] = pos;
-
-    const storageKey = `pos_${target}`;
-    try {
-      chrome.storage.local.set({ [storageKey]: pos });
-    } catch (_) {}
-
-    applyPositions();
+    window.addEventListener('click', handleScreenClick, { capture: true, once: true });
+    window.addEventListener('keydown', handleKeydown, { capture: true, once: true });
   }
 
   // Listen for messages from popup
@@ -278,13 +276,16 @@
     try {
       chrome.runtime.onMessage.addListener((msg) => {
         if (!msg) return;
-        if (msg.action === 'ACTIVATE_POSITION_PICKER' && msg.target) {
-          activatePositionPicker(msg.target);
+        const target = msg.targetElement || msg.target;
+        if ((msg.action === 'START_POSITION_PICKER' || msg.action === 'ACTIVATE_POSITION_PICKER') && target) {
+          startPositionPicker(target);
         }
-        if (msg.action === 'RESET_POSITION' && msg.target) {
-          positions[msg.target] = null;
-          try { chrome.storage.local.remove(`pos_${msg.target}`); } catch (_) {}
-          applyPositions();
+        if (msg.action === 'RESET_POSITION' && target) {
+          positions[target] = null;
+          try {
+            chrome.storage.local.remove([target + '_position', 'pos_' + target]);
+          } catch (_) {}
+          resetTargetPosition(target);
         }
         if (msg.action === 'UPDATE_SETTINGS' && msg.settings) {
           applyAppearanceSettings(msg.settings);
@@ -344,22 +345,19 @@
         align-items: center !important;
         gap: 8px !important;
         z-index: 2147483647 !important;
-        padding: 6px 8px !important;
+        padding: 0 !important;
         box-sizing: border-box !important;
         max-width: 90vw !important;
-        pointer-events: auto !important;
-        background: rgba(255, 255, 255, 0.85) !important;
-        backdrop-filter: blur(20px) saturate(180%) !important;
-        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.6) !important;
-        border-radius: 18px !important;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+        pointer-events: none !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
       }
 
       #prompt-input {
         background-color: #ffffff !important;
         color: #1c1c1e !important;
-        border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
         border-radius: 12px !important;
         padding: 5px 12px !important;
         font-size: 11.5px !important;
@@ -369,7 +367,7 @@
         max-width: 60vw !important;
         box-sizing: border-box !important;
         pointer-events: auto !important;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.06) !important;
         transition: border-color 0.15s ease, box-shadow 0.15s ease, width 0.15s ease !important;
       }
 
@@ -391,8 +389,8 @@
         height: 32px !important;
         border-radius: 50% !important;
         background-color: #ffffff !important;
-        border: 1px solid rgba(0, 0, 0, 0.12) !important;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+        border: 1px solid rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
@@ -642,6 +640,40 @@
         }
         if (Object.keys(updated).length > 0) {
           applyAppearanceSettings(updated);
+        }
+
+        // Restore / live-update saved positions
+        if (changes.button_position || changes.pos_button) {
+          const val = changes.button_position?.newValue ?? changes.pos_button?.newValue;
+          if (val && val.x != null && val.y != null) {
+            positions.button = val;
+            applyTargetPosition('button', val.x, val.y);
+          } else {
+            positions.button = null;
+            resetTargetPosition('button');
+          }
+        }
+
+        if (changes.prompt_position || changes.pos_prompt) {
+          const val = changes.prompt_position?.newValue ?? changes.pos_prompt?.newValue;
+          if (val && val.x != null && val.y != null) {
+            positions.prompt = val;
+            applyTargetPosition('prompt', val.x, val.y);
+          } else {
+            positions.prompt = null;
+            resetTargetPosition('prompt');
+          }
+        }
+
+        if (changes.answer_position || changes.pos_answer) {
+          const val = changes.answer_position?.newValue ?? changes.pos_answer?.newValue;
+          if (val && val.x != null && val.y != null) {
+            positions.answer = val;
+            applyTargetPosition('answer', val.x, val.y);
+          } else {
+            positions.answer = null;
+            resetTargetPosition('answer');
+          }
         }
       });
     } catch (_) {}

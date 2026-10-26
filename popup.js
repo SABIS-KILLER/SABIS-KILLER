@@ -494,35 +494,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Change Position Screen-Picker Handling ──
   const changePosButtons = document.querySelectorAll('.change-pos-btn');
 
-  function clearPickerButtons() {
-    changePosButtons.forEach(btn => {
-      btn.classList.remove('active-picker');
-      btn.textContent = '📍 Change Position';
-    });
-  }
-
   changePosButtons.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const target = btn.getAttribute('data-target');
-      const isAlreadyActive = btn.classList.contains('active-picker');
+      const target = btn.getAttribute('data-target'); // "button" | "prompt" | "answer"
 
-      clearPickerButtons();
+      btn.classList.add('active-picker');
+      btn.textContent = 'Click anywhere on screen...';
 
-      if (!isAlreadyActive) {
-        btn.classList.add('active-picker');
-        btn.textContent = '🎯 Click on screen...';
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'START_POSITION_PICKER',
+            targetElement: target,
+            target: target
+          }).catch(() => {});
+        }
+      });
 
-        // Dispatch placement mode to active tab
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          if (tabs && tabs[0]?.id) {
-            chrome.tabs.sendMessage(tabs[0].id, {
-              action: 'ACTIVATE_POSITION_PICKER',
-              target: target
-            }).catch(() => {});
-          }
-        });
-      }
+      // Auto-close popup after 300ms so webpage receives full focus and mouse input
+      setTimeout(() => {
+        window.close();
+      }, 300);
     });
   });
 
@@ -531,9 +524,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const target = btn.getAttribute('data-target');
-      clearPickerButtons();
 
-      chrome.storage.local.remove(`pos_${target}`, () => {
+      chrome.storage.local.remove([`${target}_position`, `pos_${target}`], () => {
         showSaveToast();
       });
 
@@ -541,6 +533,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (tabs && tabs[0]?.id) {
           chrome.tabs.sendMessage(tabs[0].id, {
             action: 'RESET_POSITION',
+            targetElement: target,
             target: target
           }).catch(() => {});
         }
