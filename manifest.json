@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
   "name": "SABIS KILLER",
-  "version": "1.5",
+  "version": "2.0",
   "description": "Minimalist academic assistant overlay with multi-provider AI support.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
-    "tabs",
-    "windows"
+    "tabs"
   ],
   "host_permissions": [
     "<all_urls>",
@@ -37,7 +36,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Academic Assistant Settings"
+    "default_title": "SABIS KILLER v2.0"
   },
   "icons": {
     "16": "icons/icon16.png",

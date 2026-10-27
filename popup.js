@@ -1,68 +1,635 @@
+/**
+ * SABIS KILLER - Popup Controller (v2.0)
+ * Multi-provider AI configuration, liquid glass appearance customizer,
+ * and live overlay position manager.
+ */
+
 document.addEventListener('DOMContentLoaded', () => {
-  const statusEl = document.getElementById('launcher-status');
-  const openBtn = document.getElementById('btn-open-settings');
+  'use strict';
 
-  function openInPageModal() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const activeTab = tabs && tabs[0];
-      if (!activeTab || !activeTab.id) {
-        if (statusEl) {
-          statusEl.textContent = 'No active tab found.';
-          statusEl.className = 'launcher-desc error';
-        }
-        return;
+  let currentActiveProvider = 'gemini';
+  let saveToastTimer = null;
+  let saveDebounceTimer = null;
+
+  const PROVIDERS = {
+    gemini: {
+      name: 'Google Gemini',
+      keyInputId: 'apiKey-gemini',
+      modelSelectId: 'google-models',
+      cardId: 'card-gemini',
+      tabBtnId: 'btn-tab-gemini',
+      tabDotId: 'tab-dot-gemini',
+      storageKey: 'GEMINI_API_KEY',
+      altKey: 'geminiApiKey',
+      modelKey: 'gemini_model',
+      altModelKey: 'geminiModel',
+      defaultModel: 'auto_dynamic_paid',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic_paid' || model === 'auto_paid')
+          ? 'gemini-3.8-flash'
+          : (model === 'auto_dynamic_free' || model === 'auto_free')
+            ? 'gemini-3.5-flash-lite'
+            : (model || 'gemini-3.8-flash');
+        return {
+          url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Respond with OK' }] }] })
+        };
       }
-
-      // Check if URL is protected (chrome://, edge://, file://, etc.)
-      const url = activeTab.url || '';
-      if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('about:')) {
-        if (statusEl) {
-          statusEl.textContent = 'Cannot run overlay on browser internal pages. Navigate to any website to configure settings.';
-          statusEl.className = 'launcher-desc error';
-        }
-        return;
-      }
-
-      chrome.tabs.sendMessage(activeTab.id, { action: 'OPEN_SETTINGS_MODAL' }, (response) => {
-        let err = null;
-        try { err = chrome.runtime.lastError; } catch (_) {}
-
-        if (err || !response) {
-          // If content script was not injected yet, inject it dynamically
-          chrome.scripting.executeScript({
-            target: { tabId: activeTab.id },
-            files: ['content.js']
-          }).then(() => {
-            setTimeout(() => {
-              chrome.tabs.sendMessage(activeTab.id, { action: 'OPEN_SETTINGS_MODAL' }, () => {
-                if (statusEl) {
-                  statusEl.textContent = 'Settings overlay opened on page.';
-                  statusEl.className = 'launcher-desc success';
-                }
-                setTimeout(() => window.close(), 250);
-              });
-            }, 100);
-          }).catch((injectionErr) => {
-            if (statusEl) {
-              statusEl.textContent = 'Please refresh the webpage to load settings.';
-              statusEl.className = 'launcher-desc error';
-            }
-          });
+    },
+    openai: {
+      name: 'OpenAI',
+      keyInputId: 'apiKey-openai',
+      modelSelectId: 'openai-models',
+      cardId: 'card-openai',
+      tabBtnId: 'btn-tab-openai',
+      tabDotId: 'tab-dot-openai',
+      storageKey: 'OPENAI_API_KEY',
+      modelKey: 'openai_model',
+      defaultModel: 'auto_dynamic_paid',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gpt-5.4-mini' : model;
+        const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
+        const payload = {
+          model: testModel,
+          messages: [{ role: 'user', content: 'Say OK' }]
+        };
+        if (isReasoning) {
+          payload.max_completion_tokens = 10;
         } else {
-          if (statusEl) {
-            statusEl.textContent = 'Settings overlay opened on page.';
-            statusEl.className = 'launcher-desc success';
-          }
-          setTimeout(() => window.close(), 250);
+          payload.max_tokens = 5;
         }
-      });
+        return {
+          url: 'https://api.openai.com/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify(payload)
+        };
+      }
+    },
+    anthropic: {
+      name: 'Anthropic',
+      keyInputId: 'apiKey-anthropic',
+      modelSelectId: 'anthropic-models',
+      cardId: 'card-anthropic',
+      tabBtnId: 'btn-tab-anthropic',
+      tabDotId: 'tab-dot-anthropic',
+      storageKey: 'ANTHROPIC_API_KEY',
+      modelKey: 'anthropic_model',
+      defaultModel: 'auto_paid',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_paid') ? 'claude-3-5-haiku-20241022' : model;
+        return {
+          url: 'https://api.anthropic.com/v1/messages',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: testModel,
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Say OK' }]
+          })
+        };
+      }
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      keyInputId: 'apiKey-deepseek',
+      modelSelectId: 'deepseek-models',
+      cardId: 'card-deepseek',
+      tabBtnId: 'btn-tab-deepseek',
+      tabDotId: 'tab-dot-deepseek',
+      storageKey: 'DEEPSEEK_API_KEY',
+      modelKey: 'deepseek_model',
+      defaultModel: 'auto_free',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_free' || model === 'auto_paid') ? 'deepseek-chat' : model;
+        return {
+          url: 'https://api.deepseek.com/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: testModel,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 5
+          })
+        };
+      }
+    },
+    openrouter: {
+      name: 'OpenRouter',
+      keyInputId: 'apiKey-openrouter',
+      modelSelectId: 'openrouter-models',
+      cardId: 'card-openrouter',
+      tabBtnId: 'btn-tab-openrouter',
+      tabDotId: 'tab-dot-openrouter',
+      storageKey: 'OPENROUTER_API_KEY',
+      modelKey: 'openrouter_model',
+      defaultModel: 'auto_free',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_free') ? 'openrouter/free' : (model === 'auto_paid') ? 'openrouter/auto' : model;
+        return {
+          url: 'https://openrouter.ai/api/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: testModel,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 5
+          })
+        };
+      }
+    }
+  };
+
+  // ── Dynamic Liquid Glass Refraction System ──
+  function applyGlassRefraction(value) {
+    const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
+    const root = document.documentElement;
+    root.style.setProperty('--glass-bg-opacity',   (0.25 + 0.75 * (1 - t)).toFixed(3));
+    root.style.setProperty('--glass-blur',         `${Math.round(t * 40)}px`);
+    root.style.setProperty('--glass-saturate',     `${Math.round(100 + t * 120)}%`);
+    root.style.setProperty('--glass-refraction',   t.toFixed(3));
+    root.style.setProperty('--glass-border-alpha', (0.15 + 0.50 * t).toFixed(3));
+    root.style.setProperty('--glass-inset-alpha',  (0.80 * t).toFixed(3));
+    root.style.setProperty('--glass-shadow-alpha', (0.04 + 0.21 * t).toFixed(3));
+    root.style.setProperty('--glass-card-opacity', (0.40 + 0.60 * (1 - t)).toFixed(3));
+  }
+
+  // ── Toast Notification ──
+  function showToast(msg = 'Saved') {
+    const toast = document.getElementById('save-toast');
+    const toastText = document.getElementById('save-toast-text');
+    if (!toast) return;
+    if (toastText) toastText.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(saveToastTimer);
+    saveToastTimer = setTimeout(() => {
+      toast.classList.remove('show');
+    }, 1800);
+  }
+
+  // ── Provider Navigation & Status ──
+  function updateStatusBadge() {
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    if (!statusBadge || !statusText) return;
+
+    const conf = PROVIDERS[currentActiveProvider];
+    if (!conf) return;
+
+    const keyInput = document.getElementById(conf.keyInputId);
+    const hasKey = keyInput && keyInput.value.trim().length > 0;
+
+    if (hasKey) {
+      statusBadge.className = 'status-badge status-ready';
+      statusText.textContent = 'Ready';
+    } else {
+      statusBadge.className = 'status-badge status-missing';
+      statusText.textContent = 'No Key';
+    }
+  }
+
+  function updateProviderTabDots() {
+    Object.keys(PROVIDERS).forEach(provKey => {
+      const conf = PROVIDERS[provKey];
+      const keyInput = document.getElementById(conf.keyInputId);
+      const dot = document.getElementById(conf.tabDotId);
+      if (dot && keyInput) {
+        if (keyInput.value.trim().length > 0) {
+          dot.classList.add('configured');
+        } else {
+          dot.classList.remove('configured');
+        }
+      }
     });
   }
 
-  if (openBtn) {
-    openBtn.addEventListener('click', openInPageModal);
+  function switchProvider(providerKey) {
+    if (!PROVIDERS[providerKey]) return;
+    currentActiveProvider = providerKey;
+
+    // Update segmented buttons
+    document.querySelectorAll('.segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-provider') === providerKey);
+    });
+
+    // Update cards
+    document.querySelectorAll('.provider-card').forEach(card => {
+      card.classList.toggle('active', card.id === PROVIDERS[providerKey].cardId);
+    });
+
+    // Clear test feedback
+    const feedback = document.getElementById('test-feedback');
+    if (feedback) {
+      feedback.className = 'test-feedback hidden';
+      feedback.textContent = '';
+    }
+
+    updateStatusBadge();
+    autoSave(false);
   }
 
-  // Automatically attempt opening upon popup trigger
-  openInPageModal();
+  // ── Save & Broadcast Settings ──
+  function getFormData() {
+    const data = {
+      ai_provider: currentActiveProvider
+    };
+
+    // Provider keys and models
+    Object.keys(PROVIDERS).forEach(prov => {
+      const conf = PROVIDERS[prov];
+      const keyEl = document.getElementById(conf.keyInputId);
+      const modelEl = document.getElementById(conf.modelSelectId);
+
+      const keyVal = keyEl ? keyEl.value.trim() : '';
+      const modelVal = modelEl ? modelEl.value : conf.defaultModel;
+
+      data[conf.storageKey] = keyVal;
+      if (conf.altKey) data[conf.altKey] = keyVal;
+      data[conf.modelKey] = modelVal;
+      if (conf.altModelKey) data[conf.altModelKey] = modelVal;
+    });
+
+    // Appearance settings
+    const glassSlider = document.getElementById('glass-refraction-slider');
+    const promptToggle = document.getElementById('enable-prompt-input');
+    const ansColorHex = document.getElementById('answer-color-hex');
+    const ansSizeSlider = document.getElementById('answer-font-size');
+    const btnColorHex = document.getElementById('button-color-hex');
+    const btnSizeSlider = document.getElementById('button-size');
+    const promptColorHex = document.getElementById('prompt-color-hex');
+    const promptWidthSlider = document.getElementById('prompt-width');
+
+    data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
+    data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
+    data.answer_text_color = ansColorHex ? ansColorHex.value.trim() : '#FFFFFF';
+    data.answer_font_size = ansSizeSlider ? parseInt(ansSizeSlider.value, 10) : 14;
+    data.button_bg_color = btnColorHex ? btnColorHex.value.trim() : '#FFFFFF';
+    data.button_size = btnSizeSlider ? parseInt(btnSizeSlider.value, 10) : 30;
+    data.prompt_bg_color = promptColorHex ? promptColorHex.value.trim() : '#FFFFFF';
+    data.prompt_width = promptWidthSlider ? parseInt(promptWidthSlider.value, 10) : 180;
+
+    return data;
+  }
+
+  function autoSave(showNotification = true) {
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(() => {
+      const data = getFormData();
+      chrome.storage.local.set(data, () => {
+        updateStatusBadge();
+        updateProviderTabDots();
+        if (showNotification) {
+          showToast('Saved');
+        }
+
+        // Notify active tab content script
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs && tabs[0] && tabs[0].id) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: 'UPDATE_SETTINGS',
+              settings: data
+            }, () => {
+              try { void chrome.runtime.lastError; } catch (_) {}
+            });
+          }
+        });
+      });
+    }, 180);
+  }
+
+  // ── Load Stored Settings ──
+  function loadStoredSettings() {
+    const keysToFetch = [
+      'ai_provider', 'active_provider',
+      'glass_refraction', 'enable_prompt_input',
+      'answer_text_color', 'answer_font_size',
+      'button_bg_color', 'button_size',
+      'prompt_bg_color', 'prompt_width'
+    ];
+
+    Object.keys(PROVIDERS).forEach(prov => {
+      const conf = PROVIDERS[prov];
+      keysToFetch.push(conf.storageKey);
+      if (conf.altKey) keysToFetch.push(conf.altKey);
+      keysToFetch.push(conf.modelKey);
+      if (conf.altModelKey) keysToFetch.push(conf.altModelKey);
+    });
+
+    chrome.storage.local.get(keysToFetch, (items) => {
+      if (chrome.runtime.lastError || !items) return;
+
+      // Active provider
+      const savedProvider = items.ai_provider || items.active_provider || 'gemini';
+      currentActiveProvider = PROVIDERS[savedProvider] ? savedProvider : 'gemini';
+
+      // Provider values
+      Object.keys(PROVIDERS).forEach(prov => {
+        const conf = PROVIDERS[prov];
+        const keyInput = document.getElementById(conf.keyInputId);
+        const modelSelect = document.getElementById(conf.modelSelectId);
+
+        const valKey = items[conf.storageKey] || (conf.altKey && items[conf.altKey]) || '';
+        const valModel = items[conf.modelKey] || (conf.altModelKey && items[conf.altModelKey]) || conf.defaultModel;
+
+        if (keyInput) keyInput.value = valKey;
+        if (modelSelect) modelSelect.value = valModel;
+      });
+
+      // Glass refraction
+      const glassVal = items.glass_refraction != null ? items.glass_refraction : 70;
+      const glassSlider = document.getElementById('glass-refraction-slider');
+      const glassBadge = document.getElementById('glass-refraction-val');
+      if (glassSlider) glassSlider.value = glassVal;
+      if (glassBadge) glassBadge.textContent = `${glassVal}%`;
+      applyGlassRefraction(glassVal);
+
+      // Prompt toggle
+      const promptToggle = document.getElementById('enable-prompt-input');
+      if (promptToggle) promptToggle.checked = items.enable_prompt_input !== false;
+
+      // Answer Typography
+      const ansColor = items.answer_text_color || '#FFFFFF';
+      const ansSize = items.answer_font_size || 14;
+      syncColor('answer-color-picker', 'answer-color-hex', ansColor);
+      syncSlider('answer-font-size', 'answer-font-size-val', ansSize, 'px');
+
+      // Button Style
+      const btnColor = items.button_bg_color || '#FFFFFF';
+      const btnSize = items.button_size || 30;
+      syncColor('button-color-picker', 'button-color-hex', btnColor);
+      syncSlider('button-size', 'button-size-val', btnSize, 'px');
+
+      // Prompt Bar Style
+      const promptColor = items.prompt_bg_color || '#FFFFFF';
+      const promptWidth = items.prompt_width || 180;
+      syncColor('prompt-color-picker', 'prompt-color-hex', promptColor);
+      syncSlider('prompt-width', 'prompt-width-val', promptWidth, 'px');
+
+      // Switch to active tab view
+      switchProvider(currentActiveProvider);
+      updateProviderTabDots();
+    });
+  }
+
+  // ── Sync Helpers ──
+  function syncColor(pickerId, hexId, value) {
+    const picker = document.getElementById(pickerId);
+    const hex = document.getElementById(hexId);
+    if (picker) picker.value = value;
+    if (hex) hex.value = value.toUpperCase();
+  }
+
+  function syncSlider(sliderId, badgeId, value, unit = '') {
+    const slider = document.getElementById(sliderId);
+    const badge = document.getElementById(badgeId);
+    if (slider) slider.value = value;
+    if (badge) badge.textContent = `${value}${unit}`;
+  }
+
+  function bindColorPair(pickerId, hexId) {
+    const picker = document.getElementById(pickerId);
+    const hex = document.getElementById(hexId);
+    if (!picker || !hex) return;
+
+    picker.addEventListener('input', () => {
+      hex.value = picker.value.toUpperCase();
+      autoSave();
+    });
+
+    hex.addEventListener('input', () => {
+      let val = hex.value.trim();
+      if (!val.startsWith('#')) val = '#' + val;
+      if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        picker.value = val;
+        autoSave();
+      }
+    });
+
+    hex.addEventListener('blur', () => {
+      let val = hex.value.trim();
+      if (!val.startsWith('#')) val = '#' + val;
+      if (!/^#[0-9A-Fa-f]{6}$/.test(val)) {
+        hex.value = picker.value.toUpperCase();
+      } else {
+        hex.value = val.toUpperCase();
+        picker.value = val;
+      }
+    });
+  }
+
+  function bindSlider(sliderId, badgeId, unit = '') {
+    const slider = document.getElementById(sliderId);
+    const badge = document.getElementById(badgeId);
+    if (!slider || !badge) return;
+
+    slider.addEventListener('input', () => {
+      badge.textContent = `${slider.value}${unit}`;
+      autoSave();
+    });
+  }
+
+  // ── Test Connection ──
+  async function testConnection() {
+    const btn = document.getElementById('btn-test-connection');
+    const feedback = document.getElementById('test-feedback');
+    if (!btn || !feedback) return;
+
+    const conf = PROVIDERS[currentActiveProvider];
+    if (!conf) return;
+
+    const keyInput = document.getElementById(conf.keyInputId);
+    const modelSelect = document.getElementById(conf.modelSelectId);
+    const key = keyInput ? keyInput.value.trim() : '';
+    const model = modelSelect ? modelSelect.value : conf.defaultModel;
+
+    if (!key) {
+      feedback.className = 'test-feedback error';
+      feedback.textContent = `Please enter a valid API key for ${conf.name} first.`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    feedback.className = 'test-feedback hidden';
+
+    try {
+      const testConfig = conf.getTestConfig(key, model);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const resp = await fetch(testConfig.url, {
+        method: testConfig.method,
+        headers: testConfig.headers,
+        body: testConfig.body,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (resp.ok) {
+        feedback.className = 'test-feedback success';
+        feedback.textContent = `Connection successful! ${conf.name} verified.`;
+      } else {
+        let errSnippet = `HTTP ${resp.status}`;
+        try {
+          const json = await resp.json();
+          errSnippet = json.error?.message || json.message || errSnippet;
+        } catch (_) {
+          try {
+            const txt = await resp.text();
+            if (txt) errSnippet = txt.substring(0, 100);
+          } catch (_) {}
+        }
+        feedback.className = 'test-feedback error';
+        feedback.textContent = `Failed (${resp.status}): ${errSnippet}`;
+      }
+    } catch (err) {
+      feedback.className = 'test-feedback error';
+      if (err.name === 'AbortError') {
+        feedback.textContent = 'Connection timed out (12s). Check your internet connection.';
+      } else {
+        feedback.textContent = `Error: ${err.message || 'Network request failed'}`;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Test Connection';
+    }
+  }
+
+  // ── Event Bindings ──
+
+  // Provider Tab Buttons
+  document.querySelectorAll('.segmented-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const prov = btn.getAttribute('data-provider');
+      switchProvider(prov);
+    });
+  });
+
+  // Password Visibility Toggle Eyes
+  document.querySelectorAll('.toggle-eye').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      const input = document.getElementById(targetId);
+      if (!input) return;
+
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+
+      btn.innerHTML = isPassword
+        ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+             <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+             <line x1="1" y1="1" x2="23" y2="23"></line>
+           </svg>`
+        : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+             <circle cx="12" cy="12" r="3"></circle>
+           </svg>`;
+    });
+  });
+
+  // Test Connection
+  const testBtn = document.getElementById('btn-test-connection');
+  if (testBtn) testBtn.addEventListener('click', testConnection);
+
+  // Glass Slider
+  const glassSlider = document.getElementById('glass-refraction-slider');
+  const glassBadge = document.getElementById('glass-refraction-val');
+  if (glassSlider && glassBadge) {
+    glassSlider.addEventListener('input', () => {
+      const val = glassSlider.value;
+      glassBadge.textContent = `${val}%`;
+      applyGlassRefraction(val);
+      autoSave();
+    });
+  }
+
+  // Prompt Toggle
+  const promptToggle = document.getElementById('enable-prompt-input');
+  if (promptToggle) {
+    promptToggle.addEventListener('change', () => autoSave());
+  }
+
+  // Color & Slider Synchronizers
+  bindColorPair('answer-color-picker', 'answer-color-hex');
+  bindSlider('answer-font-size', 'answer-font-size-val', 'px');
+
+  bindColorPair('button-color-picker', 'button-color-hex');
+  bindSlider('button-size', 'button-size-val', 'px');
+
+  bindColorPair('prompt-color-picker', 'prompt-color-hex');
+  bindSlider('prompt-width', 'prompt-width-val', 'px');
+
+  // Input Listeners across all keys and models
+  Object.keys(PROVIDERS).forEach(prov => {
+    const conf = PROVIDERS[prov];
+    const keyEl = document.getElementById(conf.keyInputId);
+    const modelEl = document.getElementById(conf.modelSelectId);
+
+    if (keyEl) {
+      keyEl.addEventListener('input', () => autoSave());
+      keyEl.addEventListener('change', () => autoSave());
+    }
+    if (modelEl) {
+      modelEl.addEventListener('change', () => autoSave());
+    }
+  });
+
+  // Change Position Buttons (sends START_POSITION_PICKER to tab & closes popup)
+  document.querySelectorAll('.change-pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-target');
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs && tabs[0];
+        if (!activeTab || !activeTab.id) return;
+
+        chrome.tabs.sendMessage(activeTab.id, {
+          action: 'START_POSITION_PICKER',
+          targetElement: target
+        }, () => {
+          try { void chrome.runtime.lastError; } catch (_) {}
+          setTimeout(() => window.close(), 120);
+        });
+      });
+    });
+  });
+
+  // Reset Position Buttons
+  document.querySelectorAll('.reset-pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.getAttribute('data-target');
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        const activeTab = tabs && tabs[0];
+        if (activeTab && activeTab.id) {
+          chrome.tabs.sendMessage(activeTab.id, {
+            action: 'RESET_POSITION',
+            targetElement: target
+          }, () => {
+            try { void chrome.runtime.lastError; } catch (_) {}
+          });
+        }
+      });
+      chrome.storage.local.remove([`${target}_position`, `pos_${target}`], () => {
+        showToast('Position Reset');
+      });
+    });
+  });
+
+  // Initial Load
+  loadStoredSettings();
 });

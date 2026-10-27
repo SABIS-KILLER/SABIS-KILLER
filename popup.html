@@ -3,23 +3,324 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SABIS KILLER</title>
+  <title>SABIS KILLER v2.0</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <div class="launcher-card">
-    <div class="launcher-header">
+  <div class="popup-container">
+    <div id="save-toast" class="save-toast">
+      <svg viewBox="0 0 20 20" width="13" height="13" fill="currentColor">
+        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+      </svg>
+      <span id="save-toast-text">Saved</span>
+    </div>
+
+    <!-- Header -->
+    <header class="popup-header">
       <div class="logo-area">
         <div class="logo-dot"></div>
-        <h1>SABIS KILLER <span class="version-tag">v1.5</span></h1>
+        <h1 class="header-title">SABIS KILLER <span class="version-tag">v2.0</span></h1>
       </div>
-    </div>
-    <p id="launcher-status" class="launcher-desc">Opening in-page settings overlay...</p>
-    <div class="launcher-actions">
-      <button type="button" id="btn-open-settings" class="launcher-btn">Open Settings Overlay</button>
-    </div>
-    <p class="launcher-hint">Tip: You can also click or drag the gear icon directly on any webpage.</p>
+      <div id="status-badge" class="status-badge status-missing">
+        <span class="status-dot"></span>
+        <span id="status-text">No Key</span>
+      </div>
+    </header>
+
+    <!-- Scrollable Content -->
+    <main class="popup-content">
+      <!-- AI Provider Section -->
+      <section class="section">
+        <label class="section-label">Active AI Provider</label>
+        <div class="segmented-nav" role="tablist">
+          <button type="button" class="segmented-btn active" data-provider="gemini" id="btn-tab-gemini">
+            <span class="provider-tab-dot" id="tab-dot-gemini"></span>
+            <span>Google</span>
+          </button>
+          <button type="button" class="segmented-btn" data-provider="openai" id="btn-tab-openai">
+            <span class="provider-tab-dot" id="tab-dot-openai"></span>
+            <span>OpenAI</span>
+          </button>
+          <button type="button" class="segmented-btn" data-provider="anthropic" id="btn-tab-anthropic">
+            <span class="provider-tab-dot" id="tab-dot-anthropic"></span>
+            <span>Anthropic</span>
+          </button>
+          <button type="button" class="segmented-btn" data-provider="deepseek" id="btn-tab-deepseek">
+            <span class="provider-tab-dot" id="tab-dot-deepseek"></span>
+            <span>DeepSeek</span>
+          </button>
+          <button type="button" class="segmented-btn" data-provider="openrouter" id="btn-tab-openrouter">
+            <span class="provider-tab-dot" id="tab-dot-openrouter"></span>
+            <span>OpenRouter</span>
+          </button>
+        </div>
+
+        <!-- Google Gemini Card -->
+        <div class="provider-card active" id="card-gemini">
+          <div class="form-group">
+            <label for="apiKey-gemini">Gemini API Key</label>
+            <div class="input-wrapper">
+              <input type="password" id="apiKey-gemini" class="api-key-input" placeholder="AIzaSy..." autocomplete="off" spellcheck="false">
+              <button type="button" class="toggle-eye" data-target="apiKey-gemini" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="form-hint">Obtain from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a></span>
+          </div>
+
+          <div class="form-group">
+            <label for="google-models">Model</label>
+            <select id="google-models" class="select-field">
+              <option value="auto_dynamic_paid">Auto High Quality (Gemini 3.8 Flash)</option>
+              <option value="auto_dynamic_free">Auto Lightweight (Gemini 3.5 Flash-Lite)</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+              <option value="gemini-3.8-pro">Gemini 3.8 Pro</option>
+              <option value="gemini-3.5-pro">Gemini 3.5 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- OpenAI Card -->
+        <div class="provider-card" id="card-openai">
+          <div class="form-group">
+            <label for="apiKey-openai">OpenAI API Key</label>
+            <div class="input-wrapper">
+              <input type="password" id="apiKey-openai" class="api-key-input" placeholder="sk-proj-..." autocomplete="off" spellcheck="false">
+              <button type="button" class="toggle-eye" data-target="apiKey-openai" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="form-hint">Obtain from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI Platform</a></span>
+          </div>
+
+          <div class="form-group">
+            <label for="openai-models">Model</label>
+            <select id="openai-models" class="select-field">
+              <option value="auto_dynamic_paid">Auto High Quality (GPT-5.4)</option>
+              <option value="auto_free">Auto Standard (GPT-5.4-mini)</option>
+              <option value="gpt-5.4">GPT-5.4</option>
+              <option value="gpt-5.4-mini">GPT-5.4-mini</option>
+              <option value="gpt-4.5-preview">GPT-4.5 Preview</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o-mini</option>
+              <option value="o3-mini">o3-mini Reasoning</option>
+              <option value="o1">o1 Reasoning</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Anthropic Card -->
+        <div class="provider-card" id="card-anthropic">
+          <div class="form-group">
+            <label for="apiKey-anthropic">Anthropic API Key</label>
+            <div class="input-wrapper">
+              <input type="password" id="apiKey-anthropic" class="api-key-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+              <button type="button" class="toggle-eye" data-target="apiKey-anthropic" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="form-hint">Obtain from <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">Anthropic Console</a></span>
+          </div>
+
+          <div class="form-group">
+            <label for="anthropic-models">Model</label>
+            <select id="anthropic-models" class="select-field">
+              <option value="auto_paid">Auto Balanced (Claude 3.5 Haiku)</option>
+              <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+              <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+              <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
+              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DeepSeek Card -->
+        <div class="provider-card" id="card-deepseek">
+          <div class="form-group">
+            <label for="apiKey-deepseek">DeepSeek API Key</label>
+            <div class="input-wrapper">
+              <input type="password" id="apiKey-deepseek" class="api-key-input" placeholder="sk-..." autocomplete="off" spellcheck="false">
+              <button type="button" class="toggle-eye" data-target="apiKey-deepseek" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="form-hint">Obtain from <a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform</a></span>
+          </div>
+
+          <div class="form-group">
+            <label for="deepseek-models">Model</label>
+            <select id="deepseek-models" class="select-field">
+              <option value="auto_free">Auto Default (deepseek-chat)</option>
+              <option value="deepseek-chat">DeepSeek-V3 (Chat)</option>
+              <option value="deepseek-reasoner">DeepSeek-R1 (Reasoner)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- OpenRouter Card -->
+        <div class="provider-card" id="card-openrouter">
+          <div class="form-group">
+            <label for="apiKey-openrouter">OpenRouter API Key</label>
+            <div class="input-wrapper">
+              <input type="password" id="apiKey-openrouter" class="api-key-input" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false">
+              <button type="button" class="toggle-eye" data-target="apiKey-openrouter" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="form-hint">Obtain from <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai</a></span>
+          </div>
+
+          <div class="form-group">
+            <label for="openrouter-models">Model</label>
+            <select id="openrouter-models" class="select-field">
+              <option value="auto_free">Auto Best Free Model</option>
+              <option value="auto_paid">Auto Balanced Paid Model</option>
+              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button" id="btn-test-connection" class="btn-secondary">Test Connection</button>
+        <div id="test-feedback" class="test-feedback hidden"></div>
+      </section>
+
+      <div class="divider"></div>
+
+      <!-- UI & Appearance Section -->
+      <section class="section">
+        <label class="section-label">UI & Appearance</label>
+
+        <!-- Glass Transparency & Refraction Slider -->
+        <div class="appearance-card">
+          <div class="control-row">
+            <div>
+              <span class="control-title">Glass Refraction</span>
+              <p class="control-sub">0% = Opaque solid &middot; 100% = Liquid glass</p>
+            </div>
+            <span id="glass-refraction-val" class="badge">70%</span>
+          </div>
+          <input type="range" id="glass-refraction-slider" min="0" max="100" value="70" class="range-slider">
+        </div>
+
+        <!-- Custom Prompt Toggle -->
+        <div class="appearance-card">
+          <div class="control-row">
+            <div>
+              <span class="control-title">Prompt Bar</span>
+              <p class="control-sub">Display custom instruction bar on webpage</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="enable-prompt-input" checked>
+              <span class="switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Answer Typography Card -->
+        <div class="appearance-card">
+          <span class="card-section-title">Answer Typography</span>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Text Color</span>
+            <div class="color-picker-group">
+              <input type="color" id="answer-color-picker" value="#FFFFFF" class="color-swatch">
+              <input type="text" id="answer-color-hex" value="#FFFFFF" maxlength="7" class="hex-input">
+            </div>
+          </div>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Font Size</span>
+            <div class="slider-group">
+              <input type="range" id="answer-font-size" min="10" max="28" value="14" class="range-slider">
+              <span id="answer-font-size-val" class="badge">14px</span>
+            </div>
+          </div>
+          <div class="position-actions">
+            <button type="button" class="btn-pill change-pos-btn" data-target="answer">Change Position</button>
+            <button type="button" class="btn-pill reset-pos-btn" data-target="answer">Reset</button>
+          </div>
+        </div>
+
+        <!-- Screenshot Button Card -->
+        <div class="appearance-card">
+          <span class="card-section-title">Screenshot Button</span>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Button Color</span>
+            <div class="color-picker-group">
+              <input type="color" id="button-color-picker" value="#FFFFFF" class="color-swatch">
+              <input type="text" id="button-color-hex" value="#FFFFFF" maxlength="7" class="hex-input">
+            </div>
+          </div>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Button Size</span>
+            <div class="slider-group">
+              <input type="range" id="button-size" min="20" max="60" value="30" class="range-slider">
+              <span id="button-size-val" class="badge">30px</span>
+            </div>
+          </div>
+          <div class="position-actions">
+            <button type="button" class="btn-pill change-pos-btn" data-target="button">Change Position</button>
+            <button type="button" class="btn-pill reset-pos-btn" data-target="button">Reset</button>
+          </div>
+        </div>
+
+        <!-- Prompt Bar Card -->
+        <div class="appearance-card">
+          <span class="card-section-title">Prompt Bar Style</span>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Bar Color</span>
+            <div class="color-picker-group">
+              <input type="color" id="prompt-color-picker" value="#FFFFFF" class="color-swatch">
+              <input type="text" id="prompt-color-hex" value="#FFFFFF" maxlength="7" class="hex-input">
+            </div>
+          </div>
+          <div class="control-row" style="margin-top: 8px;">
+            <span class="control-label">Bar Width</span>
+            <div class="slider-group">
+              <input type="range" id="prompt-width" min="120" max="400" value="180" class="range-slider">
+              <span id="prompt-width-val" class="badge">180px</span>
+            </div>
+          </div>
+          <div class="position-actions">
+            <button type="button" class="btn-pill change-pos-btn" data-target="prompt">Change Position</button>
+            <button type="button" class="btn-pill reset-pos-btn" data-target="prompt">Reset</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Usage Guide Box -->
+      <div class="guide-box">
+        <h3>Usage Guide</h3>
+        <ul>
+          <li><strong>Capture:</strong> Click the floating icon or press <code>Enter</code> in the prompt bar.</li>
+          <li><strong>Toggle:</strong> Click the stealth bottom-left hotzone to hide or show on-page UI.</li>
+          <li><strong>Reposition:</strong> Click "Change Position" then click anywhere on your webpage.</li>
+        </ul>
+      </div>
+    </main>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
