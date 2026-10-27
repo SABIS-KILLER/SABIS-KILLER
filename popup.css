@@ -1,13 +1,20 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    SABIS KILLER - Apple iOS 27 Liquid Glass Popup Styles (v2.0)
-   Dual-layer edge light refractions, dynamic blur, zero 90° corner artifacts
+   Dual-layer edge light refractions, linear 0%-100% glass transparency scaling,
+   high-contrast action buttons, zero 90° corner artifacts.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --glass-opacity: 0.65;
+  /* Default variables (scaled dynamically by applyGlassRefraction) */
+  --glass-opacity: 0.32;
+  --glass-card-opacity: 0.33;
+  --glass-input-opacity: 0.36;
+  --glass-blur: 28px;
+  --glass-saturate: 184%;
   --glass-refraction: 0.70;
-  --glass-blur: 32px;
-  --glass-saturate: 210%;
+  --glass-border-alpha: 0.54;
+  --glass-inset-alpha: 0.60;
+  --glass-shadow-alpha: 0.19;
 
   --accent-blue: #007aff;
   --accent-blue-hover: #0062cc;
@@ -45,15 +52,15 @@ html, body {
   flex-direction: column;
   position: relative;
 
-  /* iOS 27 Liquid Glass Optical Stack */
-  background: rgba(245, 245, 247, calc(var(--glass-opacity, 0.65))) !important;
-  backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7))) !important;
+  /* Dynamically scaled optical glass: 0% = 100% solid, 100% = ghost transparent */
+  background: rgba(245, 245, 247, var(--glass-opacity, 0.32)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.15),
-    0 24px 48px rgba(0, 0, 0, 0.22) !important;
+    inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)),
+    inset 0 -1px 1px rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.15)),
+    0 24px 48px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
 }
 
 /* ── Save Toast ── */
@@ -94,6 +101,7 @@ html, body {
   justify-content: space-between;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
+  background: transparent !important;
 }
 
 .logo-area {
@@ -170,6 +178,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  background: transparent !important;
 }
 
 .popup-content::-webkit-scrollbar {
@@ -210,11 +219,11 @@ html, body {
   gap: 2px;
   padding: 3px;
   border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.5) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 0.85)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)) !important;
   overflow: hidden;
 }
 
@@ -238,13 +247,15 @@ html, body {
 
 .segmented-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .segmented-btn.active {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(0, 122, 255, 0.4) !important;
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 1.5)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(0, 122, 255, calc(0.3 + var(--glass-refraction, 0.7) * 0.35)) !important;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)) !important;
   color: var(--accent-blue);
   font-weight: 600;
 }
@@ -266,13 +277,13 @@ html, body {
   display: none;
   flex-direction: column;
   gap: 10px;
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.33)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   border-radius: 16px !important;
   padding: 13px 15px;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 4px 14px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.08)) !important;
 }
 
 .provider-card.active {
@@ -320,11 +331,11 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, monospace;
   color: var(--text-primary);
   border-radius: 11px !important;
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(142, 142, 147, 0.35) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7) !important;
+  background: rgba(255, 255, 255, var(--glass-input-opacity, 0.36)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(142, 142, 147, calc(0.2 + (1 - var(--glass-refraction, 0.7)) * 0.25)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.60) * 0.8)) !important;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -378,11 +389,11 @@ html, body {
   font-weight: 600;
   color: var(--accent-blue);
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 1.5)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -422,13 +433,13 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.33)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   border-radius: 16px !important;
   padding: 12px 15px;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 4px 14px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.08)) !important;
 }
 
 .card-section-title {
@@ -479,7 +490,7 @@ html, body {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: rgba(0, 0, 0, 0.12);
+  background: rgba(0, 0, 0, calc(0.18 - var(--glass-refraction, 0.7) * 0.08));
   outline: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -537,42 +548,81 @@ html, body {
   font-family: monospace;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, var(--glass-input-opacity, 0.36));
   text-transform: uppercase;
   text-align: center;
   outline: none;
 }
 
-/* ── Pill Buttons ── */
+/* ══════════════════════════════════════════════════════════════════════════════
+   3. FIX "CHANGE POSITION" & "RESET" BUTTON CONTRAST
+   ══════════════════════════════════════════════════════════════════════════════ */
 .position-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .btn-pill {
-  flex: 1;
-  padding: 5px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  border-radius: 8px !important;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  border: 1px solid rgba(255, 255, 255, 0.75) !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  color: var(--text-primary);
+  padding: 6px 12px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 9px !important;
+  cursor: pointer !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  letter-spacing: -0.1px !important;
 }
 
-.btn-pill:hover {
-  background: #FFFFFF !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+/* High-contrast Change Position Button */
+.btn-pill.change-pos-btn {
+  flex: 1 !important;
+  border: 1.5px solid rgba(0, 122, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #0066cc !important;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.14), inset 0 1px 0 #ffffff !important;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+.btn-pill.change-pos-btn:hover {
+  background: #007aff !important;
+  color: #ffffff !important;
+  border-color: #007aff !important;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-pill.change-pos-btn:active {
+  transform: scale(0.97) !important;
+  background: #0062cc !important;
+}
+
+/* High-contrast Reset Button */
 .btn-pill.reset-pos-btn {
-  flex: 0 0 60px;
-  color: var(--text-secondary);
+  flex: 0 0 68px !important;
+  border: 1.5px solid rgba(142, 142, 147, 0.55) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #3a3a3c !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10), inset 0 1px 0 #ffffff !important;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-pill.reset-pos-btn:hover {
+  background: #e5e5ea !important;
+  color: #1c1c1e !important;
+  border-color: rgba(142, 142, 147, 0.85) !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(-1px) !important;
+}
+
+.btn-pill.reset-pos-btn:active {
+  transform: scale(0.97) !important;
+  background: #d1d1d6 !important;
 }
 
 /* ── Switch ── */
@@ -596,7 +646,7 @@ html, body {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(120, 120, 128, 0.2);
+  background-color: rgba(120, 120, 128, calc(0.28 - var(--glass-refraction, 0.7) * 0.12));
   transition: .2s;
   border-radius: 22px;
   border: 1px solid rgba(0, 0, 0, 0.08);
@@ -625,14 +675,14 @@ html, body {
 
 /* ── Guide Box ── */
 .guide-box {
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.33)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   border-radius: 16px !important;
   padding: 12px 14px;
   font-size: 11.5px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 4px 12px rgba(0, 0, 0, 0.03) !important;
 }
 
 .guide-box h3 {

@@ -278,14 +278,33 @@
     return false;
   }
 
-  // ── 5. Apple iOS 27 Liquid Glass Refraction System ─────────────────────────
+  // ── 1 & 5. Fixed Glass Transparency Slider (0% to 100% Linear Scaling) ────
   function applyGlassRefraction(value) {
     if (!host) return;
-    const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
-    host.style.setProperty('--glass-opacity', (0.25 + 0.70 * (1 - t)).toFixed(3));
-    host.style.setProperty('--glass-refraction', (0.15 + 0.85 * t).toFixed(3));
-    host.style.setProperty('--glass-blur', `${Math.round(20 + t * 24)}px`);
-    host.style.setProperty('--glass-saturate', `${Math.round(160 + t * 60)}%`);
+    const val = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+    const t = val / 100;
+
+    // 0%: 100% solid, opaque color, zero blur, zero glass sheen
+    // 100%: Ghost transparent (0.03), 40px blur, full specular refraction
+    const glassOpacity = (1.0 - 0.97 * t).toFixed(3);
+    const cardOpacity = (1.0 - 0.96 * t).toFixed(3);
+    const inputOpacity = (1.0 - 0.92 * t).toFixed(3);
+    const glassBlur = `${Math.round(t * 40)}px`;
+    const glassSaturate = `${Math.round(100 + t * 120)}%`;
+    const glassRefraction = t.toFixed(3);
+    const borderAlpha = (0.15 + 0.55 * t).toFixed(3);
+    const insetAlpha = (0.85 * t).toFixed(3);
+    const shadowAlpha = (0.08 + 0.16 * t).toFixed(3);
+
+    host.style.setProperty('--glass-opacity', glassOpacity);
+    host.style.setProperty('--glass-card-opacity', cardOpacity);
+    host.style.setProperty('--glass-input-opacity', inputOpacity);
+    host.style.setProperty('--glass-blur', glassBlur);
+    host.style.setProperty('--glass-saturate', glassSaturate);
+    host.style.setProperty('--glass-refraction', glassRefraction);
+    host.style.setProperty('--glass-border-alpha', borderAlpha);
+    host.style.setProperty('--glass-inset-alpha', insetAlpha);
+    host.style.setProperty('--glass-shadow-alpha', shadowAlpha);
   }
 
   // ── 3. Answer Text & Appearance Styling (Plain Black Text, Zero Shadow) ───
@@ -293,13 +312,16 @@
     if (!newSettings) return;
     appearance = { ...appearance, ...newSettings };
 
-    applyGlassRefraction(appearance.glass_refraction || 70);
+    const glassVal = appearance.glass_refraction != null ? parseInt(appearance.glass_refraction, 10) : 70;
+    applyGlassRefraction(glassVal);
 
-    const _gt = Math.max(0, Math.min(100, parseInt(appearance.glass_refraction || 70, 10))) / 100;
-    const _gBgOp = parseFloat((0.25 + 0.70 * (1 - _gt)).toFixed(3));
-    const _gBlur = Math.round(20 + _gt * 24);
-    const _gSat = Math.round(160 + _gt * 60);
-    const _gRef = parseFloat((0.15 + 0.85 * _gt).toFixed(3));
+    const _gt = Math.max(0, Math.min(100, glassVal)) / 100;
+    const _gBgOp = parseFloat((1.0 - 0.97 * _gt).toFixed(3));
+    const _gBlur = Math.round(_gt * 40);
+    const _gSat = Math.round(100 + _gt * 120);
+    const _gBorder = parseFloat((0.15 + 0.55 * _gt).toFixed(3));
+    const _gInset = parseFloat((0.85 * _gt).toFixed(3));
+    const _gShadow = parseFloat((0.08 + 0.16 * _gt).toFixed(3));
 
     if (answerContainer) {
       answerContainer.style.setProperty('background', 'transparent', 'important');
@@ -335,8 +357,8 @@
       captureButton.style.setProperty('background', translucentBg, 'important');
       captureButton.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
       captureButton.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
-      captureButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gRef})`, 'important');
-      captureButton.style.setProperty('box-shadow', `inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.16)`, 'important');
+      captureButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gBorder})`, 'important');
+      captureButton.style.setProperty('box-shadow', `inset 0 1.5px 1px rgba(255, 255, 255, ${_gInset}), inset 0 -1px 1px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, ${_gShadow})`, 'important');
       captureButton.style.setProperty('width', `${btnSize}px`, 'important');
       captureButton.style.setProperty('height', `${btnSize}px`, 'important');
 
@@ -361,8 +383,8 @@
       promptInput.style.setProperty('background', translucentPromptBg, 'important');
       promptInput.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
       promptInput.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
-      promptInput.style.setProperty('border', `1px solid rgba(255, 255, 255, ${(_gRef * 0.75).toFixed(3)})`, 'important');
-      promptInput.style.setProperty('box-shadow', `inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 8px 24px rgba(0, 0, 0, 0.12)`, 'important');
+      promptInput.style.setProperty('border', `1px solid rgba(255, 255, 255, ${(_gBorder * 0.75).toFixed(3)})`, 'important');
+      promptInput.style.setProperty('box-shadow', `inset 0 1px 1px rgba(255, 255, 255, ${_gInset}), 0 8px 24px rgba(0, 0, 0, ${_gShadow})`, 'important');
       promptInput.style.setProperty('color', pContrast, 'important');
       promptInput.style.setProperty('width', `${pWidth}px`, 'important');
     }

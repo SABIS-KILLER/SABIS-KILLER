@@ -155,12 +155,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── iOS 27 Liquid Glass Refraction Variables ──
   function applyGlassRefraction(value) {
-    const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
+    const val = Math.max(0, Math.min(100, parseInt(value, 10) || 0));
+    const t = val / 100;
     const root = document.documentElement;
-    root.style.setProperty('--glass-opacity', (0.25 + 0.70 * (1 - t)).toFixed(3));
-    root.style.setProperty('--glass-refraction', (0.15 + 0.85 * t).toFixed(3));
-    root.style.setProperty('--glass-blur', `${Math.round(20 + t * 24)}px`);
-    root.style.setProperty('--glass-saturate', `${Math.round(160 + t * 60)}%`);
+
+    // 0%: 100% solid, opaque color, zero blur, zero glass sheen
+    // 100%: Ghost transparent (0.03), 40px blur, full specular refraction
+    const glassOpacity = (1.0 - 0.97 * t).toFixed(3);
+    const cardOpacity = (1.0 - 0.96 * t).toFixed(3);
+    const inputOpacity = (1.0 - 0.92 * t).toFixed(3);
+    const glassBlur = `${Math.round(t * 40)}px`;
+    const glassSaturate = `${Math.round(100 + t * 120)}%`;
+    const glassRefraction = t.toFixed(3);
+    const borderAlpha = (0.15 + 0.55 * t).toFixed(3);
+    const insetAlpha = (0.85 * t).toFixed(3);
+    const shadowAlpha = (0.08 + 0.16 * t).toFixed(3);
+
+    root.style.setProperty('--glass-opacity', glassOpacity);
+    root.style.setProperty('--glass-card-opacity', cardOpacity);
+    root.style.setProperty('--glass-input-opacity', inputOpacity);
+    root.style.setProperty('--glass-blur', glassBlur);
+    root.style.setProperty('--glass-saturate', glassSaturate);
+    root.style.setProperty('--glass-refraction', glassRefraction);
+    root.style.setProperty('--glass-border-alpha', borderAlpha);
+    root.style.setProperty('--glass-inset-alpha', insetAlpha);
+    root.style.setProperty('--glass-shadow-alpha', shadowAlpha);
   }
 
   // ── Toast Notification ──

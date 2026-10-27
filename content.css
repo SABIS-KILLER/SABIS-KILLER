@@ -1,15 +1,23 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    SABIS KILLER v2.0 - Apple iOS 27 Liquid Glass In-Page UI
    Centered squircle modal with 100% zero-artifact continuous corners,
-   dual-layer edge refractions, and pure black floating answer typography.
+   linear 0%-100% glass transparency scaling, high-contrast action buttons,
+   and pure black floating answer typography.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :host,
 #academic-solver-root {
-  --glass-opacity: 0.65;
+  /* Default variables (scaled dynamically by applyGlassRefraction) */
+  --glass-opacity: 0.32;
+  --glass-card-opacity: 0.33;
+  --glass-input-opacity: 0.36;
+  --glass-blur: 28px;
+  --glass-saturate: 184%;
   --glass-refraction: 0.70;
-  --glass-blur: 32px;
-  --glass-saturate: 210%;
+  --glass-border-alpha: 0.54;
+  --glass-inset-alpha: 0.60;
+  --glass-shadow-alpha: 0.19;
+
   --accent-blue: #007aff;
   --accent-blue-hover: #0062cc;
   --text-primary: #1c1c1e;
@@ -76,12 +84,12 @@
 
 /* ── Inline Prompt Bar ── */
 #prompt-input {
-  background: rgba(255, 255, 255, calc(var(--glass-opacity, 0.65))) !important;
-  backdrop-filter: blur(28px) saturate(200%) brightness(1.04) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.04) !important;
+  background: rgba(255, 255, 255, var(--glass-opacity, 0.32)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
   color: #1c1c1e !important;
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7) * 0.75)) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 8px 24px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 8px 24px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
   border-radius: 14px !important;
   padding: 6px 12px !important;
   font-size: 12px !important;
@@ -111,11 +119,14 @@
   width: 32px !important;
   height: 32px !important;
   border-radius: 50% !important;
-  background: rgba(255, 255, 255, calc(var(--glass-opacity, 0.65))) !important;
-  backdrop-filter: blur(28px) saturate(200%) brightness(1.04) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.04) !important;
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7))) !important;
-  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.16) !important;
+  background: rgba(255, 255, 255, var(--glass-opacity, 0.32)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)),
+    inset 0 -1px 1px rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.15)),
+    0 8px 24px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
@@ -130,7 +141,7 @@
 
 #capture-button:hover {
   transform: scale(1.06) !important;
-  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.95), 0 10px 28px rgba(0, 0, 0, 0.2) !important;
+  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.95), 0 10px 28px rgba(0, 0, 0, 0.22) !important;
 }
 
 #capture-button:active {
@@ -226,8 +237,8 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════════════════
-   1 & 5. CUSTOM IN-PAGE CENTER MODAL - APPLE iOS 27 LIQUID GLASS STACK
-   ══════════════════════════════════════════════════════════════════════════════ */
+   1 & 2. CUSTOM IN-PAGE CENTER MODAL - FULL GLOBAL GLASS TRANSPARENCY
+   ═══════════════════════════════════════════════════════════════════════════ */
 #settings-modal-backdrop {
   position: fixed !important;
   top: 0 !important;
@@ -235,9 +246,9 @@
   width: 100vw !important;
   height: 100vh !important;
   z-index: 999998 !important;
-  background: rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: blur(8px) saturate(140%) !important;
-  -webkit-backdrop-filter: blur(8px) saturate(140%) !important;
+  background: rgba(0, 0, 0, calc(0.15 + var(--glass-refraction, 0.7) * 0.18)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
   opacity: 0 !important;
   pointer-events: none !important;
   transition: opacity 0.22s ease !important;
@@ -265,15 +276,15 @@
   opacity: 0 !important;
   pointer-events: none !important;
 
-  /* iOS 27 Liquid Glass Optical Stack */
-  background: rgba(245, 245, 247, calc(var(--glass-opacity, 0.65))) !important;
-  backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7))) !important;
+  /* Dynamically scaled optical glass: 0% = 100% solid, 100% = ghost transparent */
+  background: rgba(245, 245, 247, var(--glass-opacity, 0.32)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
-    inset 0 -1px 1px rgba(0, 0, 0, 0.15),
-    0 24px 48px rgba(0, 0, 0, 0.22) !important;
+    inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)),
+    inset 0 -1px 1px rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.15)),
+    0 24px 48px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
 
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease !important;
   user-select: none !important;
@@ -293,6 +304,7 @@
   justify-content: space-between !important;
   border-bottom: 1px solid var(--border-subtle) !important;
   flex-shrink: 0 !important;
+  background: transparent !important;
 }
 
 .modal-logo-area {
@@ -396,6 +408,7 @@
   flex-direction: column !important;
   gap: 14px !important;
   box-sizing: border-box !important;
+  background: transparent !important;
 }
 
 #settings-modal-content::-webkit-scrollbar {
@@ -439,17 +452,17 @@
   opacity: 1 !important;
 }
 
-/* Segmented Navigation */
+/* Segmented Navigation Tab Track */
 .modal-segmented-nav {
   display: flex !important;
   gap: 2px !important;
   padding: 3px !important;
   border-radius: 14px !important;
-  background: rgba(255, 255, 255, 0.5) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 0.85)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)) !important;
   overflow: hidden !important;
 }
 
@@ -474,13 +487,15 @@
 
 .modal-segmented-btn:hover {
   color: var(--text-primary) !important;
-  background: rgba(255, 255, 255, 0.35) !important;
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 .modal-segmented-btn.active {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(0, 122, 255, 0.4) !important;
-  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 1.5)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(0, 122, 255, calc(0.3 + var(--glass-refraction, 0.7) * 0.35)) !important;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.22), inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)) !important;
   color: var(--accent-blue) !important;
   font-weight: 600 !important;
 }
@@ -496,18 +511,18 @@
   background: #34c759 !important;
 }
 
-/* Provider Config Cards */
+/* Provider Config Cards (Global Glass Coverage) */
 .modal-provider-card {
   display: none !important;
   flex-direction: column !important;
   gap: 10px !important;
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.33)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   border-radius: 16px !important;
   padding: 13px 15px !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 4px 14px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.08)) !important;
 }
 
 .modal-provider-card.active {
@@ -540,7 +555,7 @@
   text-decoration: underline !important;
 }
 
-/* Form Inputs & 4. Auto-Fill Prevention */
+/* Inputs & Dropdowns (Global Glass Coverage) */
 .modal-input-wrapper {
   position: relative !important;
   display: flex !important;
@@ -555,11 +570,11 @@
   font-family: -apple-system, BlinkMacSystemFont, monospace !important;
   color: var(--text-primary) !important;
   border-radius: 11px !important;
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(142, 142, 147, 0.35) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7) !important;
+  background: rgba(255, 255, 255, var(--glass-input-opacity, 0.36)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(142, 142, 147, calc(0.2 + (1 - var(--glass-refraction, 0.7)) * 0.25)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.60) * 0.8)) !important;
   outline: none !important;
   box-sizing: border-box !important;
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
@@ -614,11 +629,11 @@
   font-weight: 600 !important;
   color: var(--accent-blue) !important;
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.33) * 1.5)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
   cursor: pointer !important;
   outline: none !important;
   transition: all 0.15s ease !important;
@@ -660,7 +675,7 @@
   margin: 2px 0 !important;
 }
 
-/* Appearance Cards */
+/* Appearance Cards (Global Glass Coverage) */
 .modal-section-label {
   font-size: 11px !important;
   font-weight: 600 !important;
@@ -673,13 +688,13 @@
   display: flex !important;
   flex-direction: column !important;
   gap: 6px !important;
-  background: rgba(255, 255, 255, 0.52) !important;
-  backdrop-filter: blur(24px) saturate(190%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.33)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.54)) !important;
   border-radius: 16px !important;
   padding: 12px 15px !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.60)), 0 4px 14px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.08)) !important;
 }
 
 .modal-control-row {
@@ -723,7 +738,7 @@
   width: 100% !important;
   height: 4px !important;
   border-radius: 2px !important;
-  background: rgba(0, 0, 0, 0.12) !important;
+  background: rgba(0, 0, 0, calc(0.18 - var(--glass-refraction, 0.7) * 0.08)) !important;
   outline: none !important;
   -webkit-appearance: none !important;
   cursor: pointer !important;
@@ -780,43 +795,81 @@
   font-family: monospace !important;
   border-radius: 6px !important;
   border: 1px solid rgba(0, 0, 0, 0.15) !important;
-  background: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, var(--glass-input-opacity, 0.36)) !important;
   text-transform: uppercase !important;
   text-align: center !important;
   outline: none !important;
 }
 
-/* Pill Action Buttons */
+/* ══════════════════════════════════════════════════════════════════════════════
+   3. FIX "CHANGE POSITION" & "RESET" BUTTON CONTRAST
+   ══════════════════════════════════════════════════════════════════════════════ */
 .modal-position-actions {
   display: flex !important;
-  gap: 6px !important;
-  margin-top: 6px !important;
-  padding-top: 6px !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.06) !important;
 }
 
 .modal-btn-pill {
-  flex: 1 !important;
-  padding: 5px 8px !important;
-  font-size: 11px !important;
-  font-weight: 500 !important;
-  border-radius: 8px !important;
+  padding: 6px 12px !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+  border-radius: 9px !important;
   cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  border: 1px solid rgba(255, 255, 255, 0.75) !important;
-  background: rgba(255, 255, 255, 0.78) !important;
-  color: var(--text-primary) !important;
   outline: none !important;
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  letter-spacing: -0.1px !important;
 }
 
-.modal-btn-pill:hover {
-  background: #FFFFFF !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+/* High-contrast Change Position Button */
+.modal-btn-pill.inpage-change-pos {
+  flex: 1 !important;
+  border: 1.5px solid rgba(0, 122, 255, 0.6) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #0066cc !important;
+  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.14), inset 0 1px 0 #ffffff !important;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+.modal-btn-pill.inpage-change-pos:hover {
+  background: #007aff !important;
+  color: #ffffff !important;
+  border-color: #007aff !important;
+  box-shadow: 0 6px 16px rgba(0, 122, 255, 0.36), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+.modal-btn-pill.inpage-change-pos:active {
+  transform: scale(0.97) !important;
+  background: #0062cc !important;
+}
+
+/* High-contrast Reset Button */
 .modal-btn-pill.reset-btn {
-  flex: 0 0 60px !important;
-  color: var(--text-secondary) !important;
+  flex: 0 0 68px !important;
+  border: 1.5px solid rgba(142, 142, 147, 0.55) !important;
+  background: rgba(255, 255, 255, 0.88) !important;
+  color: #3a3a3c !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.10), inset 0 1px 0 #ffffff !important;
+  transition: all 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-btn-pill.reset-btn:hover {
+  background: #e5e5ea !important;
+  color: #1c1c1e !important;
+  border-color: rgba(142, 142, 147, 0.85) !important;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(-1px) !important;
+}
+
+.modal-btn-pill.reset-btn:active {
+  transform: scale(0.97) !important;
+  background: #d1d1d6 !important;
 }
 
 /* Switch */
@@ -840,7 +893,7 @@
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  background-color: rgba(120, 120, 128, 0.2) !important;
+  background-color: rgba(120, 120, 128, calc(0.28 - var(--glass-refraction, 0.7) * 0.12)) !important;
   transition: .2s !important;
   border-radius: 22px !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
@@ -867,7 +920,7 @@
   transform: translateX(16px) !important;
 }
 
-/* Position Picker Overlay */
+/* Position Picker Crosshair Overlay */
 #position-picker-overlay {
   position: fixed !important;
   top: 0 !important;
