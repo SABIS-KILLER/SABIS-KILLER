@@ -1,7 +1,7 @@
 /**
  * SABIS KILLER - Popup Controller (v2.0)
- * Multi-provider AI configuration, liquid glass appearance customizer,
- * and live overlay position manager.
+ * Multi-provider AI configuration with single Auto-Dynamic Model Picker,
+ * Apple iOS 27 Liquid Glass optical stack, and pure black floating answer defaults.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -23,13 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
       altKey: 'geminiApiKey',
       modelKey: 'gemini_model',
       altModelKey: 'geminiModel',
-      defaultModel: 'auto_dynamic_paid',
+      defaultModel: 'auto_dynamic',
       getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic_paid' || model === 'auto_paid')
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto'))
           ? 'gemini-3.8-flash'
-          : (model === 'auto_dynamic_free' || model === 'auto_free')
-            ? 'gemini-3.5-flash-lite'
-            : (model || 'gemini-3.8-flash');
+          : (model || 'gemini-3.8-flash');
         return {
           url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
           method: 'POST',
@@ -47,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
       tabDotId: 'tab-dot-openai',
       storageKey: 'OPENAI_API_KEY',
       modelKey: 'openai_model',
-      defaultModel: 'auto_dynamic_paid',
+      defaultModel: 'auto_dynamic',
       getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_free' || model === 'auto_paid') ? 'gpt-5.4-mini' : model;
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'gpt-5.4-mini' : model;
         const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
         const payload = {
           model: testModel,
@@ -80,9 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
       tabDotId: 'tab-dot-anthropic',
       storageKey: 'ANTHROPIC_API_KEY',
       modelKey: 'anthropic_model',
-      defaultModel: 'auto_paid',
+      defaultModel: 'auto_dynamic',
       getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_paid') ? 'claude-3-5-haiku-20241022' : model;
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'claude-3-5-haiku-20241022' : model;
         return {
           url: 'https://api.anthropic.com/v1/messages',
           method: 'POST',
@@ -108,11 +106,11 @@ document.addEventListener('DOMContentLoaded', () => {
       tabDotId: 'tab-dot-deepseek',
       storageKey: 'DEEPSEEK_API_KEY',
       modelKey: 'deepseek_model',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic',
       getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_free' || model === 'auto_paid') ? 'deepseek-chat' : model;
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'deepseek-chat' : model;
         return {
-          url: 'https://api.deepseek.com/v1/chat/completions',
+          url: 'https://api.deepseek.com/chat/completions',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -135,9 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
       tabDotId: 'tab-dot-openrouter',
       storageKey: 'OPENROUTER_API_KEY',
       modelKey: 'openrouter_model',
-      defaultModel: 'auto_free',
+      defaultModel: 'auto_dynamic',
       getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_free') ? 'openrouter/free' : (model === 'auto_paid') ? 'openrouter/auto' : model;
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'openrouter/free' : model;
         return {
           url: 'https://openrouter.ai/api/v1/chat/completions',
           method: 'POST',
@@ -155,18 +153,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // ── Dynamic Liquid Glass Refraction System ──
+  // ── iOS 27 Liquid Glass Refraction Variables ──
   function applyGlassRefraction(value) {
     const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
     const root = document.documentElement;
-    root.style.setProperty('--glass-bg-opacity',   (0.25 + 0.75 * (1 - t)).toFixed(3));
-    root.style.setProperty('--glass-blur',         `${Math.round(t * 40)}px`);
-    root.style.setProperty('--glass-saturate',     `${Math.round(100 + t * 120)}%`);
-    root.style.setProperty('--glass-refraction',   t.toFixed(3));
-    root.style.setProperty('--glass-border-alpha', (0.15 + 0.50 * t).toFixed(3));
-    root.style.setProperty('--glass-inset-alpha',  (0.80 * t).toFixed(3));
-    root.style.setProperty('--glass-shadow-alpha', (0.04 + 0.21 * t).toFixed(3));
-    root.style.setProperty('--glass-card-opacity', (0.40 + 0.60 * (1 - t)).toFixed(3));
+    root.style.setProperty('--glass-opacity', (0.25 + 0.70 * (1 - t)).toFixed(3));
+    root.style.setProperty('--glass-refraction', (0.15 + 0.85 * t).toFixed(3));
+    root.style.setProperty('--glass-blur', `${Math.round(20 + t * 24)}px`);
+    root.style.setProperty('--glass-saturate', `${Math.round(160 + t * 60)}%`);
   }
 
   // ── Toast Notification ──
@@ -222,17 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!PROVIDERS[providerKey]) return;
     currentActiveProvider = providerKey;
 
-    // Update segmented buttons
     document.querySelectorAll('.segmented-btn').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-provider') === providerKey);
     });
 
-    // Update cards
     document.querySelectorAll('.provider-card').forEach(card => {
       card.classList.toggle('active', card.id === PROVIDERS[providerKey].cardId);
     });
 
-    // Clear test feedback
     const feedback = document.getElementById('test-feedback');
     if (feedback) {
       feedback.className = 'test-feedback hidden';
@@ -249,7 +240,6 @@ document.addEventListener('DOMContentLoaded', () => {
       ai_provider: currentActiveProvider
     };
 
-    // Provider keys and models
     Object.keys(PROVIDERS).forEach(prov => {
       const conf = PROVIDERS[prov];
       const keyEl = document.getElementById(conf.keyInputId);
@@ -264,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (conf.altModelKey) data[conf.altModelKey] = modelVal;
     });
 
-    // Appearance settings
     const glassSlider = document.getElementById('glass-refraction-slider');
     const promptToggle = document.getElementById('enable-prompt-input');
     const ansColorHex = document.getElementById('answer-color-hex');
@@ -276,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
     data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
-    data.answer_text_color = ansColorHex ? ansColorHex.value.trim() : '#FFFFFF';
+    data.answer_text_color = ansColorHex ? ansColorHex.value.trim() : '#000000';
     data.answer_font_size = ansSizeSlider ? parseInt(ansSizeSlider.value, 10) : 14;
     data.button_bg_color = btnColorHex ? btnColorHex.value.trim() : '#FFFFFF';
     data.button_size = btnSizeSlider ? parseInt(btnSizeSlider.value, 10) : 30;
@@ -297,7 +286,6 @@ document.addEventListener('DOMContentLoaded', () => {
           showToast('Saved');
         }
 
-        // Notify active tab content script
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs && tabs[0] && tabs[0].id) {
             chrome.tabs.sendMessage(tabs[0].id, {
@@ -333,24 +321,23 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.local.get(keysToFetch, (items) => {
       if (chrome.runtime.lastError || !items) return;
 
-      // Active provider
       const savedProvider = items.ai_provider || items.active_provider || 'gemini';
       currentActiveProvider = PROVIDERS[savedProvider] ? savedProvider : 'gemini';
 
-      // Provider values
       Object.keys(PROVIDERS).forEach(prov => {
         const conf = PROVIDERS[prov];
         const keyInput = document.getElementById(conf.keyInputId);
         const modelSelect = document.getElementById(conf.modelSelectId);
 
         const valKey = items[conf.storageKey] || (conf.altKey && items[conf.altKey]) || '';
-        const valModel = items[conf.modelKey] || (conf.altModelKey && items[conf.altModelKey]) || conf.defaultModel;
+        let valModel = items[conf.modelKey] || (conf.altModelKey && items[conf.altModelKey]) || conf.defaultModel;
+        // Normalize any old auto option to auto_dynamic
+        if (valModel?.startsWith('auto')) valModel = 'auto_dynamic';
 
         if (keyInput) keyInput.value = valKey;
         if (modelSelect) modelSelect.value = valModel;
       });
 
-      // Glass refraction
       const glassVal = items.glass_refraction != null ? items.glass_refraction : 70;
       const glassSlider = document.getElementById('glass-refraction-slider');
       const glassBadge = document.getElementById('glass-refraction-val');
@@ -358,35 +345,30 @@ document.addEventListener('DOMContentLoaded', () => {
       if (glassBadge) glassBadge.textContent = `${glassVal}%`;
       applyGlassRefraction(glassVal);
 
-      // Prompt toggle
       const promptToggle = document.getElementById('enable-prompt-input');
       if (promptToggle) promptToggle.checked = items.enable_prompt_input !== false;
 
-      // Answer Typography
-      const ansColor = items.answer_text_color || '#FFFFFF';
+      // Pure black default answer typography
+      const ansColor = items.answer_text_color || '#000000';
       const ansSize = items.answer_font_size || 14;
       syncColor('answer-color-picker', 'answer-color-hex', ansColor);
       syncSlider('answer-font-size', 'answer-font-size-val', ansSize, 'px');
 
-      // Button Style
       const btnColor = items.button_bg_color || '#FFFFFF';
       const btnSize = items.button_size || 30;
       syncColor('button-color-picker', 'button-color-hex', btnColor);
       syncSlider('button-size', 'button-size-val', btnSize, 'px');
 
-      // Prompt Bar Style
       const promptColor = items.prompt_bg_color || '#FFFFFF';
       const promptWidth = items.prompt_width || 180;
       syncColor('prompt-color-picker', 'prompt-color-hex', promptColor);
       syncSlider('prompt-width', 'prompt-width-val', promptWidth, 'px');
 
-      // Switch to active tab view
       switchProvider(currentActiveProvider);
       updateProviderTabDots();
     });
   }
 
-  // ── Sync Helpers ──
   function syncColor(pickerId, hexId, value) {
     const picker = document.getElementById(pickerId);
     const hex = document.getElementById(hexId);
@@ -512,8 +494,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Event Bindings ──
-
-  // Provider Tab Buttons
   document.querySelectorAll('.segmented-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const prov = btn.getAttribute('data-provider');
@@ -521,7 +501,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Password Visibility Toggle Eyes
   document.querySelectorAll('.toggle-eye').forEach(btn => {
     btn.addEventListener('click', () => {
       const targetId = btn.getAttribute('data-target');
@@ -543,11 +522,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Test Connection
   const testBtn = document.getElementById('btn-test-connection');
   if (testBtn) testBtn.addEventListener('click', testConnection);
 
-  // Glass Slider
   const glassSlider = document.getElementById('glass-refraction-slider');
   const glassBadge = document.getElementById('glass-refraction-val');
   if (glassSlider && glassBadge) {
@@ -559,13 +536,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Prompt Toggle
   const promptToggle = document.getElementById('enable-prompt-input');
   if (promptToggle) {
     promptToggle.addEventListener('change', () => autoSave());
   }
 
-  // Color & Slider Synchronizers
   bindColorPair('answer-color-picker', 'answer-color-hex');
   bindSlider('answer-font-size', 'answer-font-size-val', 'px');
 
@@ -575,7 +550,6 @@ document.addEventListener('DOMContentLoaded', () => {
   bindColorPair('prompt-color-picker', 'prompt-color-hex');
   bindSlider('prompt-width', 'prompt-width-val', 'px');
 
-  // Input Listeners across all keys and models
   Object.keys(PROVIDERS).forEach(prov => {
     const conf = PROVIDERS[prov];
     const keyEl = document.getElementById(conf.keyInputId);
@@ -590,7 +564,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Change Position Buttons (sends START_POSITION_PICKER to tab & closes popup)
   document.querySelectorAll('.change-pos-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-target');
@@ -609,7 +582,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Reset Position Buttons
   document.querySelectorAll('.reset-pos-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const target = btn.getAttribute('data-target');
@@ -630,6 +602,5 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Initial Load
   loadStoredSettings();
 });

@@ -35,7 +35,6 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_title": "SABIS KILLER v2.0"
   },
   "icons": {

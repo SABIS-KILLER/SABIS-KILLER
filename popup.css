@@ -1,17 +1,13 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   SABIS KILLER - Native Popup Liquid Glass Styles (v2.0)
-   Apple HIG Liquid Glass aesthetic with true squircle clipping & zero corner artifacts
+   SABIS KILLER - Apple iOS 27 Liquid Glass Popup Styles (v2.0)
+   Dual-layer edge light refractions, dynamic blur, zero 90° corner artifacts
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --glass-bg-opacity: 0.475;
-  --glass-blur: 28px;
-  --glass-saturate: 184%;
+  --glass-opacity: 0.65;
   --glass-refraction: 0.70;
-  --glass-border-alpha: 0.50;
-  --glass-inset-alpha: 0.56;
-  --glass-shadow-alpha: 0.19;
-  --glass-card-opacity: 0.58;
+  --glass-blur: 32px;
+  --glass-saturate: 210%;
 
   --accent-blue: #007aff;
   --accent-blue-hover: #0062cc;
@@ -33,7 +29,7 @@ html, body {
   margin: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
-  border-radius: 24px !important;
+  border-radius: 28px !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--text-primary);
   font-size: 13px;
@@ -43,18 +39,21 @@ html, body {
 .popup-container {
   width: 420px;
   max-height: 590px;
-  border-radius: 24px !important;
+  border-radius: 28px !important;
   overflow: hidden !important;
   display: flex;
   flex-direction: column;
   position: relative;
-  background: rgba(245, 245, 247, var(--glass-bg-opacity, 0.88)) !important;
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.50)) !important;
+
+  /* iOS 27 Liquid Glass Optical Stack */
+  background: rgba(245, 245, 247, calc(var(--glass-opacity, 0.65))) !important;
+  backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
+  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7))) !important;
   box-shadow:
-    0 16px 40px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 1.3)),
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.15),
+    0 24px 48px rgba(0, 0, 0, 0.22) !important;
 }
 
 /* ── Save Toast ── */
@@ -63,15 +62,15 @@ html, body {
   top: 12px;
   left: 50%;
   transform: translateX(-50%) translateY(-30px);
-  background: rgba(28, 28, 30, calc(var(--glass-bg-opacity, 0.475) * 1.8)) !important;
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(255, 255, 255, calc(var(--glass-border-alpha, 0.50) * 0.44)) !important;
+  background: rgba(28, 28, 30, 0.92) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25) !important;
   color: #FFFFFF;
   font-size: 11px;
   font-weight: 600;
-  padding: 4px 12px;
+  padding: 5px 14px;
   border-radius: 20px;
   display: flex;
   align-items: center;
@@ -89,7 +88,7 @@ html, body {
 
 /* ── Header ── */
 .popup-header {
-  padding: 14px 18px 12px;
+  padding: 15px 18px 13px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -104,15 +103,15 @@ html, body {
 }
 
 .logo-dot {
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
   background: var(--accent-blue);
-  box-shadow: 0 0 8px rgba(0, 122, 255, 0.6);
+  box-shadow: 0 0 10px rgba(0, 122, 255, 0.7);
 }
 
 .header-title {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.2px;
   color: var(--text-primary);
@@ -122,12 +121,12 @@ html, body {
 }
 
 .version-tag {
-  font-size: 9.5px;
+  font-size: 10px;
   font-weight: 600;
   color: var(--accent-blue);
   background: rgba(0, 122, 255, 0.12);
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 1px 6px;
+  border-radius: 6px;
 }
 
 .status-badge {
@@ -136,30 +135,30 @@ html, body {
   gap: 5px;
   font-size: 11px;
   font-weight: 500;
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 12px;
 }
 
-.status-badge .status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-
 .status-badge.status-ready {
-  background: rgba(52, 199, 89, 0.15);
+  background: rgba(52, 199, 89, 0.16);
   color: #248a3d;
 }
 .status-badge.status-ready .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: #34c759;
-  box-shadow: 0 0 5px rgba(52, 199, 89, 0.6);
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.7);
 }
 
 .status-badge.status-missing {
-  background: rgba(255, 149, 0, 0.15);
+  background: rgba(255, 149, 0, 0.16);
   color: #c97500;
 }
 .status-badge.status-missing .status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   background: #ff9500;
 }
 
@@ -167,7 +166,7 @@ html, body {
 .popup-content {
   overflow-y: auto;
   max-height: 520px;
-  padding: 14px 18px 18px;
+  padding: 15px 18px 20px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -182,9 +181,6 @@ html, body {
 .popup-content::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.15);
   border-radius: 10px;
-}
-.popup-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
 }
 
 /* ── Section & Labels ── */
@@ -208,17 +204,17 @@ html, body {
   margin: 2px 0;
 }
 
-/* ── Segmented Navigation (Apple-style) ── */
+/* ── Segmented Navigation ── */
 .segmented-nav {
   display: flex;
   gap: 2px;
   padding: 3px;
-  border-radius: 12px !important;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
   overflow: hidden;
 }
 
@@ -226,11 +222,11 @@ html, body {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 6px 3px;
-  font-size: 11px;
+  padding: 7px 4px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--text-secondary);
-  border-radius: 9px !important;
+  border-radius: 11px !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -242,17 +238,13 @@ html, body {
 
 .segmented-btn:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .segmented-btn.active {
-  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.58)) !important;
-  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.6)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.6)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(0, 122, 255, calc(var(--glass-border-alpha, 0.50) * 0.8)) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 122, 255, calc(var(--glass-shadow-alpha, 0.19) * 1.16)),
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(0, 122, 255, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
   color: var(--accent-blue);
   font-weight: 600;
 }
@@ -274,15 +266,13 @@ html, body {
   display: none;
   flex-direction: column;
   gap: 10px;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
-  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  border-radius: 14px !important;
-  padding: 12px 14px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+  background: rgba(255, 255, 255, 0.52) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 16px !important;
+  padding: 13px 15px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
 }
 
 .provider-card.active {
@@ -323,27 +313,30 @@ html, body {
 }
 
 .api-key-input,
-input[type="password"],
-input[type="text"].api-key-input {
+.select-field {
   width: 100%;
-  padding: 7px 12px;
-  padding-right: 42px !important;
+  padding: 8px 12px;
   font-size: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", monospace;
+  font-family: -apple-system, BlinkMacSystemFont, monospace;
   color: var(--text-primary);
-  border-radius: 10px !important;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.03)) !important;
-  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
-  border: 1px solid rgba(142, 142, 147, var(--glass-border-alpha, 0.50)) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.56) * 0.7)) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(142, 142, 147, 0.35) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.7) !important;
   outline: none;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.api-key-input:focus {
+.api-key-input {
+  padding-right: 42px !important;
+}
+
+.api-key-input:focus,
+.select-field:focus {
   border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22) !important;
 }
 
 .toggle-eye {
@@ -358,37 +351,18 @@ input[type="text"].api-key-input {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 7px;
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .toggle-eye:hover {
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.05);
+  background: rgba(0, 0, 0, 0.06);
 }
 
-/* ── Dropdown Menus ── */
 .select-field {
-  width: 100%;
-  padding: 7px 10px;
-  font-size: 12px;
   font-family: inherit;
-  color: var(--text-primary);
-  border-radius: 10px !important;
-  background-color: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.03)) !important;
-  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
-  border: 1px solid rgba(142, 142, 147, var(--glass-border-alpha, 0.50)) !important;
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.21)),
-    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.56) * 0.7)) !important;
-  outline: none;
   cursor: pointer;
-}
-
-.select-field:focus {
-  border-color: var(--accent-blue) !important;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
 }
 
 .select-field option {
@@ -396,7 +370,7 @@ input[type="text"].api-key-input {
   color: #1c1c1e !important;
 }
 
-/* ── Secondary & Test Connection Button ── */
+/* ── Secondary Button ── */
 .btn-secondary {
   width: 100%;
   padding: 8px 14px;
@@ -404,26 +378,18 @@ input[type="text"].api-key-input {
   font-weight: 600;
   color: var(--accent-blue);
   border-radius: 12px !important;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.29)) !important;
-  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
-    inset 0 -1px 0 rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.12)),
-    0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.9) !important;
+  background: #ffffff !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-}
-
-.btn-secondary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .test-feedback {
@@ -451,20 +417,18 @@ input[type="text"].api-key-input {
   border: 1px solid rgba(255, 59, 48, 0.4);
 }
 
-/* ── Appearance Section Cards ── */
+/* ── Appearance Cards ── */
 .appearance-card {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
-  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
-  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  border-radius: 14px !important;
-  padding: 11px 14px;
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
-    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+  background: rgba(255, 255, 255, 0.52) !important;
+  backdrop-filter: blur(24px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(190%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 16px !important;
+  padding: 12px 15px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 4px 14px rgba(0, 0, 0, 0.04) !important;
 }
 
 .card-section-title {
@@ -505,7 +469,7 @@ input[type="text"].api-key-input {
   background: rgba(0, 122, 255, 0.12);
   padding: 2px 7px;
   border-radius: 6px;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", monospace;
+  font-family: monospace;
   min-width: 38px;
   text-align: center;
 }
@@ -531,10 +495,6 @@ input[type="text"].api-key-input {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   transition: transform 0.1s ease;
-}
-
-.range-slider::-webkit-slider-thumb:hover {
-  transform: scale(1.15);
 }
 
 .slider-group {
@@ -582,11 +542,8 @@ input[type="text"].api-key-input {
   text-align: center;
   outline: none;
 }
-.hex-input:focus {
-  border-color: var(--accent-blue);
-}
 
-/* ── Pill Action Buttons ── */
+/* ── Pill Buttons ── */
 .position-actions {
   display: flex;
   gap: 6px;
@@ -603,11 +560,9 @@ input[type="text"].api-key-input {
   border-radius: 8px !important;
   cursor: pointer;
   transition: all 0.15s ease;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.15)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.75) !important;
+  background: rgba(255, 255, 255, 0.78) !important;
   color: var(--text-primary);
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
 }
 
 .btn-pill:hover {
@@ -620,7 +575,7 @@ input[type="text"].api-key-input {
   color: var(--text-secondary);
 }
 
-/* ── Toggle Switch (Apple-style) ── */
+/* ── Switch ── */
 .switch {
   position: relative;
   display: inline-block;
@@ -670,11 +625,11 @@ input[type="text"].api-key-input {
 
 /* ── Guide Box ── */
 .guide-box {
-  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  background: rgba(255, 255, 255, 0.52) !important;
   backdrop-filter: blur(16px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
-  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 16px !important;
   padding: 12px 14px;
   font-size: 11.5px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
@@ -702,12 +657,4 @@ input[type="text"].api-key-input {
 
 .guide-box strong {
   color: var(--text-primary);
-}
-
-.guide-box code {
-  background: rgba(0, 0, 0, 0.06);
-  padding: 1px 4px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 10.5px;
 }

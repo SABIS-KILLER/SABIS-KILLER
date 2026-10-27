@@ -1,8 +1,34 @@
 /**
  * SABIS KILLER - Background Service Worker (v2.0)
- * Auto-Dynamic AI Routing Engine, Zero-Wait Recovery Cascade Matrix,
- * Client-Side SHA-256 Caching & Heuristic Task Classifier.
+ * Intercepts toolbar icon clicks to trigger the custom in-page centered modal,
+ * routes single Auto-Dynamic Model Picker, handles failover cascades,
+ * and maintains SHA-256 edge caching.
  */
+
+// ── Intercept Toolbar Action Click ───────────────────────────────────────────
+chrome.action.onClicked.addListener((tab) => {
+  if (!tab || !tab.id) return;
+  const url = tab.url || '';
+  if (url.startsWith('chrome://') || url.startsWith('edge://') || url.startsWith('chrome-extension://') || url.startsWith('about:')) {
+    return;
+  }
+
+  chrome.tabs.sendMessage(tab.id, { action: 'TOGGLE_SETTINGS_MODAL' }, (response) => {
+    const err = chrome.runtime.lastError;
+    if (err || !response) {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ['content.js']
+      }).then(() => {
+        setTimeout(() => {
+          chrome.tabs.sendMessage(tab.id, { action: 'TOGGLE_SETTINGS_MODAL' }, () => {
+            void chrome.runtime.lastError;
+          });
+        }, 120);
+      }).catch(() => {});
+    }
+  });
+});
 
 // ── Hardened System Instructions ─────────────────────────────────────────────
 const HARDENED_SYSTEM_INSTRUCTION =
@@ -61,7 +87,7 @@ function isComplexTask(prompt) {
   const text = prompt.trim();
   const lower = text.toLowerCase();
 
-  // c. High Context / Length: Prompts exceeding 400 characters OR multi-step keywords
+  // High Context / Length: Prompts exceeding 400 characters OR multi-step keywords
   if (text.length > 400) return true;
   const multiStepKeywords = [
     'explain step by step', 'step by step', 'verify accuracy', 'compare',
@@ -72,7 +98,7 @@ function isComplexTask(prompt) {
     if (lower.includes(kw)) return true;
   }
 
-  // a. Math & STEM Syntax: \int, \sum, \sqrt, d/dx, \matrix, fractions, problem-solving directives
+  // Math & STEM Syntax
   const mathSymbols = [
     '\\int', '∫', '\\sum', '∑', '\\sqrt', '√', 'd/dx', '\\matrix', '\\frac',
     '∂', 'lim', 'matrix', 'matrices', 'calculus', 'integral', 'derivative'
@@ -87,7 +113,7 @@ function isComplexTask(prompt) {
     return true;
   }
 
-  // b. Code & Technical Syntax: function, class, import, const, def, async, return, SQL queries, backtick code blocks
+  // Code & Technical Syntax
   const codeKeywords = [
     'function', 'class', 'import', 'const', 'let', 'var', 'def', 'async',
     'return', 'select', 'insert', 'update', 'delete', 'from', 'where', 'join',
@@ -131,13 +157,11 @@ async function writeCache(hash, result) {
     const data = await chrome.storage.local.get(['ai_query_cache']);
     const cache = data.ai_query_cache || {};
     const now = Date.now();
-    // Prune entries older than 24 hours
     for (const key in cache) {
       if (now - cache[key].timestamp > 24 * 60 * 60 * 1000) {
         delete cache[key];
       }
     }
-    // Maintain maximum 150 items
     const keys = Object.keys(cache);
     if (keys.length > 150) {
       delete cache[keys[0]];
@@ -195,26 +219,26 @@ async function handleSolveRequest(sender, message) {
 
   if (activeProvider === 'gemini') {
     apiKey = (storage.GEMINI_API_KEY || storage.geminiApiKey || '').trim();
-    modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic_paid';
+    modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic';
   } else if (activeProvider === 'openai') {
     apiKey = (storage.OPENAI_API_KEY || '').trim();
-    modelMode = storage.openai_model || 'auto_dynamic_paid';
+    modelMode = storage.openai_model || 'auto_dynamic';
   } else if (activeProvider === 'anthropic') {
     apiKey = (storage.ANTHROPIC_API_KEY || '').trim();
-    modelMode = storage.anthropic_model || 'auto_paid';
+    modelMode = storage.anthropic_model || 'auto_dynamic';
   } else if (activeProvider === 'deepseek') {
     apiKey = (storage.DEEPSEEK_API_KEY || '').trim();
-    modelMode = storage.deepseek_model || 'auto_free';
+    modelMode = storage.deepseek_model || 'auto_dynamic';
   } else if (activeProvider === 'openrouter') {
     apiKey = (storage.OPENROUTER_API_KEY || '').trim();
-    modelMode = storage.openrouter_model || 'auto_free';
+    modelMode = storage.openrouter_model || 'auto_dynamic';
   }
 
-  // 4. API Key Sanitization & Validation
+  // API Key Sanitization & Validation
   if (!apiKey || apiKey.length < 5) {
     return {
       success: false,
-      error: `Please save your ${providerName} API Key in the extension popup.`
+      error: `Please save your ${providerName} API Key in the settings panel.`
     };
   }
 
@@ -266,7 +290,7 @@ async function handleSolveRequest(sender, message) {
 
   const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
 
-  // 1. Instant Cache Check (<1ms Latency)
+  // Instant Cache Check (<1ms Latency)
   const payloadToHash = `${userPrompt}:::${base64Data}`;
   const requestHash = await computeSha256(payloadToHash);
   const cachedResult = await checkCache(requestHash);
@@ -306,7 +330,6 @@ async function handleSolveRequest(sender, message) {
 
     const executionTimeMs = Math.round(performance.now() - startTime);
 
-    // 4. Log exact metrics to console
     console.log(
       "[Auto-Dynamic Router] Task:", taskComplexity,
       "| Model Executed:", result.modelUsed,
@@ -314,7 +337,6 @@ async function handleSolveRequest(sender, message) {
       "ms | Fallback Triggered:", result.wasFallbackTriggered || false
     );
 
-    // Save result to cache
     await writeCache(requestHash, result);
 
     return {
@@ -385,7 +407,7 @@ async function routeProviderRequest(
   }
 }
 
-// ── 2. Backend Routing Engine & Zero-Wait Recovery Cascade Matrix ────────────
+// ── Single Auto-Dynamic Model Picker & Zero-Wait Recovery Cascade Matrix ─────
 async function handleGeminiRouting(
   apiKey,
   modelMode,
@@ -395,28 +417,22 @@ async function handleGeminiRouting(
   isComplex,
   taskComplexity
 ) {
-  let currentMode = modelMode;
-  if (currentMode === 'auto_paid') currentMode = 'auto_dynamic_paid';
-  if (currentMode === 'auto_free' || currentMode === 'auto') currentMode = 'auto_dynamic_free';
+  let currentMode = modelMode || 'auto_dynamic';
+  const isAuto = currentMode === 'auto_dynamic' || currentMode.startsWith('auto');
 
   let cascadeList = [];
 
-  if (currentMode === 'auto_dynamic_paid') {
-    if (taskComplexity === 'HIGH_COMPLEXITY') {
-      // Paid High Complexity Primary: gemini-3.8-flash -> Fallback 1: gemini-3.7-flash -> Fallback 2: gemini-3.6-flash
+  if (isAuto) {
+    if (taskComplexity === 'HIGH_COMPLEXITY' || isComplex) {
+      // High Complexity / Reasoning tier: gemini-3.8-flash -> Fallback 1: gemini-3.7-flash -> Fallback 2: gemini-3.6-flash
       cascadeList = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash'];
     } else {
-      // Paid Lightweight Primary: gemini-3.8-flash-lite -> Fallback 1: gemini-3.6-flash-lite -> Fallback 2: gemini-3.5-flash-lite
+      // Lightweight / Speed tier: gemini-3.8-flash-lite -> Fallback 1: gemini-3.6-flash-lite -> Fallback 2: gemini-3.5-flash-lite
       cascadeList = ['gemini-3.8-flash-lite', 'gemini-3.6-flash-lite', 'gemini-3.5-flash-lite'];
     }
-  } else if (currentMode === 'auto_dynamic_free') {
-    // Free Tier Matrix: gemini-3.6-flash -> Fallback: gemini-3.5-flash-lite
-    cascadeList = isComplex
-      ? ['gemini-3.6-flash', 'gemini-3.5-flash-lite']
-      : ['gemini-3.5-flash-lite', 'gemini-3.6-flash'];
   } else {
-    // Manual model mode
-    let manualModel = modelMode || 'gemini-3.8-flash';
+    // Manual model selection
+    let manualModel = currentMode;
     const fallback = GEMINI_MODELS_CATALOG[manualModel]?.fallback || 'gemini-3.5-flash-lite';
     cascadeList = [manualModel, fallback];
   }
@@ -458,7 +474,6 @@ async function handleGeminiRouting(
   throw lastErr || new Error('All models in recovery cascade matrix failed.');
 }
 
-// ── 3. Zero-Latency Accuracy Boosters & Deterministic Hyperparameters ────────
 async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT, isComplex = false) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
@@ -496,7 +511,6 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     generationConfig
   };
 
-  // 6-second timeout via AbortController
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 6000);
 
@@ -522,7 +536,6 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
 
   let data = await response.json().catch(() => ({}));
 
-  // Resilient thinkingConfig retry for older or non-thinking model endpoints
   if (!response.ok && response.status === 400 && data.error?.message?.includes('thinkingConfig')) {
     delete payload.generationConfig.thinkingConfig;
     const retryController = new AbortController();
@@ -642,25 +655,18 @@ async function callOpenAIAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
 }
 
 async function handleOpenAIRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex) {
-  if (modelMode === 'auto_free') {
-    try {
-      const ans = await callOpenAIAPI(apiKey, 'gpt-5.4-mini', base64Data, systemPrompt, userPrompt, isComplex);
-      return { answer: ans, modelUsed: 'gpt-5.4-mini', wasFallbackTriggered: false };
-    } catch (err) {
-      console.warn('gpt-5.4-mini failover to gpt-4o-mini');
-      const ans = await callOpenAIAPI(apiKey, 'gpt-4o-mini', base64Data, systemPrompt, userPrompt, isComplex);
-      return { answer: ans, modelUsed: 'gpt-4o-mini', wasFallbackTriggered: true };
-    }
-  } else if (modelMode === 'auto_paid' || modelMode === 'auto_dynamic_paid') {
+  const isAuto = !modelMode || modelMode === 'auto_dynamic' || modelMode.startsWith('auto');
+  if (isAuto) {
     const primary = isComplex ? 'gpt-5.4' : 'gpt-5.4-mini';
+    const fallback = isComplex ? 'gpt-4o' : 'gpt-4o-mini';
     try {
       const ans = await callOpenAIAPI(apiKey, primary, base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: primary, wasFallbackTriggered: false };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
-        console.warn(`${primary} failover to gpt-4o-mini`);
-        const ans = await callOpenAIAPI(apiKey, 'gpt-4o-mini', base64Data, systemPrompt, userPrompt, isComplex);
-        return { answer: ans, modelUsed: 'gpt-4o-mini', wasFallbackTriggered: true };
+        console.warn(`[Auto-Dynamic Router] OpenAI ${primary} failover to ${fallback}`);
+        const ans = await callOpenAIAPI(apiKey, fallback, base64Data, systemPrompt, userPrompt, isComplex);
+        return { answer: ans, modelUsed: fallback, wasFallbackTriggered: true };
       }
       throw err;
     }
@@ -748,16 +754,18 @@ async function callAnthropicAPI(apiKey, model, base64Image, systemPrompt = SYSTE
 }
 
 async function handleAnthropicRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex) {
-  if (modelMode === 'auto_paid') {
+  const isAuto = !modelMode || modelMode === 'auto_dynamic' || modelMode.startsWith('auto');
+  if (isAuto) {
     const primary = isComplex ? 'claude-3-5-sonnet-20241022' : 'claude-3-5-haiku-20241022';
+    const fallback = isComplex ? 'claude-3-5-haiku-20241022' : 'claude-3-5-sonnet-20241022';
     try {
       const ans = await callAnthropicAPI(apiKey, primary, base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: primary, wasFallbackTriggered: false };
     } catch (err) {
       if (isQuotaOrRateLimitError(err) || err.status === 404) {
-        console.warn(`${primary} failover to claude-3-5-haiku-20241022`);
-        const ans = await callAnthropicAPI(apiKey, 'claude-3-5-haiku-20241022', base64Data, systemPrompt, userPrompt, isComplex);
-        return { answer: ans, modelUsed: 'claude-3-5-haiku-20241022', wasFallbackTriggered: true };
+        console.warn(`[Auto-Dynamic Router] Anthropic ${primary} failover to ${fallback}`);
+        const ans = await callAnthropicAPI(apiKey, fallback, base64Data, systemPrompt, userPrompt, isComplex);
+        return { answer: ans, modelUsed: fallback, wasFallbackTriggered: true };
       }
       throw err;
     }
@@ -828,13 +836,14 @@ async function callDeepSeekAPI(apiKey, model, base64Image, systemPrompt = SYSTEM
 }
 
 async function handleDeepSeekRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex) {
-  const targetModel = modelMode === 'auto_free' ? 'deepseek-chat' : modelMode;
+  const isAuto = !modelMode || modelMode === 'auto_dynamic' || modelMode.startsWith('auto');
+  const targetModel = isAuto ? 'deepseek-chat' : modelMode;
   try {
     const ans = await callDeepSeekAPI(apiKey, targetModel, base64Data, systemPrompt, userPrompt, isComplex);
     return { answer: ans, modelUsed: targetModel, wasFallbackTriggered: false };
   } catch (err) {
     if (targetModel !== 'deepseek-chat' && (isQuotaOrRateLimitError(err) || err.status === 404)) {
-      console.warn(`${targetModel} failover to deepseek-chat`);
+      console.warn(`[Auto-Dynamic Router] ${targetModel} failover to deepseek-chat`);
       const ans = await callDeepSeekAPI(apiKey, 'deepseek-chat', base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: 'deepseek-chat', wasFallbackTriggered: true };
     }
@@ -903,33 +912,17 @@ async function callOpenRouterAPI(apiKey, model, base64Image, systemPrompt = SYST
 }
 
 async function handleOpenRouterRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex) {
-  const freeVariants = [
-    'openrouter/free',
-    'meta-llama/llama-3.3-70b-instruct:free',
-    'google/gemini-2.5-flash:free'
-  ];
-
-  if (modelMode === 'auto_free') {
-    for (let i = 0; i < freeVariants.length; i++) {
-      try {
-        const ans = await callOpenRouterAPI(apiKey, freeVariants[i], base64Data, systemPrompt, userPrompt, isComplex);
-        return { answer: ans, modelUsed: freeVariants[i], wasFallbackTriggered: i > 0 };
-      } catch (err) {
-        if (i < freeVariants.length - 1) continue;
-        throw err;
-      }
-    }
-  } else if (modelMode === 'auto_paid') {
+  const isAuto = !modelMode || modelMode === 'auto_dynamic' || modelMode.startsWith('auto');
+  if (isAuto) {
+    const primary = isComplex ? 'openrouter/auto' : 'openrouter/free';
+    const fallback = isComplex ? 'openrouter/free' : 'openrouter/auto';
     try {
-      const ans = await callOpenRouterAPI(apiKey, 'openrouter/auto', base64Data, systemPrompt, userPrompt, isComplex);
-      return { answer: ans, modelUsed: 'openrouter/auto', wasFallbackTriggered: false };
+      const ans = await callOpenRouterAPI(apiKey, primary, base64Data, systemPrompt, userPrompt, isComplex);
+      return { answer: ans, modelUsed: primary, wasFallbackTriggered: false };
     } catch (err) {
-      if (isQuotaOrRateLimitError(err) || err.status === 404) {
-        console.warn('openrouter/auto failover to openrouter/free');
-        const ans = await callOpenRouterAPI(apiKey, 'openrouter/free', base64Data, systemPrompt, userPrompt, isComplex);
-        return { answer: ans, modelUsed: 'openrouter/free', wasFallbackTriggered: true };
-      }
-      throw err;
+      console.warn(`[Auto-Dynamic Router] OpenRouter ${primary} failover to ${fallback}`);
+      const ans = await callOpenRouterAPI(apiKey, fallback, base64Data, systemPrompt, userPrompt, isComplex);
+      return { answer: ans, modelUsed: fallback, wasFallbackTriggered: true };
     }
   } else {
     const ans = await callOpenRouterAPI(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex);

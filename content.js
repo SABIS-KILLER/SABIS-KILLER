@@ -1,8 +1,8 @@
 /**
  * SABIS KILLER - Content Script (v2.0)
- * Minimalist academic assistant overlay with Liquid Glass refraction,
- * zero-box floating answer typography, and positionable UI elements.
- * Settings and AI configuration are managed via the native popup launcher.
+ * In-Page Apple iOS 27 Liquid Glass Centered Modal,
+ * Heuristic AI pre-processor, zero-shadow pure black floating answer overlay,
+ * and input auto-fill anti-hijacking system.
  */
 
 (function () {
@@ -12,6 +12,10 @@
   let isUIVisible = true;
   let isSolving = false;
   let currentAnswerText = '';
+  let isModalOpen = false;
+  let currentActiveProvider = 'gemini';
+  let modalSaveToastTimer = null;
+  let modalSaveDebounceTimer = null;
 
   // Elements
   let host = null;
@@ -25,26 +29,168 @@
   let answerText = null;
   let modelBadge = null;
 
-  // Active position picker target
-  let activePickerTarget = null;
+  // In-Page Center Modal Elements
+  let settingsModalBackdrop = null;
+  let settingsModalDialog = null;
+  let modalSaveToast = null;
 
-  // Positions for movable elements (null = default CSS layout)
+  // Positions for movable elements (null = default layout)
   const positions = {
     button: null,
     prompt: null,
     answer: null
   };
 
-  // Appearance defaults
+  // Appearance defaults (Answer text strictly defaults to pure black with zero shadow)
   let appearance = {
     enable_prompt_input: true,
-    answer_text_color: '#FFFFFF',
+    answer_text_color: '#000000',
     answer_font_size: 14,
     button_bg_color: '#FFFFFF',
     button_size: 30,
     prompt_bg_color: '#FFFFFF',
     prompt_width: 180,
     glass_refraction: 70
+  };
+
+  const PROVIDERS = {
+    gemini: {
+      name: 'Google Gemini',
+      keyInputId: 'inpage-apiKey-gemini',
+      modelSelectId: 'inpage-models-gemini',
+      cardId: 'inpage-card-gemini',
+      tabBtnId: 'inpage-tab-gemini',
+      tabDotId: 'inpage-dot-gemini',
+      storageKey: 'GEMINI_API_KEY',
+      altKey: 'geminiApiKey',
+      modelKey: 'gemini_model',
+      altModelKey: 'geminiModel',
+      defaultModel: 'auto_dynamic',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'gemini-3.8-flash' : (model || 'gemini-3.8-flash');
+        return {
+          url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: 'Respond with OK' }] }] })
+        };
+      }
+    },
+    openai: {
+      name: 'OpenAI',
+      keyInputId: 'inpage-apiKey-openai',
+      modelSelectId: 'inpage-models-openai',
+      cardId: 'inpage-card-openai',
+      tabBtnId: 'inpage-tab-openai',
+      tabDotId: 'inpage-dot-openai',
+      storageKey: 'OPENAI_API_KEY',
+      modelKey: 'openai_model',
+      defaultModel: 'auto_dynamic',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'gpt-5.4-mini' : model;
+        const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
+        const payload = {
+          model: testModel,
+          messages: [{ role: 'user', content: 'Say OK' }]
+        };
+        if (isReasoning) {
+          payload.max_completion_tokens = 10;
+        } else {
+          payload.max_tokens = 5;
+        }
+        return {
+          url: 'https://api.openai.com/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify(payload)
+        };
+      }
+    },
+    anthropic: {
+      name: 'Anthropic',
+      keyInputId: 'inpage-apiKey-anthropic',
+      modelSelectId: 'inpage-models-anthropic',
+      cardId: 'inpage-card-anthropic',
+      tabBtnId: 'inpage-tab-anthropic',
+      tabDotId: 'inpage-dot-anthropic',
+      storageKey: 'ANTHROPIC_API_KEY',
+      modelKey: 'anthropic_model',
+      defaultModel: 'auto_dynamic',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'claude-3-5-haiku-20241022' : model;
+        return {
+          url: 'https://api.anthropic.com/v1/messages',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': key,
+            'anthropic-version': '2023-06-01'
+          },
+          body: JSON.stringify({
+            model: testModel,
+            max_tokens: 10,
+            messages: [{ role: 'user', content: 'Say OK' }]
+          })
+        };
+      }
+    },
+    deepseek: {
+      name: 'DeepSeek',
+      keyInputId: 'inpage-apiKey-deepseek',
+      modelSelectId: 'inpage-models-deepseek',
+      cardId: 'inpage-card-deepseek',
+      tabBtnId: 'inpage-tab-deepseek',
+      tabDotId: 'inpage-dot-deepseek',
+      storageKey: 'DEEPSEEK_API_KEY',
+      modelKey: 'deepseek_model',
+      defaultModel: 'auto_dynamic',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'deepseek-chat' : model;
+        return {
+          url: 'https://api.deepseek.com/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: testModel,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 5
+          })
+        };
+      }
+    },
+    openrouter: {
+      name: 'OpenRouter',
+      keyInputId: 'inpage-apiKey-openrouter',
+      modelSelectId: 'inpage-models-openrouter',
+      cardId: 'inpage-card-openrouter',
+      tabBtnId: 'inpage-tab-openrouter',
+      tabDotId: 'inpage-dot-openrouter',
+      storageKey: 'OPENROUTER_API_KEY',
+      modelKey: 'openrouter_model',
+      defaultModel: 'auto_dynamic',
+      getTestConfig: (key, model) => {
+        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'openrouter/free' : model;
+        return {
+          url: 'https://openrouter.ai/api/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: testModel,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 5
+          })
+        };
+      }
+    }
   };
 
   const isRuntimeValid = () => {
@@ -85,13 +231,13 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
-  // ── Heuristic Task Classifier (<1ms Client-Side Edge Pre-Processing) ───────
+  // ── 6. Heuristic Task Classifier (<1ms Client-Side Edge Pre-Processing) ─────
   function isComplexTask(prompt) {
     if (!prompt || typeof prompt !== 'string') return false;
     const text = prompt.trim();
     const lower = text.toLowerCase();
 
-    // c. High Context / Length: Prompts exceeding 400 characters OR containing multi-step keywords
+    // High Context / Length: Prompts exceeding 400 characters OR containing multi-step keywords
     if (text.length > 400) return true;
     const multiStepKeywords = [
       'explain step by step', 'step by step', 'verify accuracy', 'compare',
@@ -102,7 +248,7 @@
       if (lower.includes(kw)) return true;
     }
 
-    // a. Math & STEM Syntax: \int, \sum, \sqrt, d/dx, \matrix, fractions, problem-solving directives
+    // Math & STEM Syntax
     const mathSymbols = [
       '\\int', '∫', '\\sum', '∑', '\\sqrt', '√', 'd/dx', '\\matrix', '\\frac',
       '∂', 'lim', 'matrix', 'matrices', 'calculus', 'integral', 'derivative'
@@ -117,7 +263,7 @@
       return true;
     }
 
-    // b. Code & Technical Syntax: function, class, import, const, def, async, return, SQL queries, backtick code blocks
+    // Code & Technical Syntax
     const codeKeywords = [
       'function', 'class', 'import', 'const', 'let', 'var', 'def', 'async',
       'return', 'select', 'insert', 'update', 'delete', 'from', 'where', 'join',
@@ -132,47 +278,28 @@
     return false;
   }
 
-  // ── Dynamic Liquid Glass Refraction System ───────────────────────────────
-  // Maps slider value (0-100) → CSS custom properties set on the shadow host.
-  // CSS inside shadow DOM reads these via var(--glass-*) to apply glass effects.
-  // 0% = fully solid/opaque  |  100% = maximum translucent liquid glass
+  // ── 5. Apple iOS 27 Liquid Glass Refraction System ─────────────────────────
   function applyGlassRefraction(value) {
     if (!host) return;
     const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
-    // Background opacity: 1.0 (solid) → 0.25 (ultra-translucent)
-    host.style.setProperty('--glass-bg-opacity',   (0.25 + 0.75 * (1 - t)).toFixed(3));
-    // Backdrop blur: 0px → 40px
-    host.style.setProperty('--glass-blur',         `${Math.round(t * 40)}px`);
-    // Saturate: 100% → 220%
-    host.style.setProperty('--glass-saturate',     `${Math.round(100 + t * 120)}%`);
-    // Refraction scalar (0→1) used in calc() for edge highlights & shadows
-    host.style.setProperty('--glass-refraction',   t.toFixed(3));
-    // Border transparency: 0.15 → 0.65
-    host.style.setProperty('--glass-border-alpha', (0.15 + 0.50 * t).toFixed(3));
-    // Inset top-highlight: 0 → 0.80
-    host.style.setProperty('--glass-inset-alpha',  (0.80 * t).toFixed(3));
-    // Outer shadow: 0.04 → 0.25
-    host.style.setProperty('--glass-shadow-alpha', (0.04 + 0.21 * t).toFixed(3));
-    // Card opacity (slightly more opaque than main): 1.0 → 0.40
-    host.style.setProperty('--glass-card-opacity', (0.40 + 0.60 * (1 - t)).toFixed(3));
+    host.style.setProperty('--glass-opacity', (0.25 + 0.70 * (1 - t)).toFixed(3));
+    host.style.setProperty('--glass-refraction', (0.15 + 0.85 * t).toFixed(3));
+    host.style.setProperty('--glass-blur', `${Math.round(20 + t * 24)}px`);
+    host.style.setProperty('--glass-saturate', `${Math.round(160 + t * 60)}%`);
   }
 
+  // ── 3. Answer Text & Appearance Styling (Plain Black Text, Zero Shadow) ───
   function applyAppearanceSettings(newSettings) {
     if (!newSettings) return;
     appearance = { ...appearance, ...newSettings };
 
-    // Update CSS custom properties for the glass refraction system
     applyGlassRefraction(appearance.glass_refraction || 70);
 
-    // Compute glass parameters for inline-styled elements (buttons / prompt)
     const _gt = Math.max(0, Math.min(100, parseInt(appearance.glass_refraction || 70, 10))) / 100;
-    const _gBgOp    = parseFloat((0.25 + 0.75 * (1 - _gt)).toFixed(3));
-    const _gBlur    = Math.round(_gt * 40);
-    const _gSat     = Math.round(100 + _gt * 120);
-    const _gBorder  = parseFloat((0.15 + 0.50 * _gt).toFixed(3));
-    const _gInset   = parseFloat((0.80 * _gt).toFixed(3));
-    const _gShadow  = parseFloat((0.04 + 0.21 * _gt).toFixed(3));
-    const _gRef     = _gt;
+    const _gBgOp = parseFloat((0.25 + 0.70 * (1 - _gt)).toFixed(3));
+    const _gBlur = Math.round(20 + _gt * 24);
+    const _gSat = Math.round(160 + _gt * 60);
+    const _gRef = parseFloat((0.15 + 0.85 * _gt).toFixed(3));
 
     if (answerContainer) {
       answerContainer.style.setProperty('background', 'transparent', 'important');
@@ -184,7 +311,7 @@
     }
 
     if (answerText) {
-      const textColor = appearance.answer_text_color || '#FFFFFF';
+      const textColor = appearance.answer_text_color || '#000000';
       const fontSize = appearance.answer_font_size || 14;
       answerText.style.setProperty('color', textColor, 'important');
       answerText.style.setProperty('font-size', `${fontSize}px`, 'important');
@@ -195,7 +322,8 @@
       answerText.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
       answerText.style.setProperty('border', 'none', 'important');
       answerText.style.setProperty('box-shadow', 'none', 'important');
-      answerText.style.setProperty('text-shadow', '0px 1px 4px rgba(0, 0, 0, 0.9), 0px 0px 8px rgba(0, 0, 0, 0.8)', 'important');
+      answerText.style.setProperty('text-shadow', 'none', 'important');
+      answerText.style.setProperty('filter', 'none', 'important');
     }
 
     if (captureButton) {
@@ -207,8 +335,8 @@
       captureButton.style.setProperty('background', translucentBg, 'important');
       captureButton.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
       captureButton.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
-      captureButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gBorder})`, 'important');
-      captureButton.style.setProperty('box-shadow', `inset 0 1px 0 rgba(255, 255, 255, ${_gInset}), inset 0 -1px 0 rgba(0, 0, 0, ${(_gRef * 0.30).toFixed(3)}), 0 8px 24px rgba(0, 0, 0, ${_gShadow}), 0 2px 6px rgba(0, 0, 0, ${(_gShadow * 0.32).toFixed(3)})`, 'important');
+      captureButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gRef})`, 'important');
+      captureButton.style.setProperty('box-shadow', `inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.15), 0 8px 24px rgba(0, 0, 0, 0.16)`, 'important');
       captureButton.style.setProperty('width', `${btnSize}px`, 'important');
       captureButton.style.setProperty('height', `${btnSize}px`, 'important');
 
@@ -233,8 +361,8 @@
       promptInput.style.setProperty('background', translucentPromptBg, 'important');
       promptInput.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
       promptInput.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
-      promptInput.style.setProperty('border', `1px solid rgba(255, 255, 255, ${(_gBorder * 0.75).toFixed(3)})`, 'important');
-      promptInput.style.setProperty('box-shadow', `inset 0 1px 0 rgba(255, 255, 255, ${_gInset}), 0 8px 24px rgba(0, 0, 0, ${_gShadow})`, 'important');
+      promptInput.style.setProperty('border', `1px solid rgba(255, 255, 255, ${(_gRef * 0.75).toFixed(3)})`, 'important');
+      promptInput.style.setProperty('box-shadow', `inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 8px 24px rgba(0, 0, 0, 0.12)`, 'important');
       promptInput.style.setProperty('color', pContrast, 'important');
       promptInput.style.setProperty('width', `${pWidth}px`, 'important');
     }
@@ -352,9 +480,12 @@
   }
 
   // ── Position Picker ─────────────────────────────────────────────────────────
-
   function startPositionPicker(targetElement, onComplete) {
     activePickerTarget = targetElement;
+    const wasModalOpenBeforePicker = isModalOpen;
+    if (wasModalOpenBeforePicker) {
+      closeSettingsModal();
+    }
 
     const existing = document.getElementById('position-picker-overlay');
     if (existing) existing.remove();
@@ -397,8 +528,13 @@
           ['pos_' + targetElement]: { x: posX, y: posY }
         }, () => {
           if (typeof onComplete === 'function') onComplete({ x: posX, y: posY });
+          if (wasModalOpenBeforePicker) {
+            setTimeout(openSettingsModal, 100);
+          }
         });
-      } catch (_) {}
+      } catch (_) {
+        if (wasModalOpenBeforePicker) openSettingsModal();
+      }
 
       window.removeEventListener('keydown', handleKeydown, { capture: true });
     }
@@ -411,6 +547,7 @@
         if (overlayEl) overlayEl.remove();
         window.removeEventListener('click', handleScreenClick, { capture: true });
         window.removeEventListener('keydown', handleKeydown, { capture: true });
+        if (wasModalOpenBeforePicker) openSettingsModal();
       }
     }
 
@@ -418,11 +555,318 @@
     window.addEventListener('keydown', handleKeydown, { capture: true, once: true });
   }
 
-  // Listen for messages from popup
+  // ── 1. Custom In-Page Center Modal Functions ────────────────────────────────
+  function showModalToast(msg = 'Saved') {
+    if (!modalSaveToast) return;
+    const span = modalSaveToast.querySelector('span');
+    if (span) span.textContent = msg;
+    modalSaveToast.classList.add('show');
+    clearTimeout(modalSaveToastTimer);
+    modalSaveToastTimer = setTimeout(() => {
+      modalSaveToast.classList.remove('show');
+    }, 1800);
+  }
+
+  function updateModalProviderStatus() {
+    if (!shadow) return;
+    const statusBadge = shadow.getElementById('inpage-status-badge');
+    const statusText = shadow.getElementById('inpage-status-text');
+    if (!statusBadge || !statusText) return;
+
+    const conf = PROVIDERS[currentActiveProvider];
+    if (!conf) return;
+
+    const keyInput = shadow.getElementById(conf.keyInputId);
+    const hasKey = keyInput && keyInput.value.trim().length > 0;
+
+    if (hasKey) {
+      statusBadge.className = 'modal-status-badge status-ready';
+      statusText.textContent = 'Ready';
+    } else {
+      statusBadge.className = 'modal-status-badge status-missing';
+      statusText.textContent = 'No Key';
+    }
+
+    // Update dots
+    Object.keys(PROVIDERS).forEach(k => {
+      const pConf = PROVIDERS[k];
+      const pInput = shadow.getElementById(pConf.keyInputId);
+      const dot = shadow.getElementById(pConf.tabDotId);
+      if (dot && pInput) {
+        dot.classList.toggle('configured', pInput.value.trim().length > 0);
+      }
+    });
+  }
+
+  function switchModalProvider(providerKey) {
+    if (!PROVIDERS[providerKey] || !shadow) return;
+    currentActiveProvider = providerKey;
+
+    shadow.querySelectorAll('.modal-segmented-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-provider') === providerKey);
+    });
+
+    shadow.querySelectorAll('.modal-provider-card').forEach(card => {
+      card.classList.toggle('active', card.id === PROVIDERS[providerKey].cardId);
+    });
+
+    const feedback = shadow.getElementById('inpage-test-feedback');
+    if (feedback) {
+      feedback.className = 'modal-test-feedback hidden';
+      feedback.textContent = '';
+    }
+
+    updateModalProviderStatus();
+    autoSaveModal(false);
+  }
+
+  function openSettingsModal() {
+    if (!settingsModalDialog || !settingsModalBackdrop) return;
+    populateModalFields();
+    settingsModalBackdrop.classList.add('open');
+    settingsModalDialog.classList.add('open');
+    isModalOpen = true;
+  }
+
+  function closeSettingsModal() {
+    if (!settingsModalDialog || !settingsModalBackdrop) return;
+    settingsModalDialog.classList.remove('open');
+    settingsModalBackdrop.classList.remove('open');
+    isModalOpen = false;
+  }
+
+  function toggleSettingsModal() {
+    if (isModalOpen) {
+      closeSettingsModal();
+    } else {
+      openSettingsModal();
+    }
+  }
+
+  function populateModalFields() {
+    if (!shadow) return;
+    chrome.storage.local.get([
+      'ai_provider', 'active_provider',
+      'glass_refraction', 'enable_prompt_input',
+      'answer_text_color', 'answer_font_size',
+      'button_bg_color', 'button_size',
+      'prompt_bg_color', 'prompt_width',
+      'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel',
+      'OPENAI_API_KEY', 'openai_model',
+      'ANTHROPIC_API_KEY', 'anthropic_model',
+      'DEEPSEEK_API_KEY', 'deepseek_model',
+      'OPENROUTER_API_KEY', 'openrouter_model'
+    ], (items) => {
+      if (chrome.runtime.lastError || !items) return;
+
+      const savedProv = items.ai_provider || items.active_provider || 'gemini';
+      currentActiveProvider = PROVIDERS[savedProv] ? savedProv : 'gemini';
+
+      Object.keys(PROVIDERS).forEach(prov => {
+        const conf = PROVIDERS[prov];
+        const keyInput = shadow.getElementById(conf.keyInputId);
+        const modelSelect = shadow.getElementById(conf.modelSelectId);
+
+        const valKey = items[conf.storageKey] || (conf.altKey && items[conf.altKey]) || '';
+        let valModel = items[conf.modelKey] || (conf.altModelKey && items[conf.altModelKey]) || conf.defaultModel;
+        // Normalize any old auto option to auto_dynamic
+        if (valModel?.startsWith('auto')) valModel = 'auto_dynamic';
+
+        if (keyInput) keyInput.value = valKey;
+        if (modelSelect) modelSelect.value = valModel;
+      });
+
+      const glassVal = items.glass_refraction != null ? items.glass_refraction : 70;
+      const glassSlider = shadow.getElementById('inpage-glass-slider');
+      const glassBadge = shadow.getElementById('inpage-glass-val');
+      if (glassSlider) glassSlider.value = glassVal;
+      if (glassBadge) glassBadge.textContent = `${glassVal}%`;
+      applyGlassRefraction(glassVal);
+
+      const promptToggle = shadow.getElementById('inpage-enable-prompt');
+      if (promptToggle) promptToggle.checked = items.enable_prompt_input !== false;
+
+      // Typography (Strictly pure black default)
+      const ansColor = items.answer_text_color || '#000000';
+      const ansSize = items.answer_font_size || 14;
+      const ansPicker = shadow.getElementById('inpage-answer-color-picker');
+      const ansHex = shadow.getElementById('inpage-answer-color-hex');
+      const ansSlider = shadow.getElementById('inpage-answer-font-size');
+      const ansBadge = shadow.getElementById('inpage-answer-font-size-val');
+      if (ansPicker) ansPicker.value = ansColor;
+      if (ansHex) ansHex.value = ansColor.toUpperCase();
+      if (ansSlider) ansSlider.value = ansSize;
+      if (ansBadge) ansBadge.textContent = `${ansSize}px`;
+
+      // Button
+      const btnColor = items.button_bg_color || '#FFFFFF';
+      const btnSize = items.button_size || 30;
+      const bPicker = shadow.getElementById('inpage-button-color-picker');
+      const bHex = shadow.getElementById('inpage-button-color-hex');
+      const bSlider = shadow.getElementById('inpage-button-size');
+      const bBadge = shadow.getElementById('inpage-button-size-val');
+      if (bPicker) bPicker.value = btnColor;
+      if (bHex) bHex.value = btnColor.toUpperCase();
+      if (bSlider) bSlider.value = btnSize;
+      if (bBadge) bBadge.textContent = `${btnSize}px`;
+
+      // Prompt Bar
+      const pColor = items.prompt_bg_color || '#FFFFFF';
+      const pWidth = items.prompt_width || 180;
+      const pPicker = shadow.getElementById('inpage-prompt-color-picker');
+      const pHex = shadow.getElementById('inpage-prompt-color-hex');
+      const pSlider = shadow.getElementById('inpage-prompt-width');
+      const pBadge = shadow.getElementById('inpage-prompt-width-val');
+      if (pPicker) pPicker.value = pColor;
+      if (pHex) pHex.value = pColor.toUpperCase();
+      if (pSlider) pSlider.value = pWidth;
+      if (pBadge) pBadge.textContent = `${pWidth}px`;
+
+      switchModalProvider(currentActiveProvider);
+    });
+  }
+
+  function autoSaveModal(showNotification = true) {
+    if (!shadow) return;
+    clearTimeout(modalSaveDebounceTimer);
+    modalSaveDebounceTimer = setTimeout(() => {
+      const data = {
+        ai_provider: currentActiveProvider
+      };
+
+      Object.keys(PROVIDERS).forEach(prov => {
+        const conf = PROVIDERS[prov];
+        const keyEl = shadow.getElementById(conf.keyInputId);
+        const modelEl = shadow.getElementById(conf.modelSelectId);
+
+        const keyVal = keyEl ? keyEl.value.trim() : '';
+        const modelVal = modelEl ? modelEl.value : conf.defaultModel;
+
+        data[conf.storageKey] = keyVal;
+        if (conf.altKey) data[conf.altKey] = keyVal;
+        data[conf.modelKey] = modelVal;
+        if (conf.altModelKey) data[conf.altModelKey] = modelVal;
+      });
+
+      const glassSlider = shadow.getElementById('inpage-glass-slider');
+      const promptToggle = shadow.getElementById('inpage-enable-prompt');
+      const ansHex = shadow.getElementById('inpage-answer-color-hex');
+      const ansSlider = shadow.getElementById('inpage-answer-font-size');
+      const bHex = shadow.getElementById('inpage-button-color-hex');
+      const bSlider = shadow.getElementById('inpage-button-size');
+      const pHex = shadow.getElementById('inpage-prompt-color-hex');
+      const pSlider = shadow.getElementById('inpage-prompt-width');
+
+      data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
+      data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
+      data.answer_text_color = ansHex ? ansHex.value.trim() : '#000000';
+      data.answer_font_size = ansSlider ? parseInt(ansSlider.value, 10) : 14;
+      data.button_bg_color = bHex ? bHex.value.trim() : '#FFFFFF';
+      data.button_size = bSlider ? parseInt(bSlider.value, 10) : 30;
+      data.prompt_bg_color = pHex ? pHex.value.trim() : '#FFFFFF';
+      data.prompt_width = pSlider ? parseInt(pSlider.value, 10) : 180;
+
+      chrome.storage.local.set(data, () => {
+        applyAppearanceSettings(data);
+        updateModalProviderStatus();
+        if (showNotification) {
+          showModalToast('Saved');
+        }
+      });
+    }, 180);
+  }
+
+  async function testModalConnection() {
+    if (!shadow) return;
+    const btn = shadow.getElementById('inpage-btn-test-connection');
+    const feedback = shadow.getElementById('inpage-test-feedback');
+    if (!btn || !feedback) return;
+
+    const conf = PROVIDERS[currentActiveProvider];
+    if (!conf) return;
+
+    const keyInput = shadow.getElementById(conf.keyInputId);
+    const modelSelect = shadow.getElementById(conf.modelSelectId);
+    const key = keyInput ? keyInput.value.trim() : '';
+    const model = modelSelect ? modelSelect.value : conf.defaultModel;
+
+    if (!key) {
+      feedback.className = 'modal-test-feedback error';
+      feedback.textContent = `Please enter a valid API key for ${conf.name} first.`;
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Connecting...';
+    feedback.className = 'modal-test-feedback hidden';
+
+    try {
+      const testConfig = conf.getTestConfig(key, model);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const resp = await fetch(testConfig.url, {
+        method: testConfig.method,
+        headers: testConfig.headers,
+        body: testConfig.body,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (resp.ok) {
+        feedback.className = 'modal-test-feedback success';
+        feedback.textContent = `Connection successful! ${conf.name} verified.`;
+      } else {
+        let errSnippet = `HTTP ${resp.status}`;
+        try {
+          const json = await resp.json();
+          errSnippet = json.error?.message || json.message || errSnippet;
+        } catch (_) {
+          try {
+            const txt = await resp.text();
+            if (txt) errSnippet = txt.substring(0, 100);
+          } catch (_) {}
+        }
+        feedback.className = 'modal-test-feedback error';
+        feedback.textContent = `Failed (${resp.status}): ${errSnippet}`;
+      }
+    } catch (err) {
+      feedback.className = 'modal-test-feedback error';
+      if (err.name === 'AbortError') {
+        feedback.textContent = 'Connection timed out (12s). Check your internet connection.';
+      } else {
+        feedback.textContent = `Error: ${err.message || 'Network request failed'}`;
+      }
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Test Connection';
+    }
+  }
+
+  // ── Listen for Messages from background.js ──────────────────────────────────
   if (isRuntimeValid()) {
     try {
       chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (!msg) return;
+
+        if (msg.action === 'TOGGLE_SETTINGS_MODAL') {
+          toggleSettingsModal();
+          sendResponse({ success: true, isOpen: isModalOpen });
+          return;
+        }
+
+        if (msg.action === 'OPEN_SETTINGS_MODAL') {
+          openSettingsModal();
+          sendResponse({ success: true });
+          return;
+        }
+
+        if (msg.action === 'CLOSE_SETTINGS_MODAL') {
+          closeSettingsModal();
+          sendResponse({ success: true });
+          return;
+        }
 
         const target = msg.targetElement || msg.target;
         if ((msg.action === 'START_POSITION_PICKER' || msg.action === 'ACTIVATE_POSITION_PICKER') && target) {
@@ -430,6 +874,7 @@
           sendResponse({ success: true });
           return;
         }
+
         if (msg.action === 'RESET_POSITION' && target) {
           positions[target] = null;
           try {
@@ -439,6 +884,7 @@
           sendResponse({ success: true });
           return;
         }
+
         if (msg.action === 'UPDATE_SETTINGS' && msg.settings) {
           applyAppearanceSettings(msg.settings);
           sendResponse({ success: true });
@@ -448,14 +894,13 @@
     } catch (_) {}
   }
 
+  // ── Build Shadow DOM UI Tree ────────────────────────────────────────────────
   function createShadowUI() {
     host = document.createElement('div');
     host.id = 'academic-solver-root';
-    host.style.cssText = 'position: fixed !important; top: 0 !important; left: 0 !important; width: 0 !important; height: 0 !important; z-index: 2147483647 !important; pointer-events: none !important; border: none !important; margin: 0 !important; padding: 0 !important;';
 
     shadow = host.attachShadow({ mode: 'open' });
 
-    // Link external content.css stylesheet for full styling inside Shadow DOM
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
     cssLink.href = chrome.runtime.getURL('content.css');
@@ -471,12 +916,17 @@
     bottomControlsBar = document.createElement('div');
     bottomControlsBar.id = 'bottom-controls-bar';
 
+    // 4. Input auto-fill anti-hijacking attributes on prompt bar
     promptInput = document.createElement('input');
     promptInput.id = 'prompt-input';
     promptInput.type = 'text';
     promptInput.placeholder = 'Custom instruction...';
-    promptInput.autocomplete = 'off';
-    promptInput.spellcheck = false;
+    promptInput.setAttribute('autocomplete', 'off');
+    promptInput.setAttribute('autocorrect', 'off');
+    promptInput.setAttribute('autocapitalize', 'off');
+    promptInput.setAttribute('spellcheck', 'false');
+    promptInput.setAttribute('data-lpignore', 'true');
+    promptInput.setAttribute('aria-autocomplete', 'none');
 
     promptInput.addEventListener('keydown', (e) => {
       e.stopPropagation();
@@ -511,6 +961,7 @@
 
     answerText = document.createElement('div');
     answerText.id = 'answer-text';
+    answerText.className = 'answer-text';
     answerText.textContent = formatAnswerForBar(currentAnswerText);
 
     answerContainer.appendChild(answerText);
@@ -522,11 +973,472 @@
     uiWrapper.appendChild(bottomControlsBar);
     uiWrapper.appendChild(answerContainer);
 
+    // ── Build Custom In-Page Center Modal (iOS 27 Liquid Glass Stack) ─────────
+    settingsModalBackdrop = document.createElement('div');
+    settingsModalBackdrop.id = 'settings-modal-backdrop';
+
+    settingsModalDialog = document.createElement('div');
+    settingsModalDialog.id = 'settings-modal-dialog';
+    settingsModalDialog.innerHTML = `
+      <div id="modal-save-toast">
+        <svg viewBox="0 0 20 20" width="13" height="13" fill="currentColor">
+          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+        </svg>
+        <span>Saved</span>
+      </div>
+
+      <header id="settings-modal-header">
+        <div class="modal-logo-area">
+          <div class="modal-logo-dot"></div>
+          <h2 class="modal-header-title">SABIS KILLER <span class="modal-version-tag">v2.0</span></h2>
+        </div>
+        <div class="modal-header-right">
+          <div id="inpage-status-badge" class="modal-status-badge status-missing">
+            <span class="status-dot"></span>
+            <span id="inpage-status-text">No Key</span>
+          </div>
+          <button type="button" id="settings-modal-close" title="Close Settings">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main id="settings-modal-content">
+        <!-- Tabbed Provider Controller -->
+        <div class="modal-form-group">
+          <label class="modal-section-label">Active AI Provider</label>
+          <div class="modal-segmented-nav" role="tablist">
+            <button type="button" class="modal-segmented-btn active" data-provider="gemini" id="inpage-tab-gemini">
+              <span class="modal-tab-dot" id="inpage-dot-gemini"></span>
+              <span>Google</span>
+            </button>
+            <button type="button" class="modal-segmented-btn" data-provider="openai" id="inpage-tab-openai">
+              <span class="modal-tab-dot" id="inpage-dot-openai"></span>
+              <span>OpenAI</span>
+            </button>
+            <button type="button" class="modal-segmented-btn" data-provider="anthropic" id="inpage-tab-anthropic">
+              <span class="modal-tab-dot" id="inpage-dot-anthropic"></span>
+              <span>Anthropic</span>
+            </button>
+            <button type="button" class="modal-segmented-btn" data-provider="deepseek" id="inpage-tab-deepseek">
+              <span class="modal-tab-dot" id="inpage-dot-deepseek"></span>
+              <span>DeepSeek</span>
+            </button>
+            <button type="button" class="modal-segmented-btn" data-provider="openrouter" id="inpage-tab-openrouter">
+              <span class="modal-tab-dot" id="inpage-dot-openrouter"></span>
+              <span>OpenRouter</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Google Gemini Card -->
+        <div class="modal-provider-card active" id="inpage-card-gemini">
+          <div class="modal-form-group">
+            <label for="inpage-apiKey-gemini">Gemini API Key</label>
+            <div class="modal-input-wrapper">
+              <input type="password" id="inpage-apiKey-gemini" class="modal-api-key-input" placeholder="AIzaSy..."
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-gemini" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="modal-form-hint">Obtain from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">Google AI Studio</a></span>
+          </div>
+
+          <div class="modal-form-group">
+            <label for="inpage-models-gemini">Model</label>
+            <select id="inpage-models-gemini" class="modal-select-field">
+              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
+              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
+              <option value="gemini-3.8-flash-lite">Gemini 3.8 Flash Lite</option>
+              <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
+              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
+              <option value="gemini-3.6-flash-lite">Gemini 3.6 Flash Lite</option>
+              <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
+              <option value="gemini-3.8-pro">Gemini 3.8 Pro</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- OpenAI Card -->
+        <div class="modal-provider-card" id="inpage-card-openai">
+          <div class="modal-form-group">
+            <label for="inpage-apiKey-openai">OpenAI API Key</label>
+            <div class="modal-input-wrapper">
+              <input type="password" id="inpage-apiKey-openai" class="modal-api-key-input" placeholder="sk-proj-..."
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-openai" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="modal-form-hint">Obtain from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI Platform</a></span>
+          </div>
+
+          <div class="modal-form-group">
+            <label for="inpage-models-openai">Model</label>
+            <select id="inpage-models-openai" class="modal-select-field">
+              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
+              <option value="gpt-5.4">GPT-5.4</option>
+              <option value="gpt-5.4-mini">GPT-5.4-mini</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option value="gpt-4o-mini">GPT-4o-mini</option>
+              <option value="o3-mini">o3-mini Reasoning</option>
+              <option value="o1">o1 Reasoning</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Anthropic Card -->
+        <div class="modal-provider-card" id="inpage-card-anthropic">
+          <div class="modal-form-group">
+            <label for="inpage-apiKey-anthropic">Anthropic API Key</label>
+            <div class="modal-input-wrapper">
+              <input type="password" id="inpage-apiKey-anthropic" class="modal-api-key-input" placeholder="sk-ant-..."
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-anthropic" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="modal-form-hint">Obtain from <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">Anthropic Console</a></span>
+          </div>
+
+          <div class="modal-form-group">
+            <label for="inpage-models-anthropic">Model</label>
+            <select id="inpage-models-anthropic" class="modal-select-field">
+              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
+              <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
+              <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+              <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
+              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DeepSeek Card -->
+        <div class="modal-provider-card" id="inpage-card-deepseek">
+          <div class="modal-form-group">
+            <label for="inpage-apiKey-deepseek">DeepSeek API Key</label>
+            <div class="modal-input-wrapper">
+              <input type="password" id="inpage-apiKey-deepseek" class="modal-api-key-input" placeholder="sk-..."
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-deepseek" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="modal-form-hint">Obtain from <a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform</a></span>
+          </div>
+
+          <div class="modal-form-group">
+            <label for="inpage-models-deepseek">Model</label>
+            <select id="inpage-models-deepseek" class="modal-select-field">
+              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
+              <option value="deepseek-chat">DeepSeek-V3 (Chat)</option>
+              <option value="deepseek-reasoner">DeepSeek-R1 (Reasoner)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- OpenRouter Card -->
+        <div class="modal-provider-card" id="inpage-card-openrouter">
+          <div class="modal-form-group">
+            <label for="inpage-apiKey-openrouter">OpenRouter API Key</label>
+            <div class="modal-input-wrapper">
+              <input type="password" id="inpage-apiKey-openrouter" class="modal-api-key-input" placeholder="sk-or-v1-..."
+                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-openrouter" title="Show/Hide Key">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+            <span class="modal-form-hint">Obtain from <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai</a></span>
+          </div>
+
+          <div class="modal-form-group">
+            <label for="inpage-models-openrouter">Model</label>
+            <select id="inpage-models-openrouter" class="modal-select-field">
+              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
+              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
+              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+              <option value="deepseek/deepseek-r1">DeepSeek R1</option>
+              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button" id="inpage-btn-test-connection" class="modal-btn-secondary">Test Connection</button>
+        <div id="inpage-test-feedback" class="modal-test-feedback hidden"></div>
+
+        <div class="modal-divider"></div>
+
+        <!-- Appearance Section -->
+        <label class="modal-section-label">UI & Appearance</label>
+
+        <!-- Glass Refraction Slider -->
+        <div class="modal-appearance-card">
+          <div class="modal-control-row">
+            <div>
+              <span class="modal-control-title">Glass Refraction</span>
+              <p class="modal-control-sub">0% = Opaque solid &middot; 100% = Liquid glass</p>
+            </div>
+            <span id="inpage-glass-val" class="modal-badge">70%</span>
+          </div>
+          <input type="range" id="inpage-glass-slider" min="0" max="100" value="70" class="modal-range-slider">
+        </div>
+
+        <!-- Custom Prompt Toggle -->
+        <div class="modal-appearance-card">
+          <div class="modal-control-row">
+            <div>
+              <span class="modal-control-title">Prompt Bar</span>
+              <p class="modal-control-sub">Display custom instruction bar on webpage</p>
+            </div>
+            <label class="modal-switch">
+              <input type="checkbox" id="inpage-enable-prompt" checked>
+              <span class="modal-switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Answer Typography (Pure black default, zero shadow) -->
+        <div class="modal-appearance-card">
+          <span class="modal-control-title">Answer Typography</span>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Text Color</span>
+            <div class="modal-color-picker-group">
+              <input type="color" id="inpage-answer-color-picker" value="#000000" class="modal-color-swatch">
+              <input type="text" id="inpage-answer-color-hex" value="#000000" maxlength="7" class="modal-hex-input"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
+            </div>
+          </div>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Font Size</span>
+            <div class="modal-slider-group">
+              <input type="range" id="inpage-answer-font-size" min="10" max="28" value="14" class="modal-range-slider">
+              <span id="inpage-answer-font-size-val" class="modal-badge">14px</span>
+            </div>
+          </div>
+          <div class="modal-position-actions">
+            <button type="button" class="modal-btn-pill inpage-change-pos" data-target="answer">Change Position</button>
+            <button type="button" class="modal-btn-pill reset-btn inpage-reset-pos" data-target="answer">Reset</button>
+          </div>
+        </div>
+
+        <!-- Screenshot Button Card -->
+        <div class="modal-appearance-card">
+          <span class="modal-control-title">Screenshot Button</span>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Button Color</span>
+            <div class="modal-color-picker-group">
+              <input type="color" id="inpage-button-color-picker" value="#FFFFFF" class="modal-color-swatch">
+              <input type="text" id="inpage-button-color-hex" value="#FFFFFF" maxlength="7" class="modal-hex-input"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
+            </div>
+          </div>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Button Size</span>
+            <div class="modal-slider-group">
+              <input type="range" id="inpage-button-size" min="20" max="60" value="30" class="modal-range-slider">
+              <span id="inpage-button-size-val" class="modal-badge">30px</span>
+            </div>
+          </div>
+          <div class="modal-position-actions">
+            <button type="button" class="modal-btn-pill inpage-change-pos" data-target="button">Change Position</button>
+            <button type="button" class="modal-btn-pill reset-btn inpage-reset-pos" data-target="button">Reset</button>
+          </div>
+        </div>
+
+        <!-- Prompt Bar Style Card -->
+        <div class="modal-appearance-card">
+          <span class="modal-control-title">Prompt Bar Style</span>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Bar Color</span>
+            <div class="modal-color-picker-group">
+              <input type="color" id="inpage-prompt-color-picker" value="#FFFFFF" class="modal-color-swatch">
+              <input type="text" id="inpage-prompt-color-hex" value="#FFFFFF" maxlength="7" class="modal-hex-input"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true">
+            </div>
+          </div>
+          <div class="modal-control-row" style="margin-top: 8px;">
+            <span class="modal-control-label">Bar Width</span>
+            <div class="modal-slider-group">
+              <input type="range" id="inpage-prompt-width" min="120" max="400" value="180" class="modal-range-slider">
+              <span id="inpage-prompt-width-val" class="modal-badge">180px</span>
+            </div>
+          </div>
+          <div class="modal-position-actions">
+            <button type="button" class="modal-btn-pill inpage-change-pos" data-target="prompt">Change Position</button>
+            <button type="button" class="modal-btn-pill reset-btn inpage-reset-pos" data-target="prompt">Reset</button>
+          </div>
+        </div>
+      </main>
+    `;
+
+    modalSaveToast = settingsModalDialog.querySelector('#modal-save-toast');
+
+    // Attach to shadow root
     shadow.appendChild(hiddenToggleZone);
     shadow.appendChild(uiWrapper);
+    shadow.appendChild(settingsModalBackdrop);
+    shadow.appendChild(settingsModalDialog);
+
+    // Modal Event Listeners
+    settingsModalBackdrop.addEventListener('click', closeSettingsModal);
+    const closeBtn = settingsModalDialog.querySelector('#settings-modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeSettingsModal);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isModalOpen) {
+        closeSettingsModal();
+      }
+    });
+
+    // Provider Tabs
+    settingsModalDialog.querySelectorAll('.modal-segmented-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const prov = btn.getAttribute('data-provider');
+        switchModalProvider(prov);
+      });
+    });
+
+    // Eye Password Toggles
+    settingsModalDialog.querySelectorAll('.modal-toggle-eye').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetId = btn.getAttribute('data-target');
+        const input = shadow.getElementById(targetId);
+        if (!input) return;
+        const isPassword = input.type === 'password';
+        input.type = isPassword ? 'text' : 'password';
+        btn.innerHTML = isPassword
+          ? `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+               <line x1="1" y1="1" x2="23" y2="23"></line>
+             </svg>`
+          : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+               <circle cx="12" cy="12" r="3"></circle>
+             </svg>`;
+      });
+    });
+
+    // Test Connection Button
+    const testBtn = settingsModalDialog.querySelector('#inpage-btn-test-connection');
+    if (testBtn) testBtn.addEventListener('click', testModalConnection);
+
+    // Glass Refraction Slider
+    const glassSlider = settingsModalDialog.querySelector('#inpage-glass-slider');
+    const glassBadge = settingsModalDialog.querySelector('#inpage-glass-val');
+    if (glassSlider && glassBadge) {
+      glassSlider.addEventListener('input', () => {
+        glassBadge.textContent = `${glassSlider.value}%`;
+        applyGlassRefraction(glassSlider.value);
+        autoSaveModal();
+      });
+    }
+
+    // Prompt Bar Toggle
+    const promptToggle = settingsModalDialog.querySelector('#inpage-enable-prompt');
+    if (promptToggle) {
+      promptToggle.addEventListener('change', () => autoSaveModal());
+    }
+
+    // Helper: Bind Color Picker and Hex Input Pair
+    function bindColorSync(pickerId, hexId) {
+      const p = shadow.getElementById(pickerId);
+      const h = shadow.getElementById(hexId);
+      if (!p || !h) return;
+      p.addEventListener('input', () => {
+        h.value = p.value.toUpperCase();
+        autoSaveModal();
+      });
+      h.addEventListener('input', () => {
+        let v = h.value.trim();
+        if (!v.startsWith('#')) v = '#' + v;
+        if (/^#[0-9A-Fa-f]{6}$/.test(v)) {
+          p.value = v;
+          autoSaveModal();
+        }
+      });
+    }
+
+    function bindSliderSync(sliderId, badgeId, unit = '') {
+      const s = shadow.getElementById(sliderId);
+      const b = shadow.getElementById(badgeId);
+      if (!s || !b) return;
+      s.addEventListener('input', () => {
+        b.textContent = `${s.value}${unit}`;
+        autoSaveModal();
+      });
+    }
+
+    bindColorSync('inpage-answer-color-picker', 'inpage-answer-color-hex');
+    bindSliderSync('inpage-answer-font-size', 'inpage-answer-font-size-val', 'px');
+
+    bindColorSync('inpage-button-color-picker', 'inpage-button-color-hex');
+    bindSliderSync('inpage-button-size', 'inpage-button-size-val', 'px');
+
+    bindColorSync('inpage-prompt-color-picker', 'inpage-prompt-color-hex');
+    bindSliderSync('inpage-prompt-width', 'inpage-prompt-width-val', 'px');
+
+    // Auto-save listeners on all API key and model fields
+    Object.keys(PROVIDERS).forEach(prov => {
+      const conf = PROVIDERS[prov];
+      const keyEl = shadow.getElementById(conf.keyInputId);
+      const modelEl = shadow.getElementById(conf.modelSelectId);
+      if (keyEl) {
+        keyEl.addEventListener('input', () => autoSaveModal());
+        keyEl.addEventListener('change', () => autoSaveModal());
+      }
+      if (modelEl) {
+        modelEl.addEventListener('change', () => autoSaveModal());
+      }
+    });
+
+    // Position Action Buttons inside Modal
+    settingsModalDialog.querySelectorAll('.inpage-change-pos').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-target');
+        startPositionPicker(target);
+      });
+    });
+
+    settingsModalDialog.querySelectorAll('.inpage-reset-pos').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.getAttribute('data-target');
+        positions[target] = null;
+        try {
+          chrome.storage.local.remove([`${target}_position`, `pos_${target}`], () => {
+            resetTargetPosition(target);
+            showModalToast('Position Reset');
+          });
+        } catch (_) {
+          resetTargetPosition(target);
+        }
+      });
+    });
 
     loadStoredSettings();
 
+    // Stealth Toggle Zone
     hiddenToggleZone.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -534,6 +1446,7 @@
       uiWrapper.style.display = isUIVisible ? 'block' : 'none';
     });
 
+    // Capture & Solve
     captureButton.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -558,12 +1471,12 @@
       const rawPrompt = promptInput ? promptInput.value.trim() : '';
       const pageTitle = (document.title || '').trim();
 
-      // 3. Webpage Context Augmentation: Automatically append active page metadata
+      // Webpage Context Augmentation
       const contextAugmentedPrompt = pageTitle
         ? (rawPrompt ? `[Context: ${pageTitle}] ${rawPrompt}` : `[Context: ${pageTitle}]`)
         : rawPrompt;
 
-      // 1. Client-Side Edge Pre-Processing: Heuristic Task Classifier (<1ms)
+      // Client-Side Edge Pre-Processing: Heuristic Task Classifier (<1ms)
       const isComplex = isComplexTask(rawPrompt || pageTitle);
       const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
 
@@ -592,7 +1505,7 @@
           } else {
             currentAnswerText = response.answer;
             if (response.fromCache) {
-              console.log('[Cache Hit] Received unexpired instant 0ms cached result');
+              console.log('[Cache Hit] Received instant 0ms cached answer');
             }
             if (modelBadge && response.modelUsed) {
               modelBadge.textContent = response.modelUsed;
