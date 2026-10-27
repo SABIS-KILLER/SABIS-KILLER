@@ -15,7 +15,8 @@
     prompt_bg_color: '#FFFFFF',
     prompt_width: 180,
     settings_btn_bg_color: '#FFFFFF',
-    settings_btn_size: 32
+    settings_btn_size: 32,
+    glass_refraction: 70     // 0 = fully solid/opaque, 100 = maximum liquid glass
   };
 
   // Stored positions for each repositionable element
@@ -231,9 +232,47 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  // ── Dynamic Liquid Glass Refraction System ───────────────────────────────
+  // Maps slider value (0-100) → CSS custom properties set on the shadow host.
+  // CSS inside shadow DOM reads these via var(--glass-*) to apply glass effects.
+  // 0% = fully solid/opaque  |  100% = maximum translucent liquid glass
+  function applyGlassRefraction(value) {
+    if (!host) return;
+    const t = Math.max(0, Math.min(100, parseInt(value, 10) || 70)) / 100;
+    // Background opacity: 1.0 (solid) → 0.25 (ultra-translucent)
+    host.style.setProperty('--glass-bg-opacity',   (0.25 + 0.75 * (1 - t)).toFixed(3));
+    // Backdrop blur: 0px → 40px
+    host.style.setProperty('--glass-blur',         `${Math.round(t * 40)}px`);
+    // Saturate: 100% → 220%
+    host.style.setProperty('--glass-saturate',     `${Math.round(100 + t * 120)}%`);
+    // Refraction scalar (0→1) used in calc() for edge highlights & shadows
+    host.style.setProperty('--glass-refraction',   t.toFixed(3));
+    // Border transparency: 0.15 → 0.65
+    host.style.setProperty('--glass-border-alpha', (0.15 + 0.50 * t).toFixed(3));
+    // Inset top-highlight: 0 → 0.80
+    host.style.setProperty('--glass-inset-alpha',  (0.80 * t).toFixed(3));
+    // Outer shadow: 0.04 → 0.25
+    host.style.setProperty('--glass-shadow-alpha', (0.04 + 0.21 * t).toFixed(3));
+    // Card opacity (slightly more opaque than main): 1.0 → 0.40
+    host.style.setProperty('--glass-card-opacity', (0.40 + 0.60 * (1 - t)).toFixed(3));
+  }
+
   function applyAppearanceSettings(newSettings) {
     if (!newSettings) return;
     appearance = { ...appearance, ...newSettings };
+
+    // Update CSS custom properties for the glass refraction system
+    applyGlassRefraction(appearance.glass_refraction || 70);
+
+    // Compute glass parameters for inline-styled elements (buttons / prompt)
+    const _gt = Math.max(0, Math.min(100, parseInt(appearance.glass_refraction || 70, 10))) / 100;
+    const _gBgOp    = parseFloat((0.25 + 0.75 * (1 - _gt)).toFixed(3));
+    const _gBlur    = Math.round(_gt * 40);
+    const _gSat     = Math.round(100 + _gt * 120);
+    const _gBorder  = parseFloat((0.15 + 0.50 * _gt).toFixed(3));
+    const _gInset   = parseFloat((0.80 * _gt).toFixed(3));
+    const _gShadow  = parseFloat((0.04 + 0.21 * _gt).toFixed(3));
+    const _gRef     = _gt;
 
     if (answerContainer) {
       answerContainer.style.setProperty('background', 'transparent', 'important');
@@ -263,13 +302,13 @@
       const btnColor = appearance.button_bg_color || '#FFFFFF';
       const btnSize = parseInt(appearance.button_size, 10) || 30;
       const contrast = getContrastColor(btnColor);
-      const translucentBg = hexToRgba(btnColor, 0.65);
+      const translucentBg = hexToRgba(btnColor, _gBgOp);
 
       captureButton.style.setProperty('background', translucentBg, 'important');
-      captureButton.style.setProperty('backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      captureButton.style.setProperty('-webkit-backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      captureButton.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.4)', 'important');
-      captureButton.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.12)', 'important');
+      captureButton.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      captureButton.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      captureButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gBorder})`, 'important');
+      captureButton.style.setProperty('box-shadow', `inset 0 1px 0 rgba(255, 255, 255, ${_gInset}), inset 0 -1px 0 rgba(0, 0, 0, ${(_gRef * 0.30).toFixed(3)}), 0 8px 24px rgba(0, 0, 0, ${_gShadow}), 0 2px 6px rgba(0, 0, 0, ${(_gShadow * 0.32).toFixed(3)})`, 'important');
       captureButton.style.setProperty('width', `${btnSize}px`, 'important');
       captureButton.style.setProperty('height', `${btnSize}px`, 'important');
 
@@ -286,13 +325,13 @@
       const sColor = appearance.settings_btn_bg_color || '#FFFFFF';
       const sSize = parseInt(appearance.settings_btn_size, 10) || 32;
       const sContrast = getContrastColor(sColor);
-      const translucentBg = hexToRgba(sColor, 0.65);
+      const translucentBg = hexToRgba(sColor, _gBgOp);
 
       settingsButton.style.setProperty('background', translucentBg, 'important');
-      settingsButton.style.setProperty('backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      settingsButton.style.setProperty('-webkit-backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      settingsButton.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.4)', 'important');
-      settingsButton.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.12)', 'important');
+      settingsButton.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      settingsButton.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      settingsButton.style.setProperty('border', `1px solid rgba(255, 255, 255, ${_gBorder})`, 'important');
+      settingsButton.style.setProperty('box-shadow', `inset 0 1px 0 rgba(255, 255, 255, ${_gInset}), inset 0 -1px 0 rgba(0, 0, 0, ${(_gRef * 0.30).toFixed(3)}), 0 8px 24px rgba(0, 0, 0, ${_gShadow})`, 'important');
       settingsButton.style.setProperty('width', `${sSize}px`, 'important');
       settingsButton.style.setProperty('height', `${sSize}px`, 'important');
 
@@ -312,13 +351,13 @@
       const pColor = appearance.prompt_bg_color || '#FFFFFF';
       const pWidth = parseInt(appearance.prompt_width, 10) || 180;
       const pContrast = getContrastColor(pColor);
-      const translucentPromptBg = hexToRgba(pColor, 0.65);
+      const translucentPromptBg = hexToRgba(pColor, _gBgOp);
 
       promptInput.style.setProperty('background', translucentPromptBg, 'important');
-      promptInput.style.setProperty('backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      promptInput.style.setProperty('-webkit-backdrop-filter', 'blur(20px) saturate(180%)', 'important');
-      promptInput.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.3)', 'important');
-      promptInput.style.setProperty('box-shadow', '0 8px 24px rgba(0, 0, 0, 0.1)', 'important');
+      promptInput.style.setProperty('backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      promptInput.style.setProperty('-webkit-backdrop-filter', `blur(${_gBlur}px) saturate(${_gSat}%)`, 'important');
+      promptInput.style.setProperty('border', `1px solid rgba(255, 255, 255, ${(_gBorder * 0.75).toFixed(3)})`, 'important');
+      promptInput.style.setProperty('box-shadow', `inset 0 1px 0 rgba(255, 255, 255, ${_gInset}), 0 8px 24px rgba(0, 0, 0, ${_gShadow})`, 'important');
       promptInput.style.setProperty('color', pContrast, 'important');
       promptInput.style.setProperty('width', `${pWidth}px`, 'important');
     }
@@ -443,6 +482,7 @@
         'button_bg_color', 'button_size',
         'prompt_bg_color', 'prompt_width',
         'settings_btn_bg_color', 'settings_btn_size',
+        'glass_refraction',
         'button_position', 'pos_button',
         'prompt_position', 'pos_prompt',
         'answer_position', 'pos_answer',
@@ -628,7 +668,8 @@
       'answer_text_color', 'answer_font_size',
       'button_bg_color', 'button_size',
       'prompt_bg_color', 'prompt_width',
-      'settings_btn_bg_color', 'settings_btn_size'
+      'settings_btn_bg_color', 'settings_btn_size',
+      'glass_refraction'
     ], (data) => {
       if (chrome.runtime.lastError || !data) return;
 
@@ -688,6 +729,13 @@
       syncColor('modal-settings-color-picker', 'modal-settings-color-hex', data.settings_btn_bg_color, '#FFFFFF');
       syncSlider('modal-settings-size', 'modal-settings-size-val', data.settings_btn_size, 32, 'px');
 
+      // Glass refraction slider
+      const glassVal = data.glass_refraction != null ? data.glass_refraction : 70;
+      const glassS = shadow.getElementById('modal-glass-refraction');
+      const glassB = shadow.getElementById('modal-glass-refraction-val');
+      if (glassS) glassS.value = glassVal;
+      if (glassB) glassB.textContent = `${glassVal}%`;
+
       switchModalProvider(currentActiveProvider);
     });
   }
@@ -736,7 +784,8 @@
       prompt_bg_color: getVal('modal-prompt-color-picker', '#FFFFFF'),
       prompt_width: parseInt(getVal('modal-prompt-width', 180), 10),
       settings_btn_bg_color: getVal('modal-settings-color-picker', '#FFFFFF'),
-      settings_btn_size: parseInt(getVal('modal-settings-size', 32), 10)
+      settings_btn_size: parseInt(getVal('modal-settings-size', 32), 10),
+      glass_refraction: parseInt(getVal('modal-glass-refraction', 70), 10)
     };
 
     Object.assign(dataToSave, newAppearance);
@@ -1250,7 +1299,22 @@
         <!-- Appearance Customization Section -->
         <div class="modal-settings-section">
           <div class="modal-section-title-row">
-            <h2>Interface Customization & Repositioning</h2>
+            <h2>Interface Customization &amp; Repositioning</h2>
+          </div>
+
+          <!-- Global Liquid Glass & Refraction Intensity -->
+          <div class="modal-appearance-card">
+            <span class="modal-appearance-card-title">&#10024; Global Liquid Glass &amp; Refraction</span>
+            <div class="modal-appearance-row">
+              <div class="modal-slider-label-row">
+                <label>Glass Intensity</label>
+                <span id="modal-glass-refraction-val" class="modal-val-badge">70%</span>
+              </div>
+              <input type="range" id="modal-glass-refraction" class="modal-range-slider" min="0" max="100" value="70" step="1">
+              <span class="modal-subtext" style="font-size:10.5px; margin-top:3px; line-height:1.4;">
+                0% = solid opaque &nbsp;&bull;&nbsp; 70% = standard glass &nbsp;&bull;&nbsp; 100% = ultra liquid glass
+              </span>
+            </div>
           </div>
 
           <div class="modal-toggle-row">
@@ -1486,6 +1550,16 @@
     bindColorSync('modal-settings-color-picker', 'modal-settings-color-hex');
     bindSliderSync('modal-settings-size', 'modal-settings-size-val', 'px');
 
+    // Glass refraction slider — live update CSS custom properties + inline button styles
+    const glassSlider = shadow.getElementById('modal-glass-refraction');
+    const glassValBadge = shadow.getElementById('modal-glass-refraction-val');
+    if (glassSlider && glassValBadge) {
+      glassSlider.addEventListener('input', () => {
+        glassValBadge.textContent = `${glassSlider.value}%`;
+        autoSaveModal();
+      });
+    }
+
     const promptToggle = shadow.getElementById('modal-enable-prompt-input');
     if (promptToggle) promptToggle.addEventListener('change', autoSaveModal);
 
@@ -1617,7 +1691,8 @@
           'answer_text_color', 'answer_font_size',
           'button_bg_color', 'button_size',
           'prompt_bg_color', 'prompt_width',
-          'settings_btn_bg_color', 'settings_btn_size'
+          'settings_btn_bg_color', 'settings_btn_size',
+          'glass_refraction'
         ]) {
           if (changes[key]) {
             updated[key] = changes[key].newValue;

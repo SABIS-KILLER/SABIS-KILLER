@@ -1161,3 +1161,253 @@
   -webkit-backdrop-filter: blur(4px) saturate(140%) !important;
   pointer-events: auto !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   DYNAMIC LIQUID GLASS REFRACTION SYSTEM
+   CSS custom properties --glass-* are set on #academic-solver-root by JS.
+   Custom properties cascade into the Shadow DOM, so all selectors here
+   automatically respond to the slider without any JS re-rendering.
+
+   Variable reference (defaults correspond to glass_refraction = 70 / t = 0.7):
+     --glass-bg-opacity   : main bg alpha   (1.0 solid → 0.25 ultra-translucent)
+     --glass-blur         : backdrop blur   (0px → 40px)
+     --glass-saturate     : saturation      (100% → 220%)
+     --glass-refraction   : unitless scalar (0 → 1) for calc() in shadows/borders
+     --glass-border-alpha : border alpha    (0.15 → 0.65)
+     --glass-inset-alpha  : top inset light (0 → 0.80)
+     --glass-shadow-alpha : outer shadow    (0.04 → 0.25)
+     --glass-card-opacity : card bg alpha   (1.0 → 0.40, for inner cards)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Floating Buttons (capture + settings) — also driven by JS inline styles ── */
+/* These rules act as the baseline; JS applyAppearanceSettings overrides inline. */
+#settings-button {
+  background: rgba(255, 255, 255, var(--glass-bg-opacity, 0.475)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.30)),
+    0 8px 24px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
+}
+
+#capture-button {
+  background: rgba(255, 255, 255, var(--glass-bg-opacity, 0.475)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.30)),
+    0 8px 24px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)),
+    0 2px 6px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.32)) !important;
+}
+
+/* ── Inline Prompt Bar ── */
+#prompt-input {
+  background: rgba(255, 255, 255, var(--glass-bg-opacity, 0.475)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, calc(var(--glass-border-alpha, 0.50) * 0.75)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
+    0 8px 24px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.19)) !important;
+}
+
+/* ── In-Page Settings Modal Dialog ── */
+#settings-modal-dialog {
+  background: rgba(245, 245, 247, var(--glass-bg-opacity, 0.475)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 1.3)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── Modal Backdrop (scales with glass) ── */
+#settings-modal-backdrop {
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.35)) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.35)) saturate(140%) !important;
+}
+
+/* ── Provider Navigation Pill Container ── */
+.modal-provider-nav {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── Active Provider Tab Button ── */
+.modal-provider-btn.active {
+  background: rgba(255, 255, 255, var(--glass-card-opacity, 0.58)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.6)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.6)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(0, 122, 255, calc(var(--glass-border-alpha, 0.50) * 0.8)) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 122, 255, calc(var(--glass-shadow-alpha, 0.19) * 1.16)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── Provider Configuration Cards ── */
+.modal-provider-card {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── API Key Inputs ── */
+.modal-input-wrapper input {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.03)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
+  border: 1px solid rgba(142, 142, 147, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.56) * 0.7)) !important;
+}
+
+/* ── Select Dropdowns (use background-color to preserve SVG arrow) ── */
+.modal-select {
+  background-color: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.03)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.75)) !important;
+  border: 1px solid rgba(142, 142, 147, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.21)),
+    inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.56) * 0.7)) !important;
+}
+
+/* ── Appearance Settings Section Container ── */
+.modal-settings-section {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── Appearance Sub-Cards (color/size/position panels) ── */
+.modal-appearance-card {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── "Change Position" Pill Buttons ── */
+.modal-change-pos-btn {
+  background: rgba(229, 229, 234, calc(var(--glass-card-opacity, 0.58) * 1.12)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.12)) !important;
+}
+
+.modal-change-pos-btn.active-picker {
+  background: #007aff !important;
+  border-color: #0056B3 !important;
+  box-shadow:
+    0 0 14px rgba(0, 122, 255, 0.70),
+    inset 0 1px 0 rgba(255, 255, 255, 0.40) !important;
+}
+
+/* ── Reset Buttons ── */
+.modal-reset-pos-btn {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.29)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.56) * 0.7)) !important;
+}
+
+/* ── Secondary / Test Connection Button ── */
+.modal-btn-secondary {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.29)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)),
+    inset 0 -1px 0 rgba(0, 0, 0, calc(var(--glass-refraction, 0.7) * 0.12)) !important;
+}
+
+/* ── Hex Text Inputs ── */
+.modal-hex-text-input {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 1.29)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.55)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+}
+
+/* ── Floating Save Toast ── */
+#modal-save-toast {
+  background: rgba(28, 28, 30, calc(var(--glass-bg-opacity, 0.475) * 1.79)) !important;
+  backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 28px)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(255, 255, 255, calc(var(--glass-border-alpha, 0.50) * 0.44)) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 1.05)) !important;
+}
+
+/* ── Guide Box ── */
+.modal-guide-box {
+  background: rgba(255, 255, 255, calc(var(--glass-card-opacity, 0.58) * 0.78)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.8)) saturate(var(--glass-saturate, 184%)) !important;
+  border: 1px solid rgba(209, 213, 219, var(--glass-border-alpha, 0.50)) !important;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, calc(var(--glass-shadow-alpha, 0.19) * 0.16)),
+    inset 0 1px 0 rgba(255, 255, 255, var(--glass-inset-alpha, 0.56)) !important;
+}
+
+/* ── Toggle Switch Track ── */
+.modal-slider {
+  border: 1px solid rgba(209, 213, 219, calc(var(--glass-border-alpha, 0.50) * 0.6)) !important;
+}
+
+/* ── Position Picker Crosshair Overlay ── */
+#position-picker-overlay {
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.15)) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.15)) saturate(140%) !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   PERMANENT EXCLUSION: Answer text is ALWAYS crisp, opaque, and glass-free
+   regardless of the glass_refraction slider value.
+   ══════════════════════════════════════════════════════════════════════════════ */
+#answer-display-container,
+#answer-container,
+#output-text {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+#answer-text {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  text-shadow: 0px 1px 4px rgba(0, 0, 0, 0.9), 0px 0px 8px rgba(0, 0, 0, 0.8) !important;
+}
+
+#model-badge {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
