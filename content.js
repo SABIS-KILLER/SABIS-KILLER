@@ -1079,6 +1079,7 @@
 
     modelBadge = document.createElement('span');
     modelBadge.id = 'model-badge';
+    modelBadge.className = 'model-badge';
     answerContainer.appendChild(modelBadge);
 
     uiWrapper.appendChild(bottomControlsBar);
@@ -1720,6 +1721,10 @@
       isSolving = true;
       currentAnswerText = 'Solving...';
       answerText.textContent = currentAnswerText;
+      if (modelBadge) {
+        modelBadge.classList.remove('visible');
+        modelBadge.style.display = 'none';
+      }
 
       const rawPrompt = promptInput ? promptInput.value.trim() : '';
       const pageTitle = (document.title || '').trim();
@@ -1762,10 +1767,14 @@
             }
             if (modelBadge && response.modelUsed) {
               modelBadge.textContent = response.modelUsed;
-              modelBadge.style.setProperty('display', 'inline-block', 'important');
               modelBadge.title = `Mode: ${response.modeActive || ''}${response.wasFallbackTriggered ? ' [Fallback]' : ''}`;
               if (response.wasFallbackTriggered) { modelBadge.classList.add('fallback'); }
               else { modelBadge.classList.remove('fallback'); }
+
+              // Show badge via class and standard display without forcing inline !important
+              // This guarantees that setting 'display: none !important;' in CSS cleanly hides it if desired
+              modelBadge.classList.add('visible');
+              modelBadge.style.display = 'inline-block';
             }
           }
 
@@ -1773,7 +1782,8 @@
             answerText.textContent = formatAnswerForBar(currentAnswerText);
           }
           if (modelBadge && !response?.success) {
-            modelBadge.style.setProperty('display', 'none', 'important');
+            modelBadge.classList.remove('visible');
+            modelBadge.style.display = 'none';
           }
         });
       } catch (err) {
