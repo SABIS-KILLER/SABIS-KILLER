@@ -661,16 +661,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.querySelectorAll('.change-pos-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.getAttribute('data-target');
+  document.querySelectorAll('.change-pos-btn, #change-position-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = btn.getAttribute('data-target') || 'panel';
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTab = tabs && tabs[0];
         if (!activeTab || !activeTab.id) return;
 
         chrome.tabs.sendMessage(activeTab.id, {
           action: 'START_POSITION_PICKER',
-          targetElement: target
+          targetElement: target,
+          target: target
         }, () => {
           try { void chrome.runtime.lastError; } catch (_) {}
           setTimeout(() => window.close(), 120);
@@ -679,21 +682,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  document.querySelectorAll('.reset-pos-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const target = btn.getAttribute('data-target');
+  document.querySelectorAll('.reset-pos-btn, #reset-position-btn, .reset-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const target = btn.getAttribute('data-target') || 'panel';
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         const activeTab = tabs && tabs[0];
         if (activeTab && activeTab.id) {
           chrome.tabs.sendMessage(activeTab.id, {
             action: 'RESET_POSITION',
-            targetElement: target
+            targetElement: target,
+            target: target
           }, () => {
             try { void chrome.runtime.lastError; } catch (_) {}
           });
         }
       });
-      chrome.storage.local.remove([`${target}_position`, `pos_${target}`], () => {
+      const keysToRemove = [`${target}_position`, `pos_${target}`];
+      if (target === 'answer' || target === 'panel') {
+        keysToRemove.push('panelPosition', 'panel_position');
+      }
+      chrome.storage.local.remove(keysToRemove, () => {
         showToast('Position Reset');
       });
     });

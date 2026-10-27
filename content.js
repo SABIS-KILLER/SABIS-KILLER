@@ -34,11 +34,16 @@
   let settingsModalDialog = null;
   let modalSaveToast = null;
 
+  // Repositioning State
+  let isRepositioning = false;
+  let activePickerTarget = null;
+
   // Positions for movable elements (null = default layout)
   const positions = {
     button: null,
     prompt: null,
-    answer: null
+    answer: null,
+    panel: null
   };
 
   // Appearance defaults (Answer text strictly defaults to pure black with zero shadow)
@@ -390,26 +395,36 @@
     }
   }
 
+  function getTargetElement(targetKey) {
+    if (targetKey === 'button') return captureButton;
+    if (targetKey === 'prompt') return promptInput;
+    if (targetKey === 'answer' || targetKey === 'panel') return answerContainer;
+    return answerContainer || captureButton;
+  }
+
   function applyTargetPosition(target, x, y) {
     if (x == null || y == null) return;
+    const posX = Math.round(x);
+    const posY = Math.round(y);
+
     if (target === 'button' && captureButton) {
       captureButton.style.setProperty('position', 'fixed', 'important');
-      captureButton.style.setProperty('top', `${y}px`, 'important');
-      captureButton.style.setProperty('left', `${x}px`, 'important');
+      captureButton.style.setProperty('top', `${posY}px`, 'important');
+      captureButton.style.setProperty('left', `${posX}px`, 'important');
       captureButton.style.setProperty('bottom', 'auto', 'important');
       captureButton.style.setProperty('right', 'auto', 'important');
       captureButton.style.setProperty('z-index', '2147483647', 'important');
     } else if (target === 'prompt' && promptInput) {
       promptInput.style.setProperty('position', 'fixed', 'important');
-      promptInput.style.setProperty('top', `${y}px`, 'important');
-      promptInput.style.setProperty('left', `${x}px`, 'important');
+      promptInput.style.setProperty('top', `${posY}px`, 'important');
+      promptInput.style.setProperty('left', `${posX}px`, 'important');
       promptInput.style.setProperty('bottom', 'auto', 'important');
       promptInput.style.setProperty('right', 'auto', 'important');
       promptInput.style.setProperty('z-index', '2147483647', 'important');
-    } else if (target === 'answer' && answerContainer) {
+    } else if ((target === 'answer' || target === 'panel') && answerContainer) {
       answerContainer.style.setProperty('position', 'fixed', 'important');
-      answerContainer.style.setProperty('top', `${y}px`, 'important');
-      answerContainer.style.setProperty('left', `${x}px`, 'important');
+      answerContainer.style.setProperty('top', `${posY}px`, 'important');
+      answerContainer.style.setProperty('left', `${posX}px`, 'important');
       answerContainer.style.setProperty('bottom', 'auto', 'important');
       answerContainer.style.setProperty('right', 'auto', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
@@ -438,7 +453,7 @@
       promptInput.style.removeProperty('bottom');
       promptInput.style.removeProperty('right');
       promptInput.style.removeProperty('z-index');
-    } else if (target === 'answer' && answerContainer) {
+    } else if ((target === 'answer' || target === 'panel') && answerContainer) {
       answerContainer.style.removeProperty('top');
       answerContainer.style.removeProperty('right');
       answerContainer.style.removeProperty('max-width');
@@ -486,95 +501,236 @@
         'glass_refraction',
         'button_position', 'pos_button',
         'prompt_position', 'pos_prompt',
-        'answer_position', 'pos_answer'
+        'answer_position', 'pos_answer',
+        'panelPosition', 'panel_position'
       ], (data) => {
         if (chrome.runtime.lastError) return;
         applyAppearanceSettings(data);
         const btnPos = data.button_position || data.pos_button;
         const pPos = data.prompt_position || data.pos_prompt;
-        const ansPos = data.answer_position || data.pos_answer;
-        if (btnPos && btnPos.x != null && btnPos.y != null) positions.button = btnPos;
-        if (pPos && pPos.x != null && pPos.y != null) positions.prompt = pPos;
-        if (ansPos && ansPos.x != null && ansPos.y != null) positions.answer = ansPos;
+        const ansPos = data.answer_position || data.pos_answer || data.panelPosition || data.panel_position;
+        if (btnPos) {
+          const x = btnPos.left ?? btnPos.x;
+          const y = btnPos.top ?? btnPos.y;
+          if (x != null && y != null) positions.button = { x, y, top: y, left: x };
+        }
+        if (pPos) {
+          const x = pPos.left ?? pPos.x;
+          const y = pPos.top ?? pPos.y;
+          if (x != null && y != null) positions.prompt = { x, y, top: y, left: x };
+        }
+        if (ansPos) {
+          const x = ansPos.left ?? ansPos.x;
+          const y = ansPos.top ?? ansPos.y;
+          if (x != null && y != null) {
+            positions.answer = { x, y, top: y, left: x };
+            positions.panel = { x, y, top: y, left: x };
+          }
+        }
         applyPositions();
       });
     } catch (_) {}
   }
 
-  // ── Position Picker ─────────────────────────────────────────────────────────
-  function startPositionPicker(targetElement, onComplete) {
-    activePickerTarget = targetElement;
+  // ── Position Picker & Drag-and-Drop Repositioning ───────────────────────────
+  function startPositionPicker(targetKey, onComplete) {
+    targetKey = (targetKey === 'panel') ? 'answer' : (targetKey || 'answer');
+    activePickerTarget = targetKey;
+    isRepositioning = true;
+
+    const el = getTargetElement(targetKey);
+    if (!el) {
+      isRepositioning = false;
+      return;
+    }
+
     const wasModalOpenBeforePicker = isModalOpen;
     if (wasModalOpenBeforePicker) {
       closeSettingsModal();
     }
 
-    const existing = document.getElementById('position-picker-overlay');
-    if (existing) existing.remove();
+    // Ensure UI is visible
+    if (!isUIVisible) {
+      isUIVisible = true;
+      if (uiWrapper) uiWrapper.style.display = 'block';
+    }
 
+    // If answer container has no text, provide temporary preview so it can be seen and dragged
+    let didSetTempAnswer = false;
+    if ((targetKey === 'answer' || targetKey === 'panel') && answerText && !answerText.textContent.trim()) {
+      answerText.textContent = 'Answer Overlay Preview';
+      didSetTempAnswer = true;
+    }
+
+    // Clean up any stale picker elements
+    const oldOverlay = document.getElementById('position-picker-overlay');
+    if (oldOverlay) oldOverlay.remove();
+    const oldHint = document.getElementById('position-picker-hint');
+    if (oldHint) oldHint.remove();
+
+    // Fullscreen backdrop overlay for click-to-anchor
     const overlay = document.createElement('div');
     overlay.id = 'position-picker-overlay';
-    overlay.style.cssText = [
-      'position: fixed',
-      'top: 0',
-      'left: 0',
-      'width: 100vw',
-      'height: 100vh',
-      'z-index: 2147483647',
-      'cursor: crosshair',
-      'background: rgba(0, 0, 0, 0.12)',
-      'backdrop-filter: blur(4px) saturate(140%)',
-      '-webkit-backdrop-filter: blur(4px) saturate(140%)',
-      'pointer-events: auto'
-    ].join(' !important;') + ' !important;';
+
+    // Tooltip instruction pill
+    const hint = document.createElement('div');
+    hint.id = 'position-picker-hint';
+    const friendlyName = targetKey === 'button' ? 'Solver Button' : (targetKey === 'prompt' ? 'Prompt Bar' : 'Answer Panel');
+    hint.textContent = `Repositioning ${friendlyName} — Drag directly or click anywhere to anchor (Esc to cancel)`;
 
     const targetDoc = document.body || document.documentElement;
-    if (targetDoc) targetDoc.appendChild(overlay);
+    if (targetDoc) {
+      targetDoc.appendChild(overlay);
+      targetDoc.appendChild(hint);
+    }
 
-    function handleScreenClick(e) {
+    // Mark target element active
+    el.classList.add('repositioning-active-target');
+    el.style.setProperty('pointer-events', 'auto', 'important');
+    el.style.setProperty('z-index', '2147483647', 'important');
+
+    let isDragging = false;
+    let dragStartPointerX = 0;
+    let dragStartPointerY = 0;
+    let dragStartElX = 0;
+    let dragStartElY = 0;
+    let hasMoved = false;
+
+    const initialRect = el.getBoundingClientRect();
+    let currentPosX = initialRect.left;
+    let currentPosY = initialRect.top;
+
+    function onElementMouseDown(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      isDragging = true;
+      hasMoved = false;
+      dragStartPointerX = e.clientX;
+      dragStartPointerY = e.clientY;
+
+      const rect = el.getBoundingClientRect();
+      dragStartElX = rect.left;
+      dragStartElY = rect.top;
+
+      el.classList.add('is-dragging');
+
+      window.addEventListener('mousemove', onWindowMouseMove, { capture: true });
+      window.addEventListener('mouseup', onWindowMouseUp, { capture: true, once: true });
+    }
+
+    function onWindowMouseMove(e) {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartPointerX;
+      const dy = e.clientY - dragStartPointerY;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        hasMoved = true;
+      }
+
+      const rect = el.getBoundingClientRect();
+      const maxX = Math.max(0, window.innerWidth - (rect.width || 40));
+      const maxY = Math.max(0, window.innerHeight - (rect.height || 40));
+
+      currentPosX = Math.max(4, Math.min(maxX - 4, dragStartElX + dx));
+      currentPosY = Math.max(4, Math.min(maxY - 4, dragStartElY + dy));
+
+      applyTargetPosition(targetKey, currentPosX, currentPosY);
+    }
+
+    function onWindowMouseUp(e) {
+      isDragging = false;
+      el.classList.remove('is-dragging');
+      window.removeEventListener('mousemove', onWindowMouseMove, { capture: true });
+
+      if (hasMoved) {
+        finishPositioning(currentPosX, currentPosY);
+      }
+    }
+
+    function onOverlayClick(e) {
       e.preventDefault();
       e.stopPropagation();
 
-      const posX = e.clientX;
-      const posY = e.clientY;
+      const rect = el.getBoundingClientRect();
+      const targetW = rect.width || 80;
+      const targetH = rect.height || 36;
+      const newX = Math.max(8, Math.min(window.innerWidth - targetW - 8, e.clientX - targetW / 2));
+      const newY = Math.max(8, Math.min(window.innerHeight - targetH - 8, e.clientY - targetH / 2));
 
-      const overlayEl = document.getElementById('position-picker-overlay');
-      if (overlayEl) overlayEl.remove();
+      finishPositioning(newX, newY);
+    }
 
-      positions[targetElement] = { x: posX, y: posY };
-      applyTargetPosition(targetElement, posX, posY);
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cleanup();
+        if (positions[targetKey]) {
+          applyTargetPosition(targetKey, positions[targetKey].x, positions[targetKey].y);
+        } else {
+          resetTargetPosition(targetKey);
+        }
+        if (wasModalOpenBeforePicker) openSettingsModal();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        finishPositioning(currentPosX, currentPosY);
+      }
+    }
+
+    function cleanup() {
+      isRepositioning = false;
+      el.classList.remove('repositioning-active-target');
+      el.classList.remove('is-dragging');
+      el.removeEventListener('mousedown', onElementMouseDown, { capture: true });
+      overlay.removeEventListener('click', onOverlayClick, { capture: true });
+      window.removeEventListener('keydown', onKeyDown, { capture: true });
+      window.removeEventListener('mousemove', onWindowMouseMove, { capture: true });
+
+      const o = document.getElementById('position-picker-overlay');
+      if (o) o.remove();
+      const h = document.getElementById('position-picker-hint');
+      if (h) h.remove();
+
+      if (didSetTempAnswer && answerText && answerText.textContent === 'Answer Overlay Preview') {
+        answerText.textContent = '';
+      }
+    }
+
+    function finishPositioning(finalX, finalY) {
+      cleanup();
+
+      finalX = Math.round(finalX);
+      finalY = Math.round(finalY);
+
+      positions[targetKey] = { x: finalX, y: finalY, top: finalY, left: finalX };
+      applyTargetPosition(targetKey, finalX, finalY);
 
       try {
-        chrome.storage.local.set({
-          [targetElement + '_position']: { x: posX, y: posY },
-          ['pos_' + targetElement]: { x: posX, y: posY }
-        }, () => {
-          if (typeof onComplete === 'function') onComplete({ x: posX, y: posY });
+        const payload = {
+          [`${targetKey}_position`]: { x: finalX, y: finalY, top: finalY, left: finalX },
+          [`pos_${targetKey}`]: { x: finalX, y: finalY, top: finalY, left: finalX }
+        };
+        if (targetKey === 'answer' || targetKey === 'panel') {
+          payload.panelPosition = { top: finalY, left: finalX, x: finalX, y: finalY };
+          payload.panel_position = { top: finalY, left: finalX, x: finalX, y: finalY };
+        }
+        chrome.storage.local.set(payload, () => {
+          if (typeof onComplete === 'function') onComplete({ x: finalX, y: finalY, top: finalY, left: finalX });
           if (wasModalOpenBeforePicker) {
-            setTimeout(openSettingsModal, 100);
+            setTimeout(() => {
+              openSettingsModal();
+              showModalToast('Position Saved');
+            }, 120);
           }
         });
       } catch (_) {
         if (wasModalOpenBeforePicker) openSettingsModal();
       }
-
-      window.removeEventListener('keydown', handleKeydown, { capture: true });
     }
 
-    function handleKeydown(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        const overlayEl = document.getElementById('position-picker-overlay');
-        if (overlayEl) overlayEl.remove();
-        window.removeEventListener('click', handleScreenClick, { capture: true });
-        window.removeEventListener('keydown', handleKeydown, { capture: true });
-        if (wasModalOpenBeforePicker) openSettingsModal();
-      }
-    }
-
-    window.addEventListener('click', handleScreenClick, { capture: true, once: true });
-    window.addEventListener('keydown', handleKeydown, { capture: true, once: true });
+    el.addEventListener('mousedown', onElementMouseDown, { capture: true });
+    overlay.addEventListener('click', onOverlayClick, { capture: true });
+    window.addEventListener('keydown', onKeyDown, { capture: true });
   }
 
   // ── 1. Custom In-Page Center Modal Functions ────────────────────────────────
@@ -1668,19 +1824,27 @@
     initModalCustomSelects();
 
     // Position Action Buttons inside Modal
-    settingsModalDialog.querySelectorAll('.inpage-change-pos').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-target');
+    settingsModalDialog.querySelectorAll('.inpage-change-pos, #change-position-btn, .change-pos-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = btn.getAttribute('data-target') || 'panel';
         startPositionPicker(target);
       });
     });
 
-    settingsModalDialog.querySelectorAll('.inpage-reset-pos').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const target = btn.getAttribute('data-target');
+    settingsModalDialog.querySelectorAll('.inpage-reset-pos, .reset-btn, .reset-pos-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const target = btn.getAttribute('data-target') || 'panel';
         positions[target] = null;
         try {
-          chrome.storage.local.remove([`${target}_position`, `pos_${target}`], () => {
+          const keysToRemove = [`${target}_position`, `pos_${target}`];
+          if (target === 'answer' || target === 'panel') {
+            keysToRemove.push('panelPosition', 'panel_position');
+          }
+          chrome.storage.local.remove(keysToRemove, () => {
             resetTargetPosition(target);
             showModalToast('Position Reset');
           });
@@ -1823,15 +1987,20 @@
         ['button', 'prompt', 'answer'].forEach(target => {
           const posKey = `${target}_position`;
           const altKey = `pos_${target}`;
-          if (changes[posKey] || changes[altKey]) {
-            const val = changes[posKey]?.newValue ?? changes[altKey]?.newValue;
-            if (val && val.x != null && val.y != null) {
-              positions[target] = val;
-              applyTargetPosition(target, val.x, val.y);
-            } else {
-              positions[target] = null;
-              resetTargetPosition(target);
+          const isAns = (target === 'answer');
+          if (changes[posKey] || changes[altKey] || (isAns && (changes.panelPosition || changes.panel_position))) {
+            const val = changes[posKey]?.newValue ?? changes[altKey]?.newValue ?? (isAns ? (changes.panelPosition?.newValue ?? changes.panel_position?.newValue) : null);
+            if (val) {
+              const x = val.left ?? val.x;
+              const y = val.top ?? val.y;
+              if (x != null && y != null) {
+                positions[target] = { x, y, top: y, left: x };
+                applyTargetPosition(target, x, y);
+                return;
+              }
             }
+            positions[target] = null;
+            resetTargetPosition(target);
           }
         });
       });
