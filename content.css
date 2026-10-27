@@ -673,30 +673,26 @@
   top: calc(100% + 6px) !important;
   left: 0 !important;
   right: 0 !important;
-  z-index: 9999 !important;
+  z-index: 1000000 !important;
   max-height: 220px !important;
-  overflow-y: auto !important;
   overflow-x: hidden !important;
   padding: 6px 0 !important;
   box-sizing: border-box !important;
 
-  /* Squircle Geometry */
+  /* Solid opaque panel — no glass transparency on the expanded list */
   border-radius: 16px !important;
+  overflow: hidden !important;
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
 
-  /* Liquid Glass Material */
-  background: rgba(245, 245, 247, var(--glass-opacity, 0.75)) !important;
-  backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
-
-  /* Edge Light Refractions */
-  border: 1px solid rgba(255, 255, 255, var(--glass-refraction, 0.7)) !important;
-  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.85)),
-              inset 0 -1px 1px rgba(0, 0, 0, 0.15),
-              0 16px 36px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.2)) !important;
+  /* Crisp border + elevated drop shadow */
+  border: 1px solid rgba(200, 200, 205, 0.8) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
 
   /* Animated dropdown toggle */
   display: none !important;
-  opacity: 0 !important;
   transform: translateY(-4px) scale(0.98) !important;
   transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
@@ -704,6 +700,7 @@
 .modal-custom-select-wrapper.open .modal-custom-options-panel {
   display: block !important;
   opacity: 1 !important;
+  overflow-y: auto !important;
   transform: translateY(0) scale(1) !important;
 }
 
@@ -725,24 +722,25 @@
   padding: 7px 10px !important;
   font-size: 12px !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-  color: var(--text-primary) !important;
+  color: #1C1C1E !important;
+  font-weight: 500 !important;
   cursor: pointer !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  transition: background 0.14s ease, color 0.14s ease !important;
+  transition: background 0.12s ease, color 0.12s ease !important;
   box-sizing: border-box !important;
   user-select: none !important;
 }
 
 .modal-custom-option:hover {
-  background: rgba(0, 122, 255, 0.18) !important;
-  color: #007AFF !important;
+  background: #E5E5EA !important;
+  color: #000000 !important;
   font-weight: 600 !important;
 }
 
 .modal-custom-option.selected {
-  background: rgba(0, 122, 255, 0.12) !important;
+  background: rgba(0, 122, 255, 0.10) !important;
   color: #007AFF !important;
   font-weight: 600 !important;
 }

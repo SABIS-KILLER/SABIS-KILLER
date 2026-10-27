@@ -434,30 +434,27 @@ html, body {
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  z-index: 9999;
+  z-index: 1000000 !important;
   max-height: 220px;
   overflow-y: auto;
   overflow-x: hidden;
+  overflow: hidden;
   padding: 6px 0;
   box-sizing: border-box;
 
-  /* Squircle Geometry */
+  /* Solid opaque panel — no glass transparency on the expanded list */
   border-radius: 16px !important;
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  opacity: 1 !important;
 
-  /* Liquid Glass Material */
-  background: rgba(245, 245, 247, var(--glass-opacity, 0.75)) !important;
-  backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
-
-  /* Edge Light Refractions */
-  border: 1px solid rgba(255, 255, 255, var(--glass-refraction, 0.7)) !important;
-  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.85)),
-              inset 0 -1px 1px rgba(0, 0, 0, 0.15),
-              0 16px 36px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.2)) !important;
+  /* Crisp border + elevated drop shadow */
+  border: 1px solid rgba(200, 200, 205, 0.8) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
 
   /* Animated dropdown toggle */
   display: none;
-  opacity: 0;
   transform: translateY(-4px) scale(0.98);
   transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -465,6 +462,7 @@ html, body {
 .custom-select-wrapper.open .custom-options-panel {
   display: block;
   opacity: 1;
+  overflow-y: auto;
   transform: translateY(0) scale(1);
 }
 
@@ -486,24 +484,25 @@ html, body {
   padding: 7px 10px;
   font-size: 12px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: var(--text-primary);
+  color: #1C1C1E !important;
+  font-weight: 500;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: background 0.14s ease, color 0.14s ease;
+  transition: background 0.12s ease, color 0.12s ease;
   box-sizing: border-box;
   user-select: none;
 }
 
 .custom-option:hover {
-  background: rgba(0, 122, 255, 0.18) !important;
-  color: #007AFF !important;
+  background: #E5E5EA !important;
+  color: #000000 !important;
   font-weight: 600 !important;
 }
 
 .custom-option.selected {
-  background: rgba(0, 122, 255, 0.12) !important;
+  background: rgba(0, 122, 255, 0.10) !important;
   color: #007AFF !important;
   font-weight: 600 !important;
 }
