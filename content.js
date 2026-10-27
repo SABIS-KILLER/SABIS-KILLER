@@ -623,6 +623,7 @@
   function switchModalProvider(providerKey) {
     if (!PROVIDERS[providerKey] || !shadow) return;
     currentActiveProvider = providerKey;
+    closeAllModalCustomSelects();
 
     shadow.querySelectorAll('.modal-segmented-btn').forEach(btn => {
       btn.classList.toggle('active', btn.getAttribute('data-provider') === providerKey);
@@ -652,9 +653,97 @@
 
   function closeSettingsModal() {
     if (!settingsModalDialog || !settingsModalBackdrop) return;
+    closeAllModalCustomSelects();
     settingsModalDialog.classList.remove('open');
     settingsModalBackdrop.classList.remove('open');
     isModalOpen = false;
+  }
+
+  // ── Custom Liquid Glass Dropdown Helpers (Shadow DOM) ──
+  function initModalCustomSelects() {
+    if (!shadow) return;
+    const wrappers = shadow.querySelectorAll('.modal-custom-select-wrapper');
+    wrappers.forEach(wrapper => {
+      const trigger = wrapper.querySelector('.modal-custom-select-trigger');
+      const panel = wrapper.querySelector('.modal-custom-options-panel');
+      const hiddenInput = wrapper.querySelector('input[type="hidden"]');
+      const options = wrapper.querySelectorAll('.modal-custom-option');
+      const label = wrapper.querySelector('.modal-custom-select-label');
+
+      if (!trigger || !panel || !hiddenInput) return;
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = wrapper.classList.contains('open');
+        closeAllModalCustomSelects();
+        if (!isOpen) {
+          wrapper.classList.add('open');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      options.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = opt.getAttribute('data-value');
+          const optText = opt.querySelector('.modal-custom-option-text')?.textContent || val;
+          hiddenInput.value = val;
+          if (label) label.textContent = optText;
+
+          options.forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+
+          wrapper.classList.remove('open');
+          trigger.setAttribute('aria-expanded', 'false');
+
+          hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+          autoSaveModal();
+        });
+      });
+    });
+
+    shadow.addEventListener('click', (e) => {
+      const path = e.composedPath ? e.composedPath() : [];
+      const insideWrapper = path.some(el => el.classList && el.classList.contains('modal-custom-select-wrapper'));
+      if (!insideWrapper) {
+        closeAllModalCustomSelects();
+      }
+    });
+  }
+
+  function closeAllModalCustomSelects() {
+    if (!shadow) return;
+    shadow.querySelectorAll('.modal-custom-select-wrapper.open').forEach(w => {
+      w.classList.remove('open');
+      const trigger = w.querySelector('.modal-custom-select-trigger');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function setModalCustomSelectValue(selectId, value) {
+    if (!shadow) return;
+    const input = shadow.getElementById(selectId);
+    if (!input) return;
+    input.value = value;
+    const wrapper = input.closest('.modal-custom-select-wrapper');
+    if (!wrapper) return;
+    const label = wrapper.querySelector('.modal-custom-select-label');
+    const options = wrapper.querySelectorAll('.modal-custom-option');
+    let matched = false;
+    options.forEach(opt => {
+      if (opt.getAttribute('data-value') === value) {
+        opt.classList.add('selected');
+        if (label) label.textContent = opt.querySelector('.modal-custom-option-text')?.textContent || value;
+        matched = true;
+      } else {
+        opt.classList.remove('selected');
+      }
+    });
+    if (!matched && options.length > 0) {
+      options[0].classList.add('selected');
+      input.value = options[0].getAttribute('data-value');
+      if (label) label.textContent = options[0].querySelector('.modal-custom-option-text')?.textContent || input.value;
+    }
   }
 
   function toggleSettingsModal() {
@@ -695,7 +784,7 @@
         if (valModel?.startsWith('auto')) valModel = 'auto_dynamic';
 
         if (keyInput) keyInput.value = valKey;
-        if (modelSelect) modelSelect.value = valModel;
+        if (modelSelect) setModalCustomSelectValue(conf.modelSelectId, valModel);
       });
 
       const glassVal = items.glass_refraction != null ? items.glass_refraction : 70;
@@ -1074,19 +1163,58 @@
           </div>
 
           <div class="modal-form-group">
-            <label for="inpage-models-gemini">Model</label>
-            <select id="inpage-models-gemini" class="modal-select-field">
-              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
-              <option value="gemini-3.8-flash">Gemini 3.8 Flash</option>
-              <option value="gemini-3.8-flash-lite">Gemini 3.8 Flash Lite</option>
-              <option value="gemini-3.7-flash">Gemini 3.7 Flash</option>
-              <option value="gemini-3.6-flash">Gemini 3.6 Flash</option>
-              <option value="gemini-3.6-flash-lite">Gemini 3.6 Flash Lite</option>
-              <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
-              <option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite</option>
-              <option value="gemini-3.8-pro">Gemini 3.8 Pro</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-            </select>
+            <label>Model</label>
+            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-gemini" data-select-id="inpage-models-gemini">
+              <input type="hidden" id="inpage-models-gemini" value="auto_dynamic">
+              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
+                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="modal-custom-options-panel" role="listbox">
+                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
+                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.8-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.8 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.8-flash-lite" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.8 Flash Lite</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.7-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.7 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.6-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.6 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.6-flash-lite" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.6 Flash Lite</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.5-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.5 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.5-flash-lite" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.5 Flash Lite</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-3.8-pro" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.8 Pro</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gemini-2.5-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 2.5 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1108,16 +1236,46 @@
           </div>
 
           <div class="modal-form-group">
-            <label for="inpage-models-openai">Model</label>
-            <select id="inpage-models-openai" class="modal-select-field">
-              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
-              <option value="gpt-5.4">GPT-5.4</option>
-              <option value="gpt-5.4-mini">GPT-5.4-mini</option>
-              <option value="gpt-4o">GPT-4o</option>
-              <option value="gpt-4o-mini">GPT-4o-mini</option>
-              <option value="o3-mini">o3-mini Reasoning</option>
-              <option value="o1">o1 Reasoning</option>
-            </select>
+            <label>Model</label>
+            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-openai" data-select-id="inpage-models-openai">
+              <input type="hidden" id="inpage-models-openai" value="auto_dynamic">
+              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
+                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="modal-custom-options-panel" role="listbox">
+                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
+                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gpt-5.4" role="option">
+                  <span class="modal-custom-option-text">GPT-5.4</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gpt-5.4-mini" role="option">
+                  <span class="modal-custom-option-text">GPT-5.4-mini</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gpt-4o" role="option">
+                  <span class="modal-custom-option-text">GPT-4o</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="gpt-4o-mini" role="option">
+                  <span class="modal-custom-option-text">GPT-4o-mini</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="o3-mini" role="option">
+                  <span class="modal-custom-option-text">o3-mini Reasoning</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="o1" role="option">
+                  <span class="modal-custom-option-text">o1 Reasoning</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1139,14 +1297,38 @@
           </div>
 
           <div class="modal-form-group">
-            <label for="inpage-models-anthropic">Model</label>
-            <select id="inpage-models-anthropic" class="modal-select-field">
-              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
-              <option value="claude-3-5-haiku-20241022">Claude 3.5 Haiku</option>
-              <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-              <option value="claude-3-7-sonnet-20250219">Claude 3.7 Sonnet</option>
-              <option value="claude-3-opus-20240229">Claude 3 Opus</option>
-            </select>
+            <label>Model</label>
+            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-anthropic" data-select-id="inpage-models-anthropic">
+              <input type="hidden" id="inpage-models-anthropic" value="auto_dynamic">
+              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
+                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="modal-custom-options-panel" role="listbox">
+                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
+                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="claude-3-5-haiku-20241022" role="option">
+                  <span class="modal-custom-option-text">Claude 3.5 Haiku</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="claude-3-5-sonnet-20241022" role="option">
+                  <span class="modal-custom-option-text">Claude 3.5 Sonnet</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="claude-3-7-sonnet-20250219" role="option">
+                  <span class="modal-custom-option-text">Claude 3.7 Sonnet</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="claude-3-opus-20240229" role="option">
+                  <span class="modal-custom-option-text">Claude 3 Opus</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1168,12 +1350,30 @@
           </div>
 
           <div class="modal-form-group">
-            <label for="inpage-models-deepseek">Model</label>
-            <select id="inpage-models-deepseek" class="modal-select-field">
-              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
-              <option value="deepseek-chat">DeepSeek-V3 (Chat)</option>
-              <option value="deepseek-reasoner">DeepSeek-R1 (Reasoner)</option>
-            </select>
+            <label>Model</label>
+            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-deepseek" data-select-id="inpage-models-deepseek">
+              <input type="hidden" id="inpage-models-deepseek" value="auto_dynamic">
+              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
+                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="modal-custom-options-panel" role="listbox">
+                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
+                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="deepseek-chat" role="option">
+                  <span class="modal-custom-option-text">DeepSeek-V3 (Chat)</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="deepseek-reasoner" role="option">
+                  <span class="modal-custom-option-text">DeepSeek-R1 (Reasoner)</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1195,15 +1395,42 @@
           </div>
 
           <div class="modal-form-group">
-            <label for="inpage-models-openrouter">Model</label>
-            <select id="inpage-models-openrouter" class="modal-select-field">
-              <option value="auto_dynamic">Auto-Dynamic Model Picker</option>
-              <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
-              <option value="meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B (Free)</option>
-              <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
-              <option value="deepseek/deepseek-r1">DeepSeek R1</option>
-              <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
-            </select>
+            <label>Model</label>
+            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-openrouter" data-select-id="inpage-models-openrouter">
+              <input type="hidden" id="inpage-models-openrouter" value="auto_dynamic">
+              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
+                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              <div class="modal-custom-options-panel" role="listbox">
+                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
+                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="google/gemini-2.5-flash" role="option">
+                  <span class="modal-custom-option-text">Gemini 2.5 Flash</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="meta-llama/llama-3.3-70b-instruct:free" role="option">
+                  <span class="modal-custom-option-text">Llama 3.3 70B (Free)</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="anthropic/claude-3.5-sonnet" role="option">
+                  <span class="modal-custom-option-text">Claude 3.5 Sonnet</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="deepseek/deepseek-r1" role="option">
+                  <span class="modal-custom-option-text">DeepSeek R1</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <div class="modal-custom-option" data-value="openai/gpt-4o-mini" role="option">
+                  <span class="modal-custom-option-text">GPT-4o Mini</span>
+                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1422,6 +1649,7 @@
     bindSliderSync('inpage-prompt-width', 'inpage-prompt-width-val', 'px');
 
     // Auto-save listeners on all API key and model fields
+    // (model fields are now hidden inputs driven by the custom dropdown; 'change' fires on selection)
     Object.keys(PROVIDERS).forEach(prov => {
       const conf = PROVIDERS[prov];
       const keyEl = shadow.getElementById(conf.keyInputId);
@@ -1434,6 +1662,9 @@
         modelEl.addEventListener('change', () => autoSaveModal());
       }
     });
+
+    // Initialise all custom liquid-glass dropdowns inside modal
+    initModalCustomSelects();
 
     // Position Action Buttons inside Modal
     settingsModalDialog.querySelectorAll('.inpage-change-pos').forEach(btn => {

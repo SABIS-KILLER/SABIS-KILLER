@@ -319,6 +319,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 180);
   }
 
+  // ── Custom Liquid Glass Dropdown Logic (popup.html) ──
+  function initCustomSelects() {
+    const wrappers = document.querySelectorAll('.custom-select-wrapper');
+    wrappers.forEach(wrapper => {
+      const trigger = wrapper.querySelector('.custom-select-trigger');
+      const panel = wrapper.querySelector('.custom-options-panel');
+      const hiddenInput = wrapper.querySelector('input[type="hidden"]');
+      const options = wrapper.querySelectorAll('.custom-option');
+      const label = wrapper.querySelector('.custom-select-label');
+
+      if (!trigger || !panel || !hiddenInput) return;
+
+      trigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = wrapper.classList.contains('open');
+        closeAllCustomSelects();
+        if (!isOpen) {
+          wrapper.classList.add('open');
+          trigger.setAttribute('aria-expanded', 'true');
+        }
+      });
+
+      options.forEach(opt => {
+        opt.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const val = opt.getAttribute('data-value');
+          const optText = opt.querySelector('.custom-option-text')?.textContent || val;
+          hiddenInput.value = val;
+          if (label) label.textContent = optText;
+
+          options.forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+
+          wrapper.classList.remove('open');
+          trigger.setAttribute('aria-expanded', 'false');
+
+          hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+          autoSave();
+        });
+      });
+    });
+
+    document.addEventListener('click', () => closeAllCustomSelects());
+  }
+
+  function closeAllCustomSelects() {
+    document.querySelectorAll('.custom-select-wrapper.open').forEach(w => {
+      w.classList.remove('open');
+      const trigger = w.querySelector('.custom-select-trigger');
+      if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  function setCustomSelectValue(selectId, value) {
+    const input = document.getElementById(selectId);
+    if (!input) return;
+    input.value = value;
+    const wrapper = input.closest('.custom-select-wrapper');
+    if (!wrapper) return;
+    const label = wrapper.querySelector('.custom-select-label');
+    const options = wrapper.querySelectorAll('.custom-option');
+    let matched = false;
+    options.forEach(opt => {
+      if (opt.getAttribute('data-value') === value) {
+        opt.classList.add('selected');
+        if (label) label.textContent = opt.querySelector('.custom-option-text')?.textContent || value;
+        matched = true;
+      } else {
+        opt.classList.remove('selected');
+      }
+    });
+    if (!matched && options.length > 0) {
+      options[0].classList.add('selected');
+      input.value = options[0].getAttribute('data-value');
+      if (label) label.textContent = options[0].querySelector('.custom-option-text')?.textContent || input.value;
+    }
+  }
+
   // ── Load Stored Settings ──
   function loadStoredSettings() {
     const keysToFetch = [
@@ -354,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (valModel?.startsWith('auto')) valModel = 'auto_dynamic';
 
         if (keyInput) keyInput.value = valKey;
-        if (modelSelect) modelSelect.value = valModel;
+        if (modelSelect) setCustomSelectValue(conf.modelSelectId, valModel);
       });
 
       const glassVal = items.glass_refraction != null ? items.glass_refraction : 70;
@@ -622,4 +700,5 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   loadStoredSettings();
+  initCustomSelects();
 });

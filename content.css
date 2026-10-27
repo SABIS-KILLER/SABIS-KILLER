@@ -562,10 +562,10 @@
   align-items: center !important;
 }
 
-.modal-api-key-input,
-.modal-select-field {
+.modal-api-key-input {
   width: 100% !important;
   padding: 8px 12px !important;
+  padding-right: 42px !important;
   font-size: 12px !important;
   font-family: -apple-system, BlinkMacSystemFont, monospace !important;
   color: var(--text-primary) !important;
@@ -580,12 +580,7 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
 }
 
-.modal-api-key-input {
-  padding-right: 42px !important;
-}
-
-.modal-api-key-input:focus,
-.modal-select-field:focus {
+.modal-api-key-input:focus {
   border-color: var(--accent-blue) !important;
   box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22) !important;
 }
@@ -611,14 +606,163 @@
   background: rgba(0, 0, 0, 0.06) !important;
 }
 
-.modal-select-field {
-  font-family: inherit !important;
-  cursor: pointer !important;
+/* ── Custom Liquid Glass Dropdown Component ── */
+.modal-custom-select-wrapper {
+  position: relative !important;
+  width: 100% !important;
 }
 
-.modal-select-field option {
-  background: #ffffff !important;
-  color: #1c1c1e !important;
+.modal-custom-select-wrapper.open {
+  z-index: 1000 !important;
+}
+
+.modal-custom-select-trigger {
+  width: 100% !important;
+  padding: 8px 12px !important;
+  font-size: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: var(--text-primary) !important;
+  border-radius: 11px !important;
+  background: rgba(255, 255, 255, var(--glass-input-opacity, 0.36)) !important;
+  backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.7)) !important;
+  border: 1px solid rgba(142, 142, 147, calc(0.2 + (1 - var(--glass-refraction, 0.7)) * 0.25)) !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, calc(var(--glass-inset-alpha, 0.60) * 0.8)) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  text-align: left !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease !important;
+}
+
+.modal-custom-select-trigger:hover {
+  background: rgba(255, 255, 255, calc(var(--glass-input-opacity, 0.36) * 1.35)) !important;
+}
+
+.modal-custom-select-wrapper.open .modal-custom-select-trigger,
+.modal-custom-select-trigger:focus {
+  border-color: var(--accent-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.22) !important;
+}
+
+.modal-custom-select-label {
+  flex: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding-right: 6px !important;
+  font-weight: 500 !important;
+}
+
+.modal-custom-select-chevron {
+  flex-shrink: 0 !important;
+  color: var(--text-secondary) !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-custom-select-wrapper.open .modal-custom-select-chevron {
+  transform: rotate(180deg) !important;
+}
+
+/* Custom Expandable Options Popover Panel */
+.modal-custom-options-panel {
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  max-height: 220px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 6px 0 !important;
+  box-sizing: border-box !important;
+
+  /* Squircle Geometry */
+  border-radius: 16px !important;
+
+  /* Liquid Glass Material */
+  background: rgba(245, 245, 247, var(--glass-opacity, 0.75)) !important;
+  backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 32px)) saturate(var(--glass-saturate, 210%)) brightness(1.05) !important;
+
+  /* Edge Light Refractions */
+  border: 1px solid rgba(255, 255, 255, var(--glass-refraction, 0.7)) !important;
+  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, var(--glass-inset-alpha, 0.85)),
+              inset 0 -1px 1px rgba(0, 0, 0, 0.15),
+              0 16px 36px rgba(0, 0, 0, var(--glass-shadow-alpha, 0.2)) !important;
+
+  /* Animated dropdown toggle */
+  display: none !important;
+  opacity: 0 !important;
+  transform: translateY(-4px) scale(0.98) !important;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.modal-custom-select-wrapper.open .modal-custom-options-panel {
+  display: block !important;
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+.modal-custom-options-panel::-webkit-scrollbar {
+  width: 5px !important;
+}
+.modal-custom-options-panel::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.modal-custom-options-panel::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18) !important;
+  border-radius: 10px !important;
+}
+
+/* Option Hover & Selection Styling */
+.modal-custom-option {
+  border-radius: 10px !important;
+  margin: 2px 6px !important;
+  padding: 7px 10px !important;
+  font-size: 12px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  color: var(--text-primary) !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  transition: background 0.14s ease, color 0.14s ease !important;
+  box-sizing: border-box !important;
+  user-select: none !important;
+}
+
+.modal-custom-option:hover {
+  background: rgba(0, 122, 255, 0.18) !important;
+  color: #007AFF !important;
+  font-weight: 600 !important;
+}
+
+.modal-custom-option.selected {
+  background: rgba(0, 122, 255, 0.12) !important;
+  color: #007AFF !important;
+  font-weight: 600 !important;
+}
+
+.modal-custom-option-text {
+  flex: 1 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.modal-custom-option-check {
+  display: none !important;
+  color: #007AFF !important;
+  margin-left: 6px !important;
+  flex-shrink: 0 !important;
+}
+
+.modal-custom-option.selected .modal-custom-option-check {
+  display: block !important;
 }
 
 /* Secondary Button (Test Connection) */
