@@ -85,6 +85,53 @@
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
+  // ── Heuristic Task Classifier (<1ms Client-Side Edge Pre-Processing) ───────
+  function isComplexTask(prompt) {
+    if (!prompt || typeof prompt !== 'string') return false;
+    const text = prompt.trim();
+    const lower = text.toLowerCase();
+
+    // c. High Context / Length: Prompts exceeding 400 characters OR containing multi-step keywords
+    if (text.length > 400) return true;
+    const multiStepKeywords = [
+      'explain step by step', 'step by step', 'verify accuracy', 'compare',
+      'deep analysis', 'double check', 'recheck', 'multi-step', 'show work',
+      'detailed explanation', 'proof', 'prove that'
+    ];
+    for (const kw of multiStepKeywords) {
+      if (lower.includes(kw)) return true;
+    }
+
+    // a. Math & STEM Syntax: \int, \sum, \sqrt, d/dx, \matrix, fractions, problem-solving directives
+    const mathSymbols = [
+      '\\int', '∫', '\\sum', '∑', '\\sqrt', '√', 'd/dx', '\\matrix', '\\frac',
+      '∂', 'lim', 'matrix', 'matrices', 'calculus', 'integral', 'derivative'
+    ];
+    for (const s of mathSymbols) {
+      if (lower.includes(s)) return true;
+    }
+    if (/\b(solve\s+for|evaluate|derive|prove|integrate|differentiate|eigenvalue|polynomial|determinant|quadratic|fraction)\b/i.test(text)) {
+      return true;
+    }
+    if (/[0-9a-zA-Z]\s*[\^]\s*[0-9]/.test(text) || /\b\d+\s*\/\s*\d+\b/.test(text)) {
+      return true;
+    }
+
+    // b. Code & Technical Syntax: function, class, import, const, def, async, return, SQL queries, backtick code blocks
+    const codeKeywords = [
+      'function', 'class', 'import', 'const', 'let', 'var', 'def', 'async',
+      'return', 'select', 'insert', 'update', 'delete', 'from', 'where', 'join',
+      'console.log', 'git', 'refactor', 'lambda'
+    ];
+    const codeRegex = new RegExp(`\\b(${codeKeywords.join('|')})\\b`, 'i');
+    if (codeRegex.test(text)) return true;
+    if (text.includes('```') || text.includes('`') || /\{[\s\S]*;[\s\S]*\}/.test(text) || /=>\s*\{/.test(text)) {
+      return true;
+    }
+
+    return false;
+  }
+
   // ── Dynamic Liquid Glass Refraction System ───────────────────────────────
   // Maps slider value (0-100) → CSS custom properties set on the shadow host.
   // CSS inside shadow DOM reads these via var(--glass-*) to apply glass effects.
@@ -508,10 +555,26 @@
       currentAnswerText = 'Solving...';
       answerText.textContent = currentAnswerText;
 
-      const customPrompt = promptInput ? promptInput.value.trim() : '';
+      const rawPrompt = promptInput ? promptInput.value.trim() : '';
+      const pageTitle = (document.title || '').trim();
+
+      // 3. Webpage Context Augmentation: Automatically append active page metadata
+      const contextAugmentedPrompt = pageTitle
+        ? (rawPrompt ? `[Context: ${pageTitle}] ${rawPrompt}` : `[Context: ${pageTitle}]`)
+        : rawPrompt;
+
+      // 1. Client-Side Edge Pre-Processing: Heuristic Task Classifier (<1ms)
+      const isComplex = isComplexTask(rawPrompt || pageTitle);
+      const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
 
       try {
-        chrome.runtime.sendMessage({ action: 'SOLVE_SCREEN', customPrompt }, (response) => {
+        chrome.runtime.sendMessage({
+          action: 'SOLVE_SCREEN',
+          customPrompt: contextAugmentedPrompt,
+          rawPrompt: rawPrompt,
+          pageTitle: pageTitle,
+          taskComplexity: taskComplexity
+        }, (response) => {
           isSolving = false;
 
           let lastErr = null;
@@ -528,6 +591,9 @@
             currentAnswerText = response.error || 'Failed to analyze screenshot.';
           } else {
             currentAnswerText = response.answer;
+            if (response.fromCache) {
+              console.log('[Cache Hit] Received unexpired instant 0ms cached result');
+            }
             if (modelBadge && response.modelUsed) {
               modelBadge.textContent = response.modelUsed;
               modelBadge.style.setProperty('display', 'inline-block', 'important');
