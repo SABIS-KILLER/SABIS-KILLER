@@ -370,6 +370,9 @@
   border-radius: 12px !important;
   border: 1px solid transparent !important;
   white-space: nowrap !important;
+  background: rgba(255, 59, 48, 0.14) !important;
+  color: #FF3B30 !important;
+  border-color: rgba(255, 59, 48, 0.3) !important;
 }
 
 #settings-modal-status-badge.status-configured {
@@ -743,6 +746,14 @@
   border-radius: 14px !important;
   padding: 14px 16px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03), inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+}
+
+.modal-section-title-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding-bottom: 4px !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.07) !important;
 }
 
 .modal-section-title-row h2 {
