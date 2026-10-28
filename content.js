@@ -1848,16 +1848,48 @@
       };
     }
 
+    function applyHolePunchClipPath(containerEl, qRect, pad) {
+      if (!containerEl) return;
+      const vW = window.innerWidth || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const cutoutLeft   = Math.max(0, Math.round(qRect.left  - pad));
+      const cutoutTop    = Math.max(0, Math.round(qRect.top   - pad));
+      const cutoutRight  = Math.min(vW, Math.round(qRect.right  + pad));
+      const cutoutBottom = Math.min(vH, Math.round(qRect.bottom + pad));
+      // Outer CW rect → inner CCW rect = true transparent hole
+      containerEl.style.clipPath = [
+        `polygon(`,
+        `0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,`,
+        `${cutoutLeft}px ${cutoutTop}px,`,
+        `${cutoutLeft}px ${cutoutBottom}px,`,
+        `${cutoutRight}px ${cutoutBottom}px,`,
+        `${cutoutRight}px ${cutoutTop}px,`,
+        `${cutoutLeft}px ${cutoutTop}px`,
+        `)`
+      ].join(' ');
+    }
+
     function updateSpotlightGapPosition() {
       if (!studyBubbleContainer) return;
       const gapEl = studyBubbleContainer.querySelector('#study-spotlight-gap');
       if (!gapEl) return;
       const qRect = getQuestionBoundingRect(currentTargetQuestionEl);
       const pad = 6;
-      gapEl.style.top = `${Math.max(4, Math.round(qRect.top - pad))}px`;
-      gapEl.style.left = `${Math.max(4, Math.round(qRect.left - pad))}px`;
-      gapEl.style.width = `${Math.max(120, Math.round(qRect.width + pad * 2))}px`;
-      gapEl.style.height = `${Math.max(50, Math.round(qRect.height + pad * 2))}px`;
+      const gapTop    = Math.max(4, Math.round(qRect.top    - pad));
+      const gapLeft   = Math.max(4, Math.round(qRect.left   - pad));
+      const gapWidth  = Math.max(120, Math.round(qRect.width  + pad * 2));
+      const gapHeight = Math.max(50,  Math.round(qRect.height + pad * 2));
+      gapEl.style.top    = `${gapTop}px`;
+      gapEl.style.left   = `${gapLeft}px`;
+      gapEl.style.width  = `${gapWidth}px`;
+      gapEl.style.height = `${gapHeight}px`;
+      // Sync clip-path hole-punch with updated coords
+      applyHolePunchClipPath(studyBubbleContainer, {
+        left:   gapLeft,
+        top:    gapTop,
+        right:  gapLeft + gapWidth,
+        bottom: gapTop + gapHeight
+      }, 0);
     }
 
     function mountStudyBubble(questionSnippet, qRect) {
@@ -1880,6 +1912,14 @@
       const gapLeft = Math.max(4, Math.round(rect.left - pad));
       const gapWidth = Math.max(120, Math.round(rect.width + pad * 2));
       const gapHeight = Math.max(50, Math.round(rect.height + pad * 2));
+
+      // Apply CSS clip-path polygon hole-punch cutout immediately
+      applyHolePunchClipPath(studyBubbleContainer, {
+        left:   gapLeft,
+        top:    gapTop,
+        right:  gapLeft + gapWidth,
+        bottom: gapTop + gapHeight
+      }, 0);
 
       const cardPos = calculateStudyCardPosition(rect);
 
@@ -1931,7 +1971,9 @@
                     </svg>
                     <span>Visual Breakdown</span>
                   </div>
-                  <pre class="study-diagram-content" id="study-diagram-content"></pre>
+                  <div class="diagram-container" id="diagram-render-panel">
+                    <pre class="study-diagram-content" id="study-diagram-content"></pre>
+                  </div>
                 </div>
 
                 <!-- INTERACTIVE FOLLOW-UP INPUT BAR -->
@@ -2027,9 +2069,10 @@
 
     function renderStudySolution(data, questionSnippet = '') {
       if (!studyBubbleContainer) return;
-      const aText = studyBubbleContainer.querySelector('#study-answer-text');
-      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
-      const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
+      const aText    = studyBubbleContainer.querySelector('#study-answer-text');
+      const eText    = studyBubbleContainer.querySelector('#study-explanation-text');
+      const dBox     = studyBubbleContainer.querySelector('#study-diagram-box');
+      const dPanel   = studyBubbleContainer.querySelector('#diagram-render-panel');
       const dContent = studyBubbleContainer.querySelector('#study-diagram-content');
 
       if (aText) {
@@ -2040,14 +2083,52 @@
         eText.textContent = data.explanation || 'Solution calculated directly from screenshot context.';
       }
 
-      if (dBox && dContent) {
+      if (dBox && dPanel) {
         const diagram = (data.diagram && typeof data.diagram === 'string') ? data.diagram.trim() : '';
         if (diagram) {
-          dContent.textContent = diagram;
           dBox.classList.add('is-expanded');
           dBox.style.setProperty('display', 'block', 'important');
           dBox.style.opacity = '1';
-          dBox.style.maxHeight = '300px';
+          dBox.style.maxHeight = '420px';
+
+          // Detect payload type: base64 image, URL, HTML <img>, or markdown image syntax
+          const isBase64Image = /^data:image\//i.test(diagram);
+          const isUrlImage    = /^https?:\/\/.+\.(png|jpg|jpeg|gif|svg|webp)/i.test(diagram);
+          const isHtmlImg     = /<img\s/i.test(diagram);
+          const isMdImage     = /^!\[.*?\]\((.+?)\)/.test(diagram);
+
+          if (isBase64Image || isUrlImage) {
+            dPanel.innerHTML = `<img src="${escapeHtml(diagram)}" alt="Visual Diagram" class="diagram-fluid-img" />`;
+            if (dContent) dContent.textContent = '';
+          } else if (isHtmlImg) {
+            // Safely set only <img> tags by stripping anything other than img
+            const tmpDiv = document.createElement('div');
+            tmpDiv.innerHTML = diagram;
+            const imgEl = tmpDiv.querySelector('img');
+            if (imgEl) {
+              imgEl.className = 'diagram-fluid-img';
+              imgEl.alt = imgEl.alt || 'Visual Diagram';
+              dPanel.innerHTML = '';
+              dPanel.appendChild(imgEl);
+              if (dContent) dContent.textContent = '';
+            } else {
+              if (dContent) dContent.textContent = diagram;
+            }
+          } else if (isMdImage) {
+            const mdMatch = diagram.match(/^!\[.*?\]\((.+?)\)/);
+            const imgSrc = mdMatch ? mdMatch[1] : '';
+            if (imgSrc) {
+              dPanel.innerHTML = `<img src="${escapeHtml(imgSrc)}" alt="Visual Diagram" class="diagram-fluid-img" />`;
+              if (dContent) dContent.textContent = '';
+            } else {
+              if (dContent) dContent.textContent = diagram;
+            }
+          } else {
+            // Plain text / ASCII / Markdown table — render in <pre>
+            if (dContent) dContent.textContent = diagram;
+            dPanel.innerHTML = '';
+            dPanel.appendChild(dContent);
+          }
         } else {
           dBox.classList.remove('is-expanded');
           dBox.style.setProperty('display', 'none', 'important');
