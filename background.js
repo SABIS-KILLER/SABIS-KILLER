@@ -1,5 +1,5 @@
 /**
- * SABIS KILLER - Background Service Worker (v2.0)
+ * SABIS KILLER - Background Service Worker (v2.1)
  * Intercepts toolbar icon clicks to trigger the custom in-page centered modal,
  * routes single Auto-Dynamic Model Picker, handles failover cascades,
  * and maintains SHA-256 edge caching.

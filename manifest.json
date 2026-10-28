@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SABIS KILLER",
-  "version": "2.0",
+  "version": "2.1",
   "description": "Minimalist academic assistant overlay powered by Google AI Studio.",
   "permissions": [
     "activeTab",
@@ -32,7 +32,7 @@
     }
   ],
   "action": {
-    "default_title": "SABIS KILLER v2.0"
+    "default_title": "SABIS KILLER v2.1"
   },
   "icons": {
     "16": "icons/icon16.png",

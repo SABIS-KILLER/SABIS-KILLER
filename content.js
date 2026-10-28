@@ -1,5 +1,5 @@
 /**
- * SABIS KILLER - Content Script (v2.0)
+ * SABIS KILLER - Content Script (v2.1)
  * In-Page Apple iOS 27 Liquid Glass Centered Modal,
  * Heuristic AI pre-processor, zero-shadow pure black floating answer overlay,
  * and input auto-fill anti-hijacking system.
@@ -1274,7 +1274,7 @@
       <header id="settings-modal-header">
         <div class="modal-logo-area">
           <div class="modal-logo-dot"></div>
-          <h2 class="modal-header-title">SABIS KILLER <span class="modal-version-tag">v2.0</span></h2>
+          <h2 class="modal-header-title">SABIS KILLER <span class="modal-version-tag">v2.1</span></h2>
         </div>
         <div class="modal-header-right">
           <div id="inpage-status-badge" class="modal-status-badge status-missing">

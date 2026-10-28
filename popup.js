@@ -1,5 +1,5 @@
 /**
- * SABIS KILLER - Popup Controller (v2.0)
+ * SABIS KILLER - Popup Controller (v2.1)
  * Multi-provider AI configuration with single Auto-Dynamic Model Picker,
  * Apple iOS 27 Liquid Glass optical stack, and pure black floating answer defaults.
  */
