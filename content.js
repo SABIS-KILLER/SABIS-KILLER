@@ -1712,6 +1712,8 @@
     });
 
     // ── Study Mode Helper & UI Bubble Subsystem ──────────────────────────────
+    let currentTargetQuestionEl = null;
+
     function escapeHtml(str) {
       if (!str) return '';
       return String(str)
@@ -1721,7 +1723,7 @@
         .replace(/"/g, '&quot;');
     }
 
-    function getQuestionBoundingRect() {
+    function getQuestionTargetElement() {
       const candidates = document.querySelectorAll(
         '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
       );
@@ -1732,8 +1734,28 @@
         if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
         const r = el.getBoundingClientRect();
         if (r.width > 60 && r.height > 40 && r.bottom > 40 && r.top < vHeight - 40 && r.right > 40 && r.left < vWidth - 40) {
-          return r;
+          return el;
         }
+      }
+      return null;
+    }
+
+    function getQuestionBoundingRect(targetEl) {
+      const el = targetEl || getQuestionTargetElement();
+      const vHeight = window.innerHeight || document.documentElement.clientHeight;
+      const vWidth = window.innerWidth || document.documentElement.clientWidth;
+
+      if (el) {
+        const r = el.getBoundingClientRect();
+        return {
+          left: Math.max(10, r.left),
+          top: Math.max(10, r.top),
+          right: Math.min(vWidth - 10, r.right),
+          bottom: Math.min(vHeight - 10, r.bottom),
+          width: Math.min(vWidth - 20, Math.max(100, r.width)),
+          height: Math.min(vHeight - 20, Math.max(50, r.height)),
+          element: el
+        };
       }
 
       if (bottomControlsBar) {
@@ -1744,7 +1766,8 @@
           right: Math.min(vWidth - 20, bRect.right + 220),
           bottom: bRect.top,
           width: 320,
-          height: 160
+          height: 160,
+          element: null
         };
       }
 
@@ -1754,7 +1777,8 @@
         right: 420,
         bottom: 240,
         width: 390,
-        height: 180
+        height: 180,
+        element: null
       };
     }
 
@@ -1783,49 +1807,64 @@
       return title ? `Question on: ${title}` : 'Captured Academic Question';
     }
 
-    function calculateStudyBubblePosition(qRect) {
+    function calculateStudyCardPosition(qRect) {
       const vW = window.innerWidth || document.documentElement.clientWidth;
       const vH = window.innerHeight || document.documentElement.clientHeight;
-      const estimatedCardWidth = Math.min(840, Math.floor(vW * 0.88));
-      const estimatedCardHeight = 340;
+      const cardWidth = Math.min(560, Math.floor(vW * 0.9));
+      const cardHeight = 320;
 
-      let left = 24;
-      let top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
+      let left = 20;
+      let top = 20;
 
-      const spaceOnRight = vW - qRect.right;
-      const spaceOnLeft = qRect.left;
+      const spaceRight = vW - qRect.right;
+      const spaceLeft = qRect.left;
+      const spaceBottom = vH - qRect.bottom;
 
-      // Screen edge avoidance rule:
-      // If captured region is near right boundary (<350px remaining) -> flip layout expansion to LEFT or BOTTOM
-      if (spaceOnRight < 350) {
-        if (spaceOnLeft >= estimatedCardWidth + 24) {
-          left = Math.max(20, qRect.left - estimatedCardWidth - 16);
-          top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
-        } else {
-          left = Math.max(20, Math.min(vW - estimatedCardWidth - 20, (vW - estimatedCardWidth) / 2));
-          if (vH - qRect.bottom >= 220) {
-            top = Math.min(vH - estimatedCardHeight - 20, qRect.bottom + 16);
-          } else {
-            top = Math.max(20, qRect.top - estimatedCardHeight - 16);
-          }
-        }
-      } else if (qRect.left < vW / 2) {
-        // If captured region is on the left half of the viewport -> expand to the RIGHT
-        left = Math.min(vW - estimatedCardWidth - 20, Math.max(20, qRect.right + 16));
-        top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
-      } else {
-        left = Math.max(20, Math.min(vW - estimatedCardWidth - 20, qRect.left));
-        top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.bottom + 16));
+      // 1. Prefer right side of the gap if enough room (>= 350px)
+      if (spaceRight >= 350) {
+        left = Math.min(vW - cardWidth - 16, qRect.right + 14);
+        top = Math.max(16, Math.min(vH - cardHeight - 16, qRect.top));
+      }
+      // 2. If right side is tight (<350px), check left side (>= 350px)
+      else if (spaceLeft >= 350) {
+        left = Math.max(16, qRect.left - cardWidth - 14);
+        top = Math.max(16, Math.min(vH - cardHeight - 16, qRect.top));
+      }
+      // 3. Fallback: position below the question gap
+      else if (spaceBottom >= 200) {
+        left = Math.max(16, Math.min(vW - cardWidth - 16, qRect.left));
+        top = Math.min(vH - cardHeight - 16, qRect.bottom + 14);
+      }
+      // 4. Fallback: position above the question gap
+      else {
+        left = Math.max(16, Math.min(vW - cardWidth - 16, qRect.left));
+        top = Math.max(16, qRect.top - cardHeight - 14);
       }
 
-      left = Math.max(16, Math.min(vW - 100, left));
-      top = Math.max(16, Math.min(vH - 100, top));
+      return {
+        left: Math.max(16, Math.min(vW - 100, left)),
+        top: Math.max(16, Math.min(vH - 100, top)),
+        maxWidth: Math.min(600, Math.floor(vW * 0.92))
+      };
+    }
 
-      return { left, top };
+    function updateSpotlightGapPosition() {
+      if (!studyBubbleContainer) return;
+      const gapEl = studyBubbleContainer.querySelector('#study-spotlight-gap');
+      if (!gapEl) return;
+      const qRect = getQuestionBoundingRect(currentTargetQuestionEl);
+      const pad = 6;
+      gapEl.style.top = `${Math.max(4, Math.round(qRect.top - pad))}px`;
+      gapEl.style.left = `${Math.max(4, Math.round(qRect.left - pad))}px`;
+      gapEl.style.width = `${Math.max(120, Math.round(qRect.width + pad * 2))}px`;
+      gapEl.style.height = `${Math.max(50, Math.round(qRect.height + pad * 2))}px`;
     }
 
     function mountStudyBubble(questionSnippet, qRect) {
       if (!shadow) return;
+
+      currentTargetQuestionEl = (qRect && qRect.element) ? qRect.element : getQuestionTargetElement();
+      const rect = qRect || getQuestionBoundingRect(currentTargetQuestionEl);
 
       if (!studyBubbleContainer) {
         studyBubbleContainer = document.createElement('div');
@@ -1834,73 +1873,82 @@
         shadow.appendChild(studyBubbleContainer);
       }
 
-      const pos = calculateStudyBubblePosition(qRect || getQuestionBoundingRect());
-      studyBubbleContainer.style.setProperty('position', 'fixed', 'important');
-      studyBubbleContainer.style.setProperty('top', `${pos.top}px`, 'important');
-      studyBubbleContainer.style.setProperty('left', `${pos.left}px`, 'important');
       studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
 
+      const pad = 6;
+      const gapTop = Math.max(4, Math.round(rect.top - pad));
+      const gapLeft = Math.max(4, Math.round(rect.left - pad));
+      const gapWidth = Math.max(120, Math.round(rect.width + pad * 2));
+      const gapHeight = Math.max(50, Math.round(rect.height + pad * 2));
+
+      const cardPos = calculateStudyCardPosition(rect);
+
       studyBubbleContainer.innerHTML = `
-        <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-
-        <div class="study-bubble-inner">
-          <!-- LEFT REGION - QUESTION FRAME -->
-          <div class="study-question-region">
-            <div class="study-region-tag">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        <div class="study-spotlight-wrapper">
+          <!-- Dynamic Spotlight Cutout Hole / Framing Gap over Target Question -->
+          <div class="study-spotlight-gap" id="study-spotlight-gap" style="top: ${gapTop}px; left: ${gapLeft}px; width: ${gapWidth}px; height: ${gapHeight}px;">
+            <div class="study-spotlight-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              <span>Question</span>
-            </div>
-            <div class="study-question-body" id="study-question-body">${escapeHtml(questionSnippet || 'Capturing problem statement...')}</div>
-          </div>
-
-          <!-- CENTER REGION - EXPLANATION & ANSWER -->
-          <div class="study-explanation-region">
-            <div class="study-answer-row">
-              <span class="study-answer-label">ANSWER</span>
-              <div class="study-answer-text" id="study-answer-text"></div>
-            </div>
-            <div class="study-explanation-row">
-              <span class="study-explanation-label">EXPLANATION</span>
-              <div class="study-explanation-text" id="study-explanation-text"></div>
+              <span>Target Question</span>
             </div>
           </div>
 
-          <!-- RIGHT REGION - DIAGRAM & FOLLOW-UP STACK -->
-          <div class="study-right-stack">
-            <!-- TOP AREA - SMART COLLAPSIBLE DIAGRAM CONTAINER -->
-            <div class="study-diagram-box" id="study-diagram-box">
-              <div class="study-diagram-header">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="3" y1="9" x2="21" y2="9"></line>
-                  <line x1="9" y1="21" x2="9" y2="9"></line>
-                </svg>
-                <span>Visual Breakdown</span>
+          <!-- Surrounding Liquid Glass Card Panels -->
+          <div class="study-bubble-card" id="study-bubble-card" style="top: ${cardPos.top}px; left: ${cardPos.left}px; max-width: ${cardPos.maxWidth}px;">
+            <!-- Top-Right Close Button -->
+            <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+
+            <div class="study-bubble-inner">
+              <!-- CENTER REGION: EXPLANATION & ANSWER -->
+              <div class="study-explanation-region">
+                <div class="study-answer-row">
+                  <span class="study-answer-label">ANSWER</span>
+                  <div class="study-answer-text" id="study-answer-text"></div>
+                </div>
+                <div class="study-explanation-row">
+                  <span class="study-explanation-label">EXPLANATION</span>
+                  <div class="study-explanation-text" id="study-explanation-text"></div>
+                </div>
               </div>
-              <pre class="study-diagram-content" id="study-diagram-content"></pre>
-            </div>
 
-            <!-- BOTTOM RIGHT AREA - INTERACTIVE FOLLOW-UP INPUT BAR -->
-            <div class="study-followup-box">
-              <div class="study-followup-bar">
-                <input type="text" class="study-prompt-input" id="study-prompt-input"
-                  placeholder="Ask about explanation..."
-                  autocomplete="off" autocomplete="new-password"
-                  autocorrect="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-                <button type="button" class="study-send-btn" id="study-send-btn" title="Send follow-up">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </button>
+              <!-- RIGHT REGION: DIAGRAM & FOLLOW-UP STACK -->
+              <div class="study-right-stack">
+                <!-- SMART COLLAPSIBLE DIAGRAM CONTAINER -->
+                <div class="study-diagram-box" id="study-diagram-box">
+                  <div class="study-diagram-header">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="3" y1="9" x2="21" y2="9"></line>
+                      <line x1="9" y1="21" x2="9" y2="9"></line>
+                    </svg>
+                    <span>Visual Breakdown</span>
+                  </div>
+                  <pre class="study-diagram-content" id="study-diagram-content"></pre>
+                </div>
+
+                <!-- INTERACTIVE FOLLOW-UP INPUT BAR -->
+                <div class="study-followup-box">
+                  <div class="study-followup-bar">
+                    <input type="text" class="study-prompt-input" id="study-prompt-input"
+                      placeholder="Ask about explanation..."
+                      autocomplete="off" autocomplete="new-password"
+                      autocorrect="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+                    <button type="button" class="study-send-btn" id="study-send-btn" title="Send follow-up">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1946,26 +1994,16 @@
           handleSendFollowUp();
         });
       }
+
+      window.addEventListener('scroll', updateSpotlightGapPosition, { passive: true });
+      window.addEventListener('resize', updateSpotlightGapPosition, { passive: true });
     }
 
     function renderStudyThinkingState(questionSnippet = '') {
       if (!studyBubbleContainer) return;
-      const qBody = studyBubbleContainer.querySelector('#study-question-body');
       const aText = studyBubbleContainer.querySelector('#study-answer-text');
       const eText = studyBubbleContainer.querySelector('#study-explanation-text');
       const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
-
-      if (qBody) {
-        if (questionSnippet && questionSnippet.trim()) {
-          qBody.textContent = questionSnippet.trim();
-        } else {
-          qBody.innerHTML = `
-            <div class="study-skeleton-line" style="width: 85%;"></div>
-            <div class="study-skeleton-line" style="width: 95%;"></div>
-            <div class="study-skeleton-line" style="width: 70%;"></div>
-          `;
-        }
-      }
 
       if (aText) {
         aText.innerHTML = `<div class="study-skeleton-line" style="width: 55%; height: 16px;"></div>`;
@@ -1989,15 +2027,10 @@
 
     function renderStudySolution(data, questionSnippet = '') {
       if (!studyBubbleContainer) return;
-      const qBody = studyBubbleContainer.querySelector('#study-question-body');
       const aText = studyBubbleContainer.querySelector('#study-answer-text');
       const eText = studyBubbleContainer.querySelector('#study-explanation-text');
       const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
       const dContent = studyBubbleContainer.querySelector('#study-diagram-content');
-
-      if (qBody && questionSnippet) {
-        qBody.textContent = questionSnippet;
-      }
 
       if (aText) {
         aText.innerHTML = `<strong>${escapeHtml(data.answer || 'Completed')}</strong>`;
@@ -2080,10 +2113,13 @@
     }
 
     function unmountStudyBubble() {
+      window.removeEventListener('scroll', updateSpotlightGapPosition);
+      window.removeEventListener('resize', updateSpotlightGapPosition);
       if (studyBubbleContainer && studyBubbleContainer.parentNode) {
         studyBubbleContainer.parentNode.removeChild(studyBubbleContainer);
       }
       studyBubbleContainer = null;
+      currentTargetQuestionEl = null;
       studyThreadHistory = [];
     }
 
