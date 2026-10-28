@@ -18,7 +18,8 @@
   let modalSaveDebounceTimer = null;
 
   // Immediate early read of persistent UI visibility state on page refresh/navigation
-  if (isRuntimeValid() && chrome.storage && chrome.storage.local) {
+  // NOTE: isRuntimeValid() is defined later; inline the check here to avoid TDZ error
+  if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.storage && chrome.storage.local) {
     try {
       chrome.storage.local.get(['is_ui_visible', 'ui_visible'], (res) => {
         if (!chrome.runtime.lastError && res) {
