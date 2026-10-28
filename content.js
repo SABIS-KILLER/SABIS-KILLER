@@ -1649,6 +1649,9 @@
   function sanitizeAnswer(text) {
     if (!text) return '';
     return text
+      .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .replace(/^Thought:[\s\S]*?(?=\n\n|\n[A-Z0-9]|$)/i, '')
       .replace(/\$\$[\s\S]*?\$\$/g, '')
       .replace(/\$([^$\n]*?)\$/g, '$1')
       .replace(/\$/g, '')

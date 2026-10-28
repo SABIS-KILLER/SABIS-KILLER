@@ -38,31 +38,33 @@ const HARDENED_SYSTEM_INSTRUCTION =
   "2. For math/physics, use exact LaTeX formatting and verify calculations internally before returning final values. " +
   "3. For code, ensure syntactically valid code blocks. " +
   "4. If information is ambiguous, provide the most logically rigorous interpretation.\n\n" +
-  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
+  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
 
 const SYSTEM_PROMPT =
+  `DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.\n\n` +
   `${HARDENED_SYSTEM_INSTRUCTION}\n\n` +
   "Task: Analyze the quiz/test screenshot carefully and output ONLY the ultra-concise final answers:\n" +
   "- DOUBLE-CHECK & VERIFY: You MUST thoroughly recheck each calculation, step, and answer to ensure 100% accuracy.\n" +
   "- Answer EVERY question and blank visible on screen without omission.\n" +
   "- FORMAT: Organize by section/part separated by pipe characters (|).\n" +
   "- For fill-in-the-blank: 'Blank 1: [Answer], Blank 2: [Answer]'.\n" +
-  "- For multiple choice / questions: 'Question 1: [Answer]'.\n" +
+  "- For multiple choice / dropdown questions: 'Question 1: [Answer]'.\n" +
   "- Keep output direct, clean, and plain for maximum legibility on a screen overlay.\n\n" +
-  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
+  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
 
 const DEFAULT_USER_PROMPT =
   "Solve all academic/quiz questions visible in this screenshot according to instructions. " +
   "Recheck your answers and double-check each method and step used for complete accuracy.";
 
 const CUSTOM_SYSTEM_PROMPT =
+  `DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.\n\n` +
   `${HARDENED_SYSTEM_INSTRUCTION}\n\n` +
   "Task: Analyze the screenshot and answer ONLY the user's specific custom instruction.\n" +
   "1. Strictly focus on answering the user's prompt about what is visible on screen.\n" +
   "2. Double-check each method and step to guarantee 100% accuracy.\n" +
   "3. Answer concisely and directly with zero conversational filler.\n" +
   "4. Plain text only: no conversational filler, greetings, or sign-offs.\n\n" +
-  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
+  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
 
 const GEMINI_FREE_TIER_MODELS = [
   'gemini-3.8-flash',
@@ -438,8 +440,9 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     temperature: isComplex ? 0.0 : 0.2,
     topP: isComplex ? 0.1 : 0.8,
     maxOutputTokens: 2048,
+    thinking_summaries: "none",
     thinkingConfig: {
-      thinkingLevel: isComplex ? "high" : "minimal"
+      thinking_summaries: "none"
     }
   };
   if (isComplex) {
@@ -480,8 +483,9 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
 
   let data = await response.json().catch(() => ({}));
 
-  if (!response.ok && response.status === 400 && data.error?.message?.includes('thinkingConfig')) {
+  if (!response.ok && response.status === 400 && (data.error?.message?.includes('thinkingConfig') || data.error?.message?.includes('thinking_summaries'))) {
     delete payload.generationConfig.thinkingConfig;
+    delete payload.generationConfig.thinking_summaries;
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -504,10 +508,22 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     return 'No response generated.';
   }
 
-  const textPart = candidate.content?.parts?.find((p) => p.text)?.text;
-  if (!textPart || !textPart.trim()) {
+  // Filter out any internal reasoning / thought blocks from Gemini candidates
+  const nonThoughtParts = (candidate.content?.parts || []).filter((p) => !p.thought && p.text);
+  let text = nonThoughtParts.length > 0
+    ? nonThoughtParts.map((p) => p.text).join('')
+    : (candidate.content?.parts?.find((p) => p.text)?.text || '');
+
+  // Strip XML/bracket reasoning tags and any leaked thought processes
+  text = text
+    .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/^Thought:[\s\S]*?(?=\n\n|\n[A-Z0-9]|$)/i, '')
+    .trim();
+
+  if (!text) {
     return 'No response generated from screenshot.';
   }
 
-  return textPart.trim();
+  return text;
 }
