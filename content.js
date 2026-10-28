@@ -312,7 +312,7 @@
       answerContainer.style.setProperty('bottom', 'auto', 'important');
       answerContainer.style.setProperty('right', 'auto', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
-      answerContainer.style.setProperty('max-width', 'min(85vw, 600px)', 'important');
+      answerContainer.style.setProperty('max-width', 'min(90vw, 650px)', 'important');
       answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
       answerContainer.style.setProperty('word-break', 'break-word', 'important');
       answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');
@@ -351,7 +351,7 @@
       answerContainer.style.setProperty('bottom', '8px', 'important');
       answerContainer.style.setProperty('left', '8px', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
-      answerContainer.style.setProperty('max-width', 'min(85vw, 600px)', 'important');
+      answerContainer.style.setProperty('max-width', 'min(90vw, 650px)', 'important');
       answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
       answerContainer.style.setProperty('word-break', 'break-word', 'important');
       answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');

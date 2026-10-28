@@ -38,33 +38,46 @@ const HARDENED_SYSTEM_INSTRUCTION =
   "2. For math/physics, use exact LaTeX formatting and verify calculations internally before returning final values. " +
   "3. For code, ensure syntactically valid code blocks. " +
   "4. If information is ambiguous, provide the most logically rigorous interpretation.\n\n" +
-  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
+  "DIRECTIVE: Examine the question and image thoroughly for ALL missing fields, blanks, drop-down menus, or multi-part questions. You MUST provide the answer for EVERY single blank/dropdown present in the question, not just the first one.\n" +
+  "Format: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, output each answer clearly separated on a single line, formatted like:\n" +
+  "1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n" +
+  "Never stop after answering only the first blank. Think deeply behind the scenes to verify every answer, but do NOT output reasoning, steps, or explanations.";
 
 const SYSTEM_PROMPT =
-  `DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.\n\n` +
+  `DIRECTIVE: Examine the question and image thoroughly for ALL missing fields, blanks, drop-down menus, or multi-part questions. You MUST provide the answer for EVERY single blank/dropdown present in the question, not just the first one.\n` +
+  `Format: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, output each answer clearly separated on a single line, formatted like:\n` +
+  `1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n` +
+  `Never stop after answering only the first blank. Think deeply behind the scenes to verify every answer, but do NOT output reasoning, steps, or explanations.\n\n` +
   `${HARDENED_SYSTEM_INSTRUCTION}\n\n` +
   "Task: Analyze the quiz/test screenshot carefully and output ONLY the ultra-concise final answers:\n" +
   "- DOUBLE-CHECK & VERIFY: You MUST thoroughly recheck each calculation, step, and answer to ensure 100% accuracy.\n" +
-  "- Answer EVERY question and blank visible on screen without omission.\n" +
-  "- FORMAT: Organize by section/part separated by pipe characters (|).\n" +
-  "- For fill-in-the-blank: 'Blank 1: [Answer], Blank 2: [Answer]'.\n" +
-  "- For multiple choice / dropdown questions: 'Question 1: [Answer]'.\n" +
-  "- Keep output direct, clean, and plain for maximum legibility on a screen overlay.\n\n" +
-  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
+  "- Answer EVERY question, blank, and dropdown menu visible on screen without omission.\n" +
+  "- FORMAT: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, format as: 1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n" +
+  "- Keep output direct, clean, and plain on a single line for maximum legibility on a screen overlay.\n\n" +
+  "DIRECTIVE: Examine the question and image thoroughly for ALL missing fields, blanks, drop-down menus, or multi-part questions. You MUST provide the answer for EVERY single blank/dropdown present in the question, not just the first one.\n" +
+  "Format: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, output each answer clearly separated on a single line, formatted like:\n" +
+  "1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n" +
+  "Never stop after answering only the first blank. Think deeply behind the scenes to verify every answer, but do NOT output reasoning, steps, or explanations.";
 
 const DEFAULT_USER_PROMPT =
   "Solve all academic/quiz questions visible in this screenshot according to instructions. " +
   "Recheck your answers and double-check each method and step used for complete accuracy.";
 
 const CUSTOM_SYSTEM_PROMPT =
-  `DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.\n\n` +
+  `DIRECTIVE: Examine the question and image thoroughly for ALL missing fields, blanks, drop-down menus, or multi-part questions. You MUST provide the answer for EVERY single blank/dropdown present in the question, not just the first one.\n` +
+  `Format: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, output each answer clearly separated on a single line, formatted like:\n` +
+  `1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n` +
+  `Never stop after answering only the first blank. Think deeply behind the scenes to verify every answer, but do NOT output reasoning, steps, or explanations.\n\n` +
   `${HARDENED_SYSTEM_INSTRUCTION}\n\n` +
   "Task: Analyze the screenshot and answer ONLY the user's specific custom instruction.\n" +
   "1. Strictly focus on answering the user's prompt about what is visible on screen.\n" +
   "2. Double-check each method and step to guarantee 100% accuracy.\n" +
   "3. Answer concisely and directly with zero conversational filler.\n" +
   "4. Plain text only: no conversational filler, greetings, or sign-offs.\n\n" +
-  "DIRECTIVE: You are an expert answer solver. Think deeply and carefully behind the scenes to guarantee 100% accuracy, but do NOT output your reasoning, explanations, or thought process. Output ONLY the exact final answer required for the fill-in-the-blank, word, number, or dropdown selection. Format your entire response as a single, clean, uninterrupted line with zero line breaks or paragraph enters.";
+  "DIRECTIVE: Examine the question and image thoroughly for ALL missing fields, blanks, drop-down menus, or multi-part questions. You MUST provide the answer for EVERY single blank/dropdown present in the question, not just the first one.\n" +
+  "Format: If there is only 1 blank, output just the direct answer. If there are multiple blanks or dropdowns, output each answer clearly separated on a single line, formatted like:\n" +
+  "1) [Answer 1]  2) [Answer 2]  3) [Answer 3]\n" +
+  "Never stop after answering only the first blank. Think deeply behind the scenes to verify every answer, but do NOT output reasoning, steps, or explanations.";
 
 const GEMINI_FREE_TIER_MODELS = [
   'gemini-3.8-flash',
