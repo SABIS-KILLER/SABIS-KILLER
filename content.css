@@ -1154,11 +1154,11 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SABIS KILLER - STUDY MODE LIQUID GLASS BUBBLE CONTAINER
-   Apple iOS 27 Liquid Glass Squircle Framing, Dynamic Spotlight Gap & Shimmer
+   SABIS KILLER v2.1 — STUDY MODE: UNIFIED LIQUID GLASS CONTAINER
+   Apple iOS 27 Liquid Glass | Hole-Punch Cutout | Unified Single Card
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* 1. Viewport-spanning click-through wrapper with dynamic hole-punch clip-path */
+/* ── Root viewport wrapper: click-through, hosts clip-path hole-punch ── */
 #sabis-study-bubble-container {
   position: fixed !important;
   top: 0 !important;
@@ -1176,108 +1176,50 @@
   box-sizing: border-box !important;
 }
 
-/* Explicitly re-enable pointer interactions on all interactive elements and inner panels */
+/* ── Re-enable pointer events on all interactive children ── */
 #sabis-study-bubble-container button,
 #sabis-study-bubble-container input,
-#sabis-study-bubble-container .study-followup-box,
-#sabis-study-bubble-container .study-right-stack,
+#sabis-study-bubble-container .study-unified-card,
+#sabis-study-bubble-container .study-content-bay,
 #sabis-study-bubble-container .study-bubble-close-btn,
-#sabis-study-bubble-container .study-bubble-card,
-#sabis-study-bubble-container .study-explanation-region,
+#sabis-study-bubble-container .study-followup-box,
+#sabis-study-bubble-container .study-followup-bar,
+#sabis-study-bubble-container .study-answer-card,
+#sabis-study-bubble-container .study-explanation-card,
 #sabis-study-bubble-container .study-diagram-box,
 #sabis-study-bubble-container .diagram-container,
 #sabis-study-bubble-container #diagram-render-panel {
   pointer-events: auto !important;
 }
 
-/* 2. DYNAMIC SPOTLIGHT WRAPPER — hosts the clip-path hole-punch mask */
-.study-spotlight-wrapper {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  pointer-events: none !important;
-  overflow: visible !important;
-}
-
-/* Neutral frosted-glass question frame ring — NO blue tint */
-.study-spotlight-gap {
-  position: fixed !important;
-  pointer-events: none !important;
-  background: transparent !important;
-  border: 1.5px solid rgba(255, 255, 255, 0.55) !important;
-  border-radius: 18px !important;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.3),
-    0 4px 24px rgba(0, 0, 0, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  box-sizing: border-box !important;
-  transition:
-    top 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    left 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    height 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  z-index: 2147483646 !important;
-}
-
-/* Neutral label pill — frosted glass, no blue fill */
-.study-spotlight-tag {
-  position: absolute !important;
-  top: -12px !important;
-  left: 14px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 5px !important;
-  padding: 2.5px 10px !important;
-  border-radius: 12px !important;
-  background: rgba(30, 30, 30, 0.72) !important;
-  backdrop-filter: blur(12px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(160%) !important;
-  color: rgba(255, 255, 255, 0.92) !important;
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.6px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
-  pointer-events: none !important;
-  user-select: none !important;
-  white-space: nowrap !important;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
-}
-
-/* 3. SURROUNDING LIQUID GLASS CARD PANELS — strictly neutral, no blue tint */
-.study-bubble-card {
+/* ── Unified oversized Apple iOS 27 Liquid Glass card ── */
+.study-unified-card {
   position: fixed !important;
   z-index: 2147483647 !important;
   pointer-events: auto !important;
-  border-radius: 24px !important;
-  overflow: hidden !important;
-  background: rgba(255, 255, 255, 0.12) !important;
-  backdrop-filter: blur(32px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(36px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
   box-shadow:
-    0 20px 50px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  max-width: 90vw !important;
-  max-height: 90vh !important;
-  overflow-y: auto !important;
-  padding: 18px 22px !important;
+    0 30px 80px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  border-radius: 20px !important;
   box-sizing: border-box !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
   color: #1c1c1e !important;
-  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, top 0.2s cubic-bezier(0.16, 1, 0.3, 1), left 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  overflow: hidden !important;
+  transition: left 0.2s cubic-bezier(0.16, 1, 0.3, 1), top 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
+/* ── Close button ── */
 .study-bubble-close-btn {
   position: absolute !important;
-  top: 12px !important;
-  right: 12px !important;
+  top: 10px !important;
+  right: 10px !important;
   z-index: 10 !important;
-  width: 28px !important;
-  height: 28px !important;
+  width: 26px !important;
+  height: 26px !important;
   border-radius: 50% !important;
   background: rgba(0, 0, 0, 0.1) !important;
   display: flex !important;
@@ -1289,200 +1231,127 @@
   color: #1c1c1e !important;
   transition: background 0.15s ease, transform 0.15s ease !important;
 }
+.study-bubble-close-btn:hover { background: rgba(0, 0, 0, 0.2) !important; }
+.study-bubble-close-btn:active { transform: scale(0.9) !important; }
 
-.study-bubble-close-btn:hover {
-  background: rgba(0, 0, 0, 0.18) !important;
-}
-
-.study-bubble-close-btn:active {
-  transform: scale(0.92) !important;
-}
-
-.study-bubble-inner {
+/* ── Two-column inner layout ── */
+.study-unified-inner {
   display: flex !important;
   flex-direction: row !important;
   align-items: stretch !important;
-  gap: 16px !important;
-  padding-top: 4px !important;
+  height: 100% !important;
+  min-height: inherit !important;
   box-sizing: border-box !important;
 }
 
-/* 1. LEFT REGION - QUESTION FRAME — neutral glass, no blue tint */
-.study-question-region {
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  border-radius: 16px !important;
-  padding: 12px !important;
-  background: rgba(255, 255, 255, 0.14) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  display: flex !important;
-  flex-direction: column !important;
-  min-width: 180px !important;
-  max-width: 240px !important;
+/* ── LEFT PANE: transparent hole-punch (question shows through here) ── */
+.study-cutout-pane {
+  position: relative !important;
+  flex-shrink: 0 !important;
   box-sizing: border-box !important;
-  flex: 0 0 auto !important;
+  pointer-events: none !important;
+  /* Completely transparent so the webpage question is visible */
+  background: transparent !important;
 }
 
-.study-region-tag {
+/* Small frosted label in top-left of the cutout pane */
+.study-cutout-label {
+  position: absolute !important;
+  top: 8px !important;
+  left: 10px !important;
   display: inline-flex !important;
   align-items: center !important;
   gap: 5px !important;
-  font-size: 11px !important;
+  padding: 3px 9px !important;
+  border-radius: 10px !important;
+  background: rgba(20, 20, 20, 0.60) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.88) !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.6px !important;
-  color: #3a3a3c !important;
-  margin-bottom: 8px !important;
+  letter-spacing: 0.55px !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
 
-.study-question-body {
-  font-size: 12.5px !important;
-  line-height: 1.45 !important;
-  color: #2c2c2e !important;
-  overflow-y: auto !important;
-  max-height: 220px !important;
-  word-break: break-word !important;
+/* Thin frosted glass border around the cutout area */
+.study-cutout-pane::before {
+  content: '' !important;
+  position: absolute !important;
+  inset: 0 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
+  pointer-events: none !important;
 }
 
-/* 2. CENTER REGION - EXPLANATION & ANSWER */
-.study-explanation-region {
-  flex: 1 1 260px !important;
-  min-width: 220px !important;
-  max-width: 380px !important;
+/* ── RIGHT PANE: unified content bay ── */
+.study-content-bay {
+  flex-shrink: 0 !important;
   display: flex !important;
   flex-direction: column !important;
-  justify-content: center !important;
   gap: 10px !important;
+  padding: 20px 18px 16px !important;
   box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
-.study-answer-row {
+/* Section label (ANSWER / EXPLANATION) */
+.study-section-label {
   display: flex !important;
-  flex-direction: column !important;
-  gap: 3px !important;
-}
-
-.study-answer-label {
-  font-size: 10.5px !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 10px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.7px !important;
-  color: #34c759 !important;
+  color: #636366 !important;
+  margin-bottom: 4px !important;
+}
+
+/* 1. Answer card */
+.study-answer-card {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
 }
 
 .study-answer-text {
   font-size: 15px !important;
   font-weight: 700 !important;
   color: #1c1c1e !important;
-  line-height: 1.35 !important;
+  line-height: 1.4 !important;
   word-break: break-word !important;
 }
 
-.study-explanation-row {
+/* Thin separator */
+.study-divider {
+  height: 1px !important;
+  background: rgba(0, 0, 0, 0.08) !important;
+  border: none !important;
+  flex-shrink: 0 !important;
+}
+
+/* 2. Explanation block */
+.study-explanation-card {
   display: flex !important;
   flex-direction: column !important;
   gap: 3px !important;
 }
 
-.study-explanation-label {
-  font-size: 10.5px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.7px !important;
-  color: #8e8e93 !important;
-}
-
 .study-explanation-text {
-  color: #1C1C1E !important;
-  font-size: 14px !important;
+  font-size: 13px !important;
+  color: #3a3a3c !important;
   line-height: 1.5 !important;
   word-break: break-word !important;
 }
 
-/* 3. RIGHT REGION - DIAGRAM & FOLLOW-UP STACK */
-.study-right-stack {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: space-between !important;
-  gap: 12px !important;
-  min-width: 260px !important;
-  max-width: 340px !important;
-  box-sizing: border-box !important;
-}
-
-/* TOP AREA - SMART COLLAPSIBLE DIAGRAM CONTAINER */
-.study-diagram-box {
-  font-family: monospace !important;
-  font-size: 12px !important;
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-radius: 14px !important;
-  padding: 10px !important;
-  box-sizing: border-box !important;
-  border: 1px solid rgba(255, 255, 255, 0.28) !important;
-  backdrop-filter: blur(16px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
-  /* Smart collapse initial state */
-  display: none !important;
-  opacity: 0 !important;
-  max-height: 0 !important;
-  transition: all 0.3s ease !important;
-  overflow: hidden !important;
-}
-
-.study-diagram-box.is-expanded {
-  display: block !important;
-  opacity: 1 !important;
-  max-height: 420px !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
-.study-diagram-header {
-  display: flex !important;
-  align-items: center !important;
-  gap: 6px !important;
-  font-size: 11px !important;
-  font-weight: 600 !important;
-  color: #636366 !important;
-  margin-bottom: 6px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
-}
-
-.study-diagram-content {
-  margin: 0 !important;
-  padding: 0 !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
-  font-size: 12px !important;
-  line-height: 1.4 !important;
-  color: #1c1c1e !important;
-  white-space: pre-wrap !important;
-  word-break: break-word !important;
-}
-
-/* ── MULTIMEDIA DIAGRAM RENDER PANEL ── */
-/* Container for both text and image diagram payloads */
-#diagram-render-panel,
-.diagram-container {
-  width: 100% !important;
-  box-sizing: border-box !important;
-  overflow: hidden !important;
-}
-
-/* Responsive fluid image inside the diagram panel */
-.diagram-fluid-img {
-  display: block !important;
-  max-width: 100% !important;
-  width: auto !important;
-  height: auto !important;
-  object-fit: contain !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-  margin-top: 4px !important;
-}
-
-/* BOTTOM RIGHT AREA - INTERACTIVE FOLLOW-UP INPUT BAR */
+/* 3. Follow-up input pill */
 .study-followup-box {
-  margin-top: auto !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -1490,17 +1359,18 @@
 .study-followup-bar {
   display: flex !important;
   align-items: center !important;
-  background: rgba(255, 255, 255, 0.82) !important;
+  background: rgba(255, 255, 255, 0.75) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   border-radius: 20px !important;
   padding: 3px 5px 3px 12px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05) !important;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  box-sizing: border-box !important;
 }
 
 .study-followup-bar:focus-within {
-  border-color: #007aff !important;
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
+  border-color: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07) !important;
 }
 
 .study-prompt-input {
@@ -1514,15 +1384,14 @@
   font-family: inherit !important;
 }
 
-.study-prompt-input::placeholder {
-  color: #8e8e93 !important;
-}
+.study-prompt-input::placeholder { color: #8e8e93 !important; }
 
 .study-send-btn {
   width: 26px !important;
   height: 26px !important;
+  flex-shrink: 0 !important;
   border-radius: 50% !important;
-  background: #007aff !important;
+  background: rgba(28, 28, 30, 0.85) !important;
   color: #ffffff !important;
   border: none !important;
   display: flex !important;
@@ -1532,50 +1401,108 @@
   padding: 0 !important;
   transition: background 0.15s ease, transform 0.15s ease !important;
 }
+.study-send-btn:hover  { background: rgba(28, 28, 30, 1) !important; }
+.study-send-btn:active { transform: scale(0.92) !important; }
 
-.study-send-btn:hover {
-  background: #0062cc !important;
+/* 4. Multimedia diagram / visual breakdown panel */
+.study-diagram-box {
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+  display: none !important;
+  opacity: 0 !important;
+  max-height: 0 !important;
+  overflow: hidden !important;
+  transition: opacity 0.3s ease, max-height 0.3s ease !important;
 }
 
-.study-send-btn:active {
-  transform: scale(0.92) !important;
+.study-diagram-box.is-expanded {
+  display: block !important;
+  opacity: 1 !important;
+  max-height: 440px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
-/* 4. INSTANT THINKING STATE SKELETON SHIMMER */
-@keyframes skeleton-shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+.study-diagram-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.55px !important;
+  color: #636366 !important;
+  margin-bottom: 8px !important;
+}
+
+.study-diagram-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11.5px !important;
+  line-height: 1.45 !important;
+  color: #1c1c1e !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* Multimedia: image diagram */
+#diagram-render-panel,
+.diagram-container {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  overflow: hidden !important;
+}
+
+.diagram-fluid-img {
+  display: block !important;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+  margin-top: 4px !important;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes sabis-skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .study-skeleton-line {
   height: 13px !important;
   border-radius: 6px !important;
   margin-bottom: 7px !important;
-  background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.13) 50%, rgba(0, 0, 0, 0.05) 75%) !important;
+  background: linear-gradient(90deg,
+    rgba(0, 0, 0, 0.05) 25%,
+    rgba(0, 0, 0, 0.12) 50%,
+    rgba(0, 0, 0, 0.05) 75%) !important;
   background-size: 200% 100% !important;
-  animation: skeleton-shimmer 1.3s ease-in-out infinite !important;
+  animation: sabis-skeleton-shimmer 1.3s ease-in-out infinite !important;
 }
 
 .study-thinking-badge {
   font-size: 11px !important;
   font-weight: 600 !important;
-  color: #007aff !important;
+  color: #636366 !important;
   margin-bottom: 6px !important;
 }
 
-/* Responsive Narrow Screen Optimization */
-@media (max-width: 680px) {
-  .study-bubble-inner {
+/* ── Narrow screen fallback ── */
+@media (max-width: 700px) {
+  .study-unified-inner {
     flex-direction: column !important;
   }
-  .study-question-region,
-  .study-explanation-region,
-  .study-right-stack {
-    max-width: 100% !important;
-    min-width: 100% !important;
+  .study-cutout-pane,
+  .study-content-bay {
+    width: 100% !important;
+    min-width: unset !important;
   }
 }

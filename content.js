@@ -1871,24 +1871,38 @@
 
     function updateSpotlightGapPosition() {
       if (!studyBubbleContainer) return;
-      const gapEl = studyBubbleContainer.querySelector('#study-spotlight-gap');
-      if (!gapEl) return;
+      const card = studyBubbleContainer.querySelector('#study-bubble-card');
+      if (!card) return;
       const qRect = getQuestionBoundingRect(currentTargetQuestionEl);
-      const pad = 6;
-      const gapTop    = Math.max(4, Math.round(qRect.top    - pad));
-      const gapLeft   = Math.max(4, Math.round(qRect.left   - pad));
-      const gapWidth  = Math.max(120, Math.round(qRect.width  + pad * 2));
-      const gapHeight = Math.max(50,  Math.round(qRect.height + pad * 2));
-      gapEl.style.top    = `${gapTop}px`;
-      gapEl.style.left   = `${gapLeft}px`;
-      gapEl.style.width  = `${gapWidth}px`;
-      gapEl.style.height = `${gapHeight}px`;
-      // Sync clip-path hole-punch with updated coords
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+
+      const CUTOUT_PAD  = 12;
+      const RIGHT_WIDTH = 380;
+      const CARD_PAD    = 20;
+      const MIN_GAP_H   = 60;
+
+      const cutoutW = Math.max(220, Math.min(Math.round(qRect.width)  + CUTOUT_PAD * 2, vW * 0.45));
+      const cutoutH = Math.max(MIN_GAP_H, Math.min(Math.round(qRect.height) + CUTOUT_PAD * 2, vH * 0.8));
+      const cardWidth  = cutoutW + RIGHT_WIDTH + CARD_PAD * 2;
+      const cardHeight = Math.max(cutoutH + CARD_PAD * 2, 340);
+
+      let cardLeft = Math.round(qRect.left) - CUTOUT_PAD - CARD_PAD;
+      let cardTop  = Math.round(qRect.top)  - CUTOUT_PAD - CARD_PAD;
+      cardLeft = Math.max(8, Math.min(cardLeft, vW - cardWidth - 8));
+      cardTop  = Math.max(8, Math.min(cardTop,  vH - cardHeight - 8));
+
+      card.style.left     = `${cardLeft}px`;
+      card.style.top      = `${cardTop}px`;
+      card.style.width    = `${cardWidth}px`;
+      card.style.minHeight = `${cardHeight}px`;
+
+      // Re-apply hole-punch at updated coords
       applyHolePunchClipPath(studyBubbleContainer, {
-        left:   gapLeft,
-        top:    gapTop,
-        right:  gapLeft + gapWidth,
-        bottom: gapTop + gapHeight
+        left:   cardLeft + CARD_PAD,
+        top:    cardTop  + CARD_PAD,
+        right:  cardLeft + CARD_PAD + cutoutW,
+        bottom: cardTop  + CARD_PAD + cutoutH
       }, 0);
     }
 
@@ -1907,94 +1921,138 @@
 
       studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
 
-      const pad = 6;
-      const gapTop = Math.max(4, Math.round(rect.top - pad));
-      const gapLeft = Math.max(4, Math.round(rect.left - pad));
-      const gapWidth = Math.max(120, Math.round(rect.width + pad * 2));
-      const gapHeight = Math.max(50, Math.round(rect.height + pad * 2));
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
 
-      // Apply CSS clip-path polygon hole-punch cutout immediately
+      // ── Unified card geometry ──────────────────────────────────────────────
+      // Left pane width = question width + padding. Right pane = content bay.
+      const CUTOUT_PAD  = 12;  // px buffer around question
+      const RIGHT_WIDTH = 380; // right content bay fixed width
+      const CARD_PAD    = 20;  // inner card padding
+      const MIN_GAP_H   = 60;
+
+      const cutoutW = Math.max(220, Math.min(Math.round(rect.width)  + CUTOUT_PAD * 2, vW * 0.45));
+      const cutoutH = Math.max(MIN_GAP_H, Math.min(Math.round(rect.height) + CUTOUT_PAD * 2, vH * 0.8));
+
+      const cardWidth  = cutoutW + RIGHT_WIDTH + CARD_PAD * 2;
+      const cardHeight = Math.max(cutoutH + CARD_PAD * 2, 340);
+
+      // Try to position card so the left cutout window sits over the question
+      let cardLeft = Math.round(rect.left) - CUTOUT_PAD - CARD_PAD;
+      let cardTop  = Math.round(rect.top)  - CUTOUT_PAD - CARD_PAD;
+
+      // Clamp within viewport
+      cardLeft = Math.max(8, Math.min(cardLeft, vW - cardWidth - 8));
+      cardTop  = Math.max(8, Math.min(cardTop,  vH - cardHeight - 8));
+
+      // ── Cutout coords RELATIVE to card ───────────────────────────────────
+      // The cutout is a transparent hole in the LEFT portion of the card
+      const holeLeft   = CARD_PAD;
+      const holeTop    = CARD_PAD;
+      const holeRight  = CARD_PAD + cutoutW;
+      const holeBottom = CARD_PAD + cutoutH;
+
+      // Apply CSS clip-path hole-punch (absolute coords on viewport)
       applyHolePunchClipPath(studyBubbleContainer, {
-        left:   gapLeft,
-        top:    gapTop,
-        right:  gapLeft + gapWidth,
-        bottom: gapTop + gapHeight
+        left:   cardLeft + holeLeft,
+        top:    cardTop  + holeTop,
+        right:  cardLeft + holeRight,
+        bottom: cardTop  + holeBottom
       }, 0);
 
-      const cardPos = calculateStudyCardPosition(rect);
-
       studyBubbleContainer.innerHTML = `
-        <div class="study-spotlight-wrapper">
-          <!-- Dynamic Spotlight Cutout Hole / Framing Gap over Target Question -->
-          <div class="study-spotlight-gap" id="study-spotlight-gap" style="top: ${gapTop}px; left: ${gapLeft}px; width: ${gapWidth}px; height: ${gapHeight}px;">
-            <div class="study-spotlight-tag">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <circle cx="12" cy="12" r="3"></circle>
-              </svg>
-              <span>Target Question</span>
+        <!-- Unified Single Liquid Glass Card -->
+        <div class="study-unified-card" id="study-bubble-card"
+             style="left:${cardLeft}px; top:${cardTop}px; width:${cardWidth}px; min-height:${cardHeight}px;">
+
+          <!-- Close button -->
+          <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Two-column inner layout -->
+          <div class="study-unified-inner">
+
+            <!-- LEFT: transparent hole-punch window (the actual webpage question shows through) -->
+            <div class="study-cutout-pane"
+                 style="width:${cutoutW}px; min-height:${cutoutH}px;">
+              <!-- Frosted glass ring label -->
+              <div class="study-cutout-label">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>Active Question</span>
+              </div>
             </div>
-          </div>
 
-          <!-- Surrounding Liquid Glass Card Panels -->
-          <div class="study-bubble-card" id="study-bubble-card" style="top: ${cardPos.top}px; left: ${cardPos.left}px; max-width: ${cardPos.maxWidth}px;">
-            <!-- Top-Right Close Button -->
-            <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+            <!-- RIGHT: unified content bay -->
+            <div class="study-content-bay" style="width:${RIGHT_WIDTH}px;">
 
-            <div class="study-bubble-inner">
-              <!-- CENTER REGION: EXPLANATION & ANSWER -->
-              <div class="study-explanation-region">
-                <div class="study-answer-row">
-                  <span class="study-answer-label">ANSWER</span>
-                  <div class="study-answer-text" id="study-answer-text"></div>
-                </div>
-                <div class="study-explanation-row">
-                  <span class="study-explanation-label">EXPLANATION</span>
-                  <div class="study-explanation-text" id="study-explanation-text"></div>
-                </div>
+              <!-- 1. ANSWER CARD -->
+              <div class="study-answer-card">
+                <span class="study-section-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  Answer
+                </span>
+                <div class="study-answer-text" id="study-answer-text"></div>
               </div>
 
-              <!-- RIGHT REGION: DIAGRAM & FOLLOW-UP STACK -->
-              <div class="study-right-stack">
-                <!-- SMART COLLAPSIBLE DIAGRAM CONTAINER -->
-                <div class="study-diagram-box" id="study-diagram-box">
-                  <div class="study-diagram-header">
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="3" y1="9" x2="21" y2="9"></line>
-                      <line x1="9" y1="21" x2="9" y2="9"></line>
+              <!-- divider -->
+              <div class="study-divider"></div>
+
+              <!-- 2. EXPLANATION BLOCK -->
+              <div class="study-explanation-card">
+                <span class="study-section-label">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                  </svg>
+                  Explanation
+                </span>
+                <div class="study-explanation-text" id="study-explanation-text"></div>
+              </div>
+
+              <!-- 3. FOLLOW-UP INPUT PILL -->
+              <div class="study-followup-box">
+                <div class="study-followup-bar">
+                  <input type="text" class="study-prompt-input" id="study-prompt-input"
+                    placeholder="Ask about explanation..."
+                    autocomplete="off" autocorrect="off" spellcheck="false"
+                    data-lpignore="true" aria-autocomplete="none">
+                  <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                     </svg>
-                    <span>Visual Breakdown</span>
-                  </div>
-                  <div class="diagram-container" id="diagram-render-panel">
-                    <pre class="study-diagram-content" id="study-diagram-content"></pre>
-                  </div>
-                </div>
-
-                <!-- INTERACTIVE FOLLOW-UP INPUT BAR -->
-                <div class="study-followup-box">
-                  <div class="study-followup-bar">
-                    <input type="text" class="study-prompt-input" id="study-prompt-input"
-                      placeholder="Ask about explanation..."
-                      autocomplete="off" autocomplete="new-password"
-                      autocorrect="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-                    <button type="button" class="study-send-btn" id="study-send-btn" title="Send follow-up">
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                      </svg>
-                    </button>
-                  </div>
+                  </button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+
+              <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
+              <div class="study-diagram-box" id="study-diagram-box">
+                <div class="study-diagram-header">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="9" y1="21" x2="9" y2="9"></line>
+                  </svg>
+                  <span>Visual Breakdown</span>
+                </div>
+                <div class="diagram-container" id="diagram-render-panel">
+                  <pre class="study-diagram-content" id="study-diagram-content"></pre>
+                </div>
+              </div>
+
+            </div><!-- /study-content-bay -->
+          </div><!-- /study-unified-inner -->
+        </div><!-- /study-unified-card -->
       `;
 
       // Top-Right Close Button
