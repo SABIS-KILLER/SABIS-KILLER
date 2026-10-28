@@ -37,7 +37,8 @@ const HARDENED_SYSTEM_INSTRUCTION =
   "1. Answer concisely without conversational filler. " +
   "2. For math/physics, use exact LaTeX formatting and verify calculations internally before returning final values. " +
   "3. For code, ensure syntactically valid code blocks. " +
-  "4. If information is ambiguous, provide the most logically rigorous interpretation.";
+  "4. If information is ambiguous, provide the most logically rigorous interpretation.\n\n" +
+  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
 
 const SYSTEM_PROMPT =
   `${HARDENED_SYSTEM_INSTRUCTION}\n\n` +
@@ -47,7 +48,8 @@ const SYSTEM_PROMPT =
   "- FORMAT: Organize by section/part separated by pipe characters (|).\n" +
   "- For fill-in-the-blank: 'Blank 1: [Answer], Blank 2: [Answer]'.\n" +
   "- For multiple choice / questions: 'Question 1: [Answer]'.\n" +
-  "- Keep output direct, clean, and plain for maximum legibility on a screen overlay.";
+  "- Keep output direct, clean, and plain for maximum legibility on a screen overlay.\n\n" +
+  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
 
 const DEFAULT_USER_PROMPT =
   "Solve all academic/quiz questions visible in this screenshot according to instructions. " +
@@ -59,7 +61,8 @@ const CUSTOM_SYSTEM_PROMPT =
   "1. Strictly focus on answering the user's prompt about what is visible on screen.\n" +
   "2. Double-check each method and step to guarantee 100% accuracy.\n" +
   "3. Answer concisely and directly with zero conversational filler.\n" +
-  "4. Plain text only: no conversational filler, greetings, or sign-offs.";
+  "4. Plain text only: no conversational filler, greetings, or sign-offs.\n\n" +
+  "DIRECTIVE: Always output your complete response on a single, continuous line without any line breaks, newline characters (\\n), or paragraph enters unless formatted code blocks explicitly require them. Keep the output clean, direct, and uninterrupted on one line.";
 
 const GEMINI_FREE_TIER_MODELS = [
   'gemini-3.8-flash',

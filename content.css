@@ -163,12 +163,13 @@
    ══════════════════════════════════════════════════════════════════════════════ */
 #answer-display-container,
 #answer-container,
+.answer-container,
 #output-text {
   position: fixed !important;
   bottom: 8px !important;
   left: 8px !important;
   width: auto !important;
-  max-width: min(85vw, 450px) !important;
+  max-width: min(85vw, 600px) !important;
   height: auto !important;
   min-height: 0 !important;
   background: transparent !important;
@@ -210,7 +211,7 @@
   white-space: pre-wrap !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
-  max-width: 100% !important;
+  max-width: min(85vw, 600px) !important;
   width: auto !important;
   display: inline-block !important;
 }

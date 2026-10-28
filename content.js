@@ -312,7 +312,7 @@
       answerContainer.style.setProperty('bottom', 'auto', 'important');
       answerContainer.style.setProperty('right', 'auto', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
-      answerContainer.style.setProperty('max-width', 'min(85vw, 450px)', 'important');
+      answerContainer.style.setProperty('max-width', 'min(85vw, 600px)', 'important');
       answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
       answerContainer.style.setProperty('word-break', 'break-word', 'important');
       answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');
@@ -351,7 +351,7 @@
       answerContainer.style.setProperty('bottom', '8px', 'important');
       answerContainer.style.setProperty('left', '8px', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
-      answerContainer.style.setProperty('max-width', 'min(85vw, 450px)', 'important');
+      answerContainer.style.setProperty('max-width', 'min(85vw, 600px)', 'important');
       answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
       answerContainer.style.setProperty('word-break', 'break-word', 'important');
       answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');
@@ -483,6 +483,10 @@
     if (!el) {
       isRepositioning = false;
       return;
+    }
+
+    if (targetKey === 'answer' || targetKey === 'panel') {
+      el.style.transform = 'none';
     }
 
     const wasModalOpenBeforePicker = isModalOpen;
@@ -635,6 +639,7 @@
       if (didSetTempAnswer && answerText && answerText.textContent === 'Answer Overlay Preview') {
         answerText.textContent = '';
       }
+      updateAnswerBoundaryShift();
     }
 
     function finishPositioning(finalX, finalY) {
