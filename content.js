@@ -27,7 +27,6 @@
   let captureButton = null;
   let answerContainer = null;
   let answerText = null;
-  let modelBadge = null;
 
   // In-Page Center Modal Elements
   let settingsModalBackdrop = null;
@@ -789,12 +788,6 @@
       card.classList.toggle('active', card.id === PROVIDERS[providerKey].cardId);
     });
 
-    const feedback = shadow.getElementById('inpage-test-feedback');
-    if (feedback) {
-      feedback.className = 'modal-test-feedback hidden';
-      feedback.textContent = '';
-    }
-
     updateModalProviderStatus();
     autoSaveModal(false);
   }
@@ -818,6 +811,7 @@
   // ── Custom Liquid Glass Dropdown Helpers (Shadow DOM) ──
   function initModalCustomSelects() {
     if (!shadow) return;
+    const backdrop = shadow.getElementById('modal-dropdown-backdrop');
     const wrappers = shadow.querySelectorAll('.modal-custom-select-wrapper');
     wrappers.forEach(wrapper => {
       const trigger = wrapper.querySelector('.modal-custom-select-trigger');
@@ -834,7 +828,9 @@
         closeAllModalCustomSelects();
         if (!isOpen) {
           wrapper.classList.add('open');
+          wrapper.closest('.modal-provider-card')?.classList.add('has-open-select');
           trigger.setAttribute('aria-expanded', 'true');
+          if (backdrop) backdrop.classList.add('active');
         }
       });
 
@@ -850,13 +846,22 @@
           opt.classList.add('selected');
 
           wrapper.classList.remove('open');
+          wrapper.closest('.modal-provider-card')?.classList.remove('has-open-select');
           trigger.setAttribute('aria-expanded', 'false');
+          if (backdrop) backdrop.classList.remove('active');
 
           hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
           autoSaveModal();
         });
       });
     });
+
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllModalCustomSelects();
+      });
+    }
 
     shadow.addEventListener('click', (e) => {
       const path = e.composedPath ? e.composedPath() : [];
@@ -869,6 +874,9 @@
 
   function closeAllModalCustomSelects() {
     if (!shadow) return;
+    const backdrop = shadow.getElementById('modal-dropdown-backdrop');
+    if (backdrop) backdrop.classList.remove('active');
+    shadow.querySelectorAll('.modal-provider-card.has-open-select').forEach(c => c.classList.remove('has-open-select'));
     shadow.querySelectorAll('.modal-custom-select-wrapper.open').forEach(w => {
       w.classList.remove('open');
       const trigger = w.querySelector('.modal-custom-select-trigger');
@@ -1043,74 +1051,6 @@
     }, 180);
   }
 
-  async function testModalConnection() {
-    if (!shadow) return;
-    const btn = shadow.getElementById('inpage-btn-test-connection');
-    const feedback = shadow.getElementById('inpage-test-feedback');
-    if (!btn || !feedback) return;
-
-    const conf = PROVIDERS[currentActiveProvider];
-    if (!conf) return;
-
-    const keyInput = shadow.getElementById(conf.keyInputId);
-    const modelSelect = shadow.getElementById(conf.modelSelectId);
-    const key = keyInput ? keyInput.value.trim() : '';
-    const model = modelSelect ? modelSelect.value : conf.defaultModel;
-
-    if (!key) {
-      feedback.className = 'modal-test-feedback error';
-      feedback.textContent = `Please enter a valid API key for ${conf.name} first.`;
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Connecting...';
-    feedback.className = 'modal-test-feedback hidden';
-
-    try {
-      const testConfig = conf.getTestConfig(key, model);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const resp = await fetch(testConfig.url, {
-        method: testConfig.method,
-        headers: testConfig.headers,
-        body: testConfig.body,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (resp.ok) {
-        feedback.className = 'modal-test-feedback success';
-        feedback.textContent = `Connection successful! ${conf.name} verified.`;
-      } else {
-        let errSnippet = `HTTP ${resp.status}`;
-        try {
-          const json = await resp.json();
-          errSnippet = json.error?.message || json.message || errSnippet;
-        } catch (_) {
-          try {
-            const txt = await resp.text();
-            if (txt) errSnippet = txt.substring(0, 100);
-          } catch (_) {}
-        }
-        feedback.className = 'modal-test-feedback error';
-        feedback.textContent = `Failed (${resp.status}): ${errSnippet}`;
-      }
-    } catch (err) {
-      feedback.className = 'modal-test-feedback error';
-      if (err.name === 'AbortError') {
-        feedback.textContent = 'Connection timed out (12s). Check your internet connection.';
-      } else {
-        feedback.textContent = `Error: ${err.message || 'Network request failed'}`;
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Test Connection';
-    }
-  }
-
   // ── Listen for Messages from background.js ──────────────────────────────────
   if (isRuntimeValid()) {
     try {
@@ -1233,11 +1173,6 @@
 
     answerContainer.appendChild(answerText);
 
-    modelBadge = document.createElement('span');
-    modelBadge.id = 'model-badge';
-    modelBadge.className = 'model-badge';
-    answerContainer.appendChild(modelBadge);
-
     uiWrapper.appendChild(bottomControlsBar);
     uiWrapper.appendChild(answerContainer);
 
@@ -1248,6 +1183,7 @@
     settingsModalDialog = document.createElement('div');
     settingsModalDialog.id = 'settings-modal-dialog';
     settingsModalDialog.innerHTML = `
+      <div id="modal-dropdown-backdrop" class="modal-dropdown-backdrop"></div>
       <div id="modal-save-toast">
         <svg viewBox="0 0 20 20" width="13" height="13" fill="currentColor">
           <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
@@ -1591,9 +1527,6 @@
           </div>
         </div>
 
-        <button type="button" id="inpage-btn-test-connection" class="modal-btn-secondary">Test Connection</button>
-        <div id="inpage-test-feedback" class="modal-test-feedback hidden"></div>
-
         <div class="modal-divider"></div>
 
         <!-- Appearance Section -->
@@ -1746,10 +1679,6 @@
       });
     });
 
-    // Test Connection Button
-    const testBtn = settingsModalDialog.querySelector('#inpage-btn-test-connection');
-    if (testBtn) testBtn.addEventListener('click', testModalConnection);
-
     // Glass Refraction Slider
     const glassSlider = settingsModalDialog.querySelector('#inpage-glass-slider');
     const glassBadge = settingsModalDialog.querySelector('#inpage-glass-val');
@@ -1885,10 +1814,6 @@
       isSolving = true;
       currentAnswerText = 'Solving...';
       answerText.textContent = currentAnswerText;
-      if (modelBadge) {
-        modelBadge.classList.remove('visible');
-        modelBadge.style.display = 'none';
-      }
 
       const rawPrompt = promptInput ? promptInput.value.trim() : '';
       const pageTitle = (document.title || '').trim();
@@ -1929,25 +1854,10 @@
             if (response.fromCache) {
               console.log('[Cache Hit] Received instant 0ms cached answer');
             }
-            if (modelBadge && response.modelUsed) {
-              modelBadge.textContent = response.modelUsed;
-              modelBadge.title = `Mode: ${response.modeActive || ''}${response.wasFallbackTriggered ? ' [Fallback]' : ''}`;
-              if (response.wasFallbackTriggered) { modelBadge.classList.add('fallback'); }
-              else { modelBadge.classList.remove('fallback'); }
-
-              // Show badge via class and standard display without forcing inline !important
-              // This guarantees that setting 'display: none !important;' in CSS cleanly hides it if desired
-              modelBadge.classList.add('visible');
-              modelBadge.style.display = 'inline-block';
-            }
           }
 
           if (answerText) {
             answerText.textContent = formatAnswerForBar(currentAnswerText);
-          }
-          if (modelBadge && !response?.success) {
-            modelBadge.classList.remove('visible');
-            modelBadge.style.display = 'none';
           }
         });
       } catch (err) {

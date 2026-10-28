@@ -243,12 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
       card.classList.toggle('active', card.id === PROVIDERS[providerKey].cardId);
     });
 
-    const feedback = document.getElementById('test-feedback');
-    if (feedback) {
-      feedback.className = 'test-feedback hidden';
-      feedback.textContent = '';
-    }
-
     updateStatusBadge();
     autoSave(false);
   }
@@ -321,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Custom Liquid Glass Dropdown Logic (popup.html) ──
   function initCustomSelects() {
+    const backdrop = document.getElementById('dropdown-backdrop');
     const wrappers = document.querySelectorAll('.custom-select-wrapper');
     wrappers.forEach(wrapper => {
       const trigger = wrapper.querySelector('.custom-select-trigger');
@@ -337,7 +332,9 @@ document.addEventListener('DOMContentLoaded', () => {
         closeAllCustomSelects();
         if (!isOpen) {
           wrapper.classList.add('open');
+          wrapper.closest('.card')?.classList.add('has-open-select');
           trigger.setAttribute('aria-expanded', 'true');
+          if (backdrop) backdrop.classList.add('active');
         }
       });
 
@@ -353,7 +350,9 @@ document.addEventListener('DOMContentLoaded', () => {
           opt.classList.add('selected');
 
           wrapper.classList.remove('open');
+          wrapper.closest('.card')?.classList.remove('has-open-select');
           trigger.setAttribute('aria-expanded', 'false');
+          if (backdrop) backdrop.classList.remove('active');
 
           hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
           autoSave();
@@ -361,10 +360,19 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    if (backdrop) {
+      backdrop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAllCustomSelects();
+      });
+    }
     document.addEventListener('click', () => closeAllCustomSelects());
   }
 
   function closeAllCustomSelects() {
+    const backdrop = document.getElementById('dropdown-backdrop');
+    if (backdrop) backdrop.classList.remove('active');
+    document.querySelectorAll('.card.has-open-select').forEach(c => c.classList.remove('has-open-select'));
     document.querySelectorAll('.custom-select-wrapper.open').forEach(w => {
       w.classList.remove('open');
       const trigger = w.querySelector('.custom-select-trigger');
@@ -522,74 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // ── Test Connection ──
-  async function testConnection() {
-    const btn = document.getElementById('btn-test-connection');
-    const feedback = document.getElementById('test-feedback');
-    if (!btn || !feedback) return;
-
-    const conf = PROVIDERS[currentActiveProvider];
-    if (!conf) return;
-
-    const keyInput = document.getElementById(conf.keyInputId);
-    const modelSelect = document.getElementById(conf.modelSelectId);
-    const key = keyInput ? keyInput.value.trim() : '';
-    const model = modelSelect ? modelSelect.value : conf.defaultModel;
-
-    if (!key) {
-      feedback.className = 'test-feedback error';
-      feedback.textContent = `Please enter a valid API key for ${conf.name} first.`;
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Connecting...';
-    feedback.className = 'test-feedback hidden';
-
-    try {
-      const testConfig = conf.getTestConfig(key, model);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
-
-      const resp = await fetch(testConfig.url, {
-        method: testConfig.method,
-        headers: testConfig.headers,
-        body: testConfig.body,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (resp.ok) {
-        feedback.className = 'test-feedback success';
-        feedback.textContent = `Connection successful! ${conf.name} verified.`;
-      } else {
-        let errSnippet = `HTTP ${resp.status}`;
-        try {
-          const json = await resp.json();
-          errSnippet = json.error?.message || json.message || errSnippet;
-        } catch (_) {
-          try {
-            const txt = await resp.text();
-            if (txt) errSnippet = txt.substring(0, 100);
-          } catch (_) {}
-        }
-        feedback.className = 'test-feedback error';
-        feedback.textContent = `Failed (${resp.status}): ${errSnippet}`;
-      }
-    } catch (err) {
-      feedback.className = 'test-feedback error';
-      if (err.name === 'AbortError') {
-        feedback.textContent = 'Connection timed out (12s). Check your internet connection.';
-      } else {
-        feedback.textContent = `Error: ${err.message || 'Network request failed'}`;
-      }
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Test Connection';
-    }
-  }
-
   // ── Event Bindings ──
   document.querySelectorAll('.segmented-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -618,9 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
            </svg>`;
     });
   });
-
-  const testBtn = document.getElementById('btn-test-connection');
-  if (testBtn) testBtn.addEventListener('click', testConnection);
 
   const glassSlider = document.getElementById('glass-refraction-slider');
   const glassBadge = document.getElementById('glass-refraction-val');

@@ -428,6 +428,35 @@ html, body {
   transform: rotate(180deg);
 }
 
+/* Dropdown Stacking Context & Fullscreen Backdrop */
+.dropdown-backdrop {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 2147483646 !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  pointer-events: auto !important;
+  display: none !important;
+}
+
+.dropdown-backdrop.active {
+  display: block !important;
+}
+
+.card.has-open-select,
+.card:has(.custom-select-wrapper.open) {
+  z-index: 2147483647 !important;
+}
+
+.custom-select-wrapper.open {
+  z-index: 2147483647 !important;
+  position: relative !important;
+}
+
 /* Custom Expandable Options Popover Panel */
 .custom-options-panel {
   position: absolute !important;
@@ -457,9 +486,9 @@ html, body {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35) !important;
 
   /* Animated dropdown toggle */
-  display: none;
-  transform: translateY(-4px) scale(0.98);
-  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  display: none !important;
+  transform: translateY(-4px) scale(0.98) !important;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .custom-select-wrapper.open .custom-options-panel {

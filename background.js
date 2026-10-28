@@ -454,16 +454,7 @@ async function handleGeminiRouting(
       };
     } catch (err) {
       lastErr = err;
-      const isRecoverable = (
-        err.status === 429 ||
-        err.status === 503 ||
-        err.status === 504 ||
-        err.status === 404 ||
-        err.name === 'AbortError' ||
-        isQuotaOrRateLimitError(err)
-      );
-
-      if (isRecoverable && i < cascadeList.length - 1) {
+      if (i < cascadeList.length - 1) {
         console.warn(`[Auto-Dynamic Router] ${candidateModel} failed (${err.message}). Instant failover (<50ms) to ${cascadeList[i + 1]}...`);
         continue;
       }
@@ -511,46 +502,27 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     generationConfig
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
   let response;
   try {
     response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal: controller.signal
+      body: JSON.stringify(payload)
     });
   } catch (netErr) {
-    clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
-      const err = new Error(`Request timed out after 6 seconds for ${model}`);
-      err.status = 504;
-      throw err;
-    }
     throw netErr;
-  } finally {
-    clearTimeout(timeoutId);
   }
 
   let data = await response.json().catch(() => ({}));
 
   if (!response.ok && response.status === 400 && data.error?.message?.includes('thinkingConfig')) {
     delete payload.generationConfig.thinkingConfig;
-    const retryController = new AbortController();
-    const retryTimeoutId = setTimeout(() => retryController.abort(), 6000);
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-        signal: retryController.signal
-      });
-      data = await response.json().catch(() => ({}));
-    } finally {
-      clearTimeout(retryTimeoutId);
-    }
+    response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    data = await response.json().catch(() => ({}));
   }
 
   if (!response.ok) {
@@ -612,31 +584,14 @@ async function callOpenAIAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     payload.top_p = isComplex ? 0.1 : 0.8;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  let response;
-  try {
-    response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-  } catch (netErr) {
-    clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
-      const err = new Error(`OpenAI request timed out after 6 seconds for ${model}`);
-      err.status = 504;
-      throw err;
-    }
-    throw netErr;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
 
   const data = await response.json().catch(() => ({}));
 
@@ -663,7 +618,7 @@ async function handleOpenAIRouting(apiKey, modelMode, base64Data, systemPrompt, 
       const ans = await callOpenAIAPI(apiKey, primary, base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: primary, wasFallbackTriggered: false };
     } catch (err) {
-      if (isQuotaOrRateLimitError(err) || err.status === 404) {
+      if (isQuotaOrRateLimitError(err) || err.status === 404 || err.status >= 500 || !err.status) {
         console.warn(`[Auto-Dynamic Router] OpenAI ${primary} failover to ${fallback}`);
         const ans = await callOpenAIAPI(apiKey, fallback, base64Data, systemPrompt, userPrompt, isComplex);
         return { answer: ans, modelUsed: fallback, wasFallbackTriggered: true };
@@ -709,33 +664,16 @@ async function callAnthropicAPI(apiKey, model, base64Image, systemPrompt = SYSTE
     ]
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  let response;
-  try {
-    response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-  } catch (netErr) {
-    clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
-      const err = new Error(`Anthropic request timed out after 6 seconds for ${model}`);
-      err.status = 504;
-      throw err;
-    }
-    throw netErr;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(payload)
+  });
 
   const data = await response.json().catch(() => ({}));
 
@@ -762,7 +700,7 @@ async function handleAnthropicRouting(apiKey, modelMode, base64Data, systemPromp
       const ans = await callAnthropicAPI(apiKey, primary, base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: primary, wasFallbackTriggered: false };
     } catch (err) {
-      if (isQuotaOrRateLimitError(err) || err.status === 404) {
+      if (isQuotaOrRateLimitError(err) || err.status === 404 || err.status >= 500 || !err.status) {
         console.warn(`[Auto-Dynamic Router] Anthropic ${primary} failover to ${fallback}`);
         const ans = await callAnthropicAPI(apiKey, fallback, base64Data, systemPrompt, userPrompt, isComplex);
         return { answer: ans, modelUsed: fallback, wasFallbackTriggered: true };
@@ -793,31 +731,14 @@ async function callDeepSeekAPI(apiKey, model, base64Image, systemPrompt = SYSTEM
     top_p: isComplex ? 0.1 : 0.8
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  let response;
-  try {
-    response = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-  } catch (netErr) {
-    clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
-      const err = new Error(`DeepSeek request timed out after 6 seconds for ${model}`);
-      err.status = 504;
-      throw err;
-    }
-    throw netErr;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const response = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
 
   const data = await response.json().catch(() => ({}));
 
@@ -842,7 +763,7 @@ async function handleDeepSeekRouting(apiKey, modelMode, base64Data, systemPrompt
     const ans = await callDeepSeekAPI(apiKey, targetModel, base64Data, systemPrompt, userPrompt, isComplex);
     return { answer: ans, modelUsed: targetModel, wasFallbackTriggered: false };
   } catch (err) {
-    if (targetModel !== 'deepseek-chat' && (isQuotaOrRateLimitError(err) || err.status === 404)) {
+    if (targetModel !== 'deepseek-chat' && (isQuotaOrRateLimitError(err) || err.status === 404 || err.status >= 500 || !err.status)) {
       console.warn(`[Auto-Dynamic Router] ${targetModel} failover to deepseek-chat`);
       const ans = await callDeepSeekAPI(apiKey, 'deepseek-chat', base64Data, systemPrompt, userPrompt, isComplex);
       return { answer: ans, modelUsed: 'deepseek-chat', wasFallbackTriggered: true };
@@ -869,31 +790,14 @@ async function callOpenRouterAPI(apiKey, model, base64Image, systemPrompt = SYST
     top_p: isComplex ? 0.1 : 0.8
   };
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6000);
-
-  let response;
-  try {
-    response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
-    });
-  } catch (netErr) {
-    clearTimeout(timeoutId);
-    if (netErr.name === 'AbortError') {
-      const err = new Error(`OpenRouter request timed out after 6 seconds for ${model}`);
-      err.status = 504;
-      throw err;
-    }
-    throw netErr;
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(payload)
+  });
 
   const data = await response.json().catch(() => ({}));
 
