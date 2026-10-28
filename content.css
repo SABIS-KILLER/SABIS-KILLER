@@ -168,7 +168,7 @@
   bottom: 8px !important;
   left: 8px !important;
   width: auto !important;
-  max-width: calc(100vw - 140px) !important;
+  max-width: min(85vw, 450px) !important;
   height: auto !important;
   min-height: 0 !important;
   background: transparent !important;
@@ -177,14 +177,16 @@
   border: none !important;
   box-shadow: none !important;
   pointer-events: none !important;
-  z-index: 2147483646 !important;
+  z-index: 2147483645 !important;
   display: flex !important;
-  align-items: center !important;
+  align-items: flex-start !important;
   justify-content: flex-start !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  padding: 0 0 4px 0 !important;
+  margin: 0 0 8px 0 !important;
   box-sizing: border-box !important;
-  white-space: nowrap !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
   overflow: visible !important;
   gap: 8px !important;
 }
@@ -205,7 +207,9 @@
   text-shadow: none !important;
   filter: none !important;
   user-select: none !important;
-  white-space: nowrap !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
   max-width: 100% !important;
   width: auto !important;
   display: inline-block !important;
@@ -227,6 +231,7 @@
    1 & 2. CUSTOM IN-PAGE CENTER MODAL - FULL GLOBAL GLASS TRANSPARENCY
    ═══════════════════════════════════════════════════════════════════════════ */
 #settings-modal-backdrop {
+  display: none !important;
   position: fixed !important;
   top: 0 !important;
   left: 0 !important;
@@ -237,16 +242,20 @@
   backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
   -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
   opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
   transition: opacity 0.22s ease !important;
 }
 
 #settings-modal-backdrop.open {
+  display: block !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto !important;
 }
 
 #settings-modal-dialog {
+  display: none !important;
   position: fixed !important;
   top: 50% !important;
   left: 50% !important;
@@ -257,10 +266,10 @@
   max-height: 88vh !important;
   border-radius: 28px !important;
   overflow: hidden !important;
-  display: flex !important;
   flex-direction: column !important;
   box-sizing: border-box !important;
   opacity: 0 !important;
+  visibility: hidden !important;
   pointer-events: none !important;
 
   /* Dynamically scaled optical glass: 0% = 100% solid, 100% = ghost transparent */
@@ -278,8 +287,10 @@
 }
 
 #settings-modal-dialog.open {
+  display: flex !important;
   transform: translate(-50%, -50%) scale(1) !important;
   opacity: 1 !important;
+  visibility: visible !important;
   pointer-events: auto !important;
 }
 

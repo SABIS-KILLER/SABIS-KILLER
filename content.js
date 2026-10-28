@@ -59,7 +59,7 @@
 
   const PROVIDERS = {
     gemini: {
-      name: 'Google Gemini',
+      name: 'Google AI Studio',
       keyInputId: 'inpage-apiKey-gemini',
       modelSelectId: 'inpage-models-gemini',
       cardId: 'inpage-card-gemini',
@@ -77,121 +77,6 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: 'Respond with OK' }] }] })
-        };
-      }
-    },
-    openai: {
-      name: 'OpenAI',
-      keyInputId: 'inpage-apiKey-openai',
-      modelSelectId: 'inpage-models-openai',
-      cardId: 'inpage-card-openai',
-      tabBtnId: 'inpage-tab-openai',
-      tabDotId: 'inpage-dot-openai',
-      storageKey: 'OPENAI_API_KEY',
-      modelKey: 'openai_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'gpt-5.4-mini' : model;
-        const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
-        const payload = {
-          model: testModel,
-          messages: [{ role: 'user', content: 'Say OK' }]
-        };
-        if (isReasoning) {
-          payload.max_completion_tokens = 10;
-        } else {
-          payload.max_tokens = 5;
-        }
-        return {
-          url: 'https://api.openai.com/v1/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify(payload)
-        };
-      }
-    },
-    anthropic: {
-      name: 'Anthropic',
-      keyInputId: 'inpage-apiKey-anthropic',
-      modelSelectId: 'inpage-models-anthropic',
-      cardId: 'inpage-card-anthropic',
-      tabBtnId: 'inpage-tab-anthropic',
-      tabDotId: 'inpage-dot-anthropic',
-      storageKey: 'ANTHROPIC_API_KEY',
-      modelKey: 'anthropic_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'claude-3-5-haiku-20241022' : model;
-        return {
-          url: 'https://api.anthropic.com/v1/messages',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: testModel,
-            max_tokens: 10,
-            messages: [{ role: 'user', content: 'Say OK' }]
-          })
-        };
-      }
-    },
-    deepseek: {
-      name: 'DeepSeek',
-      keyInputId: 'inpage-apiKey-deepseek',
-      modelSelectId: 'inpage-models-deepseek',
-      cardId: 'inpage-card-deepseek',
-      tabBtnId: 'inpage-tab-deepseek',
-      tabDotId: 'inpage-dot-deepseek',
-      storageKey: 'DEEPSEEK_API_KEY',
-      modelKey: 'deepseek_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'deepseek-chat' : model;
-        return {
-          url: 'https://api.deepseek.com/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: testModel,
-            messages: [{ role: 'user', content: 'Say OK' }],
-            max_tokens: 5
-          })
-        };
-      }
-    },
-    openrouter: {
-      name: 'OpenRouter',
-      keyInputId: 'inpage-apiKey-openrouter',
-      modelSelectId: 'inpage-models-openrouter',
-      cardId: 'inpage-card-openrouter',
-      tabBtnId: 'inpage-tab-openrouter',
-      tabDotId: 'inpage-dot-openrouter',
-      storageKey: 'OPENROUTER_API_KEY',
-      modelKey: 'openrouter_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'openrouter/free' : model;
-        return {
-          url: 'https://openrouter.ai/api/v1/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: testModel,
-            messages: [{ role: 'user', content: 'Say OK' }],
-            max_tokens: 5
-          })
         };
       }
     }
@@ -427,13 +312,19 @@
       answerContainer.style.setProperty('bottom', 'auto', 'important');
       answerContainer.style.setProperty('right', 'auto', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
-      answerContainer.style.setProperty('max-width', '90vw', 'important');
+      answerContainer.style.setProperty('max-width', 'min(85vw, 450px)', 'important');
+      answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
+      answerContainer.style.setProperty('word-break', 'break-word', 'important');
+      answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');
+      answerContainer.style.setProperty('margin-bottom', '8px', 'important');
+      answerContainer.style.setProperty('padding-bottom', '4px', 'important');
       answerContainer.style.setProperty('background', 'transparent', 'important');
       answerContainer.style.setProperty('backdrop-filter', 'none', 'important');
       answerContainer.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
       answerContainer.style.setProperty('border', 'none', 'important');
       answerContainer.style.setProperty('box-shadow', 'none', 'important');
-      answerContainer.style.setProperty('z-index', '2147483646', 'important');
+      answerContainer.style.setProperty('z-index', '2147483645', 'important');
+      updateAnswerBoundaryShift();
     }
   }
 
@@ -455,17 +346,67 @@
     } else if ((target === 'answer' || target === 'panel') && answerContainer) {
       answerContainer.style.removeProperty('top');
       answerContainer.style.removeProperty('right');
-      answerContainer.style.removeProperty('max-width');
+      answerContainer.style.removeProperty('transform');
       answerContainer.style.setProperty('position', 'fixed', 'important');
       answerContainer.style.setProperty('bottom', '8px', 'important');
       answerContainer.style.setProperty('left', '8px', 'important');
       answerContainer.style.setProperty('width', 'auto', 'important');
+      answerContainer.style.setProperty('max-width', 'min(85vw, 450px)', 'important');
+      answerContainer.style.setProperty('white-space', 'pre-wrap', 'important');
+      answerContainer.style.setProperty('word-break', 'break-word', 'important');
+      answerContainer.style.setProperty('overflow-wrap', 'break-word', 'important');
+      answerContainer.style.setProperty('margin-bottom', '8px', 'important');
+      answerContainer.style.setProperty('padding-bottom', '4px', 'important');
       answerContainer.style.setProperty('background', 'transparent', 'important');
       answerContainer.style.setProperty('backdrop-filter', 'none', 'important');
       answerContainer.style.setProperty('-webkit-backdrop-filter', 'none', 'important');
       answerContainer.style.setProperty('border', 'none', 'important');
       answerContainer.style.setProperty('box-shadow', 'none', 'important');
-      answerContainer.style.setProperty('z-index', '2147483646', 'important');
+      answerContainer.style.setProperty('z-index', '2147483645', 'important');
+      updateAnswerBoundaryShift();
+    }
+  }
+
+  function updateAnswerBoundaryShift() {
+    if (!answerContainer || isRepositioning) return;
+
+    // Reset transform to measure unshifted layout bounds
+    answerContainer.style.transform = 'none';
+
+    const rect = answerContainer.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+
+    const viewportHeight = window.innerHeight;
+    const bottomMargin = 12;
+    let overflow = 0;
+
+    // Check viewport bottom overflow
+    const overflowViewport = rect.bottom - (viewportHeight - bottomMargin);
+    if (overflowViewport > 0) {
+      overflow = Math.max(overflow, overflowViewport);
+    }
+
+    // Check collision with bottom controls bar if both are active and visible
+    if (bottomControlsBar && isUIVisible && bottomControlsBar.style.display !== 'none') {
+      const barRect = bottomControlsBar.getBoundingClientRect();
+      if (barRect.width > 0 && barRect.height > 0) {
+        // Horizontal overlap test
+        const xOverlap = !(rect.right < barRect.left || rect.left > barRect.right);
+        if (xOverlap) {
+          // If answer overlaps vertically with the bar
+          const overlapBar = rect.bottom - (barRect.top - 8);
+          if (overlapBar > 0 && rect.top < barRect.bottom) {
+            overflow = Math.max(overflow, overlapBar);
+          }
+        }
+      }
+    }
+
+    if (overflow > 0) {
+      const shift = Math.ceil(overflow);
+      answerContainer.style.transform = `translateY(-${shift}px)`;
+    } else {
+      answerContainer.style.transform = 'none';
     }
   }
 
@@ -487,6 +428,7 @@
     } else {
       resetTargetPosition('answer');
     }
+    updateAnswerBoundaryShift();
   }
 
   function loadStoredSettings() {
@@ -795,6 +737,16 @@
   function openSettingsModal() {
     if (!settingsModalDialog || !settingsModalBackdrop) return;
     populateModalFields();
+    settingsModalBackdrop.style.removeProperty('display');
+    settingsModalBackdrop.style.removeProperty('opacity');
+    settingsModalBackdrop.style.removeProperty('visibility');
+    settingsModalBackdrop.style.removeProperty('pointer-events');
+
+    settingsModalDialog.style.removeProperty('display');
+    settingsModalDialog.style.removeProperty('opacity');
+    settingsModalDialog.style.removeProperty('visibility');
+    settingsModalDialog.style.removeProperty('pointer-events');
+
     settingsModalBackdrop.classList.add('open');
     settingsModalDialog.classList.add('open');
     isModalOpen = true;
@@ -805,6 +757,17 @@
     closeAllModalCustomSelects();
     settingsModalDialog.classList.remove('open');
     settingsModalBackdrop.classList.remove('open');
+
+    settingsModalBackdrop.style.setProperty('display', 'none', 'important');
+    settingsModalBackdrop.style.setProperty('opacity', '0', 'important');
+    settingsModalBackdrop.style.setProperty('visibility', 'hidden', 'important');
+    settingsModalBackdrop.style.setProperty('pointer-events', 'none', 'important');
+
+    settingsModalDialog.style.setProperty('display', 'none', 'important');
+    settingsModalDialog.style.setProperty('opacity', '0', 'important');
+    settingsModalDialog.style.setProperty('visibility', 'hidden', 'important');
+    settingsModalDialog.style.setProperty('pointer-events', 'none', 'important');
+
     isModalOpen = false;
   }
 
@@ -926,16 +889,11 @@
       'answer_text_color', 'answer_font_size',
       'button_bg_color', 'button_size',
       'prompt_bg_color', 'prompt_width',
-      'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel',
-      'OPENAI_API_KEY', 'openai_model',
-      'ANTHROPIC_API_KEY', 'anthropic_model',
-      'DEEPSEEK_API_KEY', 'deepseek_model',
-      'OPENROUTER_API_KEY', 'openrouter_model'
+      'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
     ], (items) => {
       if (chrome.runtime.lastError || !items) return;
 
-      const savedProv = items.ai_provider || items.active_provider || 'gemini';
-      currentActiveProvider = PROVIDERS[savedProv] ? savedProv : 'gemini';
+      currentActiveProvider = 'gemini';
 
       Object.keys(PROVIDERS).forEach(prov => {
         const conf = PROVIDERS[prov];
@@ -1179,9 +1137,17 @@
     // ── Build Custom In-Page Center Modal (iOS 27 Liquid Glass Stack) ─────────
     settingsModalBackdrop = document.createElement('div');
     settingsModalBackdrop.id = 'settings-modal-backdrop';
+    settingsModalBackdrop.style.setProperty('display', 'none', 'important');
+    settingsModalBackdrop.style.setProperty('opacity', '0', 'important');
+    settingsModalBackdrop.style.setProperty('visibility', 'hidden', 'important');
+    settingsModalBackdrop.style.setProperty('pointer-events', 'none', 'important');
 
     settingsModalDialog = document.createElement('div');
     settingsModalDialog.id = 'settings-modal-dialog';
+    settingsModalDialog.style.setProperty('display', 'none', 'important');
+    settingsModalDialog.style.setProperty('opacity', '0', 'important');
+    settingsModalDialog.style.setProperty('visibility', 'hidden', 'important');
+    settingsModalDialog.style.setProperty('pointer-events', 'none', 'important');
     settingsModalDialog.innerHTML = `
       <div id="modal-dropdown-backdrop" class="modal-dropdown-backdrop"></div>
       <div id="modal-save-toast">
@@ -1211,31 +1177,9 @@
       </header>
 
       <main id="settings-modal-content">
-        <!-- Tabbed Provider Controller -->
+        <!-- Google AI Studio Configuration -->
         <div class="modal-form-group">
-          <label class="modal-section-label">Active AI Provider</label>
-          <div class="modal-segmented-nav" role="tablist">
-            <button type="button" class="modal-segmented-btn active" data-provider="gemini" id="inpage-tab-gemini">
-              <span class="modal-tab-dot" id="inpage-dot-gemini"></span>
-              <span>Google</span>
-            </button>
-            <button type="button" class="modal-segmented-btn" data-provider="openai" id="inpage-tab-openai">
-              <span class="modal-tab-dot" id="inpage-dot-openai"></span>
-              <span>OpenAI</span>
-            </button>
-            <button type="button" class="modal-segmented-btn" data-provider="anthropic" id="inpage-tab-anthropic">
-              <span class="modal-tab-dot" id="inpage-dot-anthropic"></span>
-              <span>Anthropic</span>
-            </button>
-            <button type="button" class="modal-segmented-btn" data-provider="deepseek" id="inpage-tab-deepseek">
-              <span class="modal-tab-dot" id="inpage-dot-deepseek"></span>
-              <span>DeepSeek</span>
-            </button>
-            <button type="button" class="modal-segmented-btn" data-provider="openrouter" id="inpage-tab-openrouter">
-              <span class="modal-tab-dot" id="inpage-dot-openrouter"></span>
-              <span>OpenRouter</span>
-            </button>
-          </div>
+          <label class="modal-section-label">Google AI Studio Configuration</label>
         </div>
 
         <!-- Google Gemini Card -->
@@ -1274,252 +1218,20 @@
                   <span class="modal-custom-option-text">Gemini 3.8 Flash</span>
                   <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="modal-custom-option" data-value="gemini-3.8-flash-lite" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.8 Flash Lite</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gemini-3.7-flash" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.7 Flash</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
                 <div class="modal-custom-option" data-value="gemini-3.6-flash" role="option">
                   <span class="modal-custom-option-text">Gemini 3.6 Flash</span>
                   <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="modal-custom-option" data-value="gemini-3.6-flash-lite" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.6 Flash Lite</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gemini-3.5-flash" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.5 Flash</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
                 <div class="modal-custom-option" data-value="gemini-3.5-flash-lite" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.5 Flash Lite</span>
+                  <span class="modal-custom-option-text">Gemini 3.5 Flash-Lite</span>
                   <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="modal-custom-option" data-value="gemini-3.8-pro" role="option">
-                  <span class="modal-custom-option-text">Gemini 3.8 Pro</span>
+                <div class="modal-custom-option" data-value="gemini-3.1-flash-lite" role="option">
+                  <span class="modal-custom-option-text">Gemini 3.1 Flash-Lite</span>
                   <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <div class="modal-custom-option" data-value="gemini-2.5-flash" role="option">
                   <span class="modal-custom-option-text">Gemini 2.5 Flash</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- OpenAI Card -->
-        <div class="modal-provider-card" id="inpage-card-openai">
-          <div class="modal-form-group">
-            <label for="inpage-apiKey-openai">OpenAI API Key</label>
-            <div class="modal-input-wrapper">
-              <input type="password" id="inpage-apiKey-openai" class="modal-api-key-input" placeholder="sk-proj-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-openai" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="modal-form-hint">Obtain from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI Platform</a></span>
-          </div>
-
-          <div class="modal-form-group">
-            <label>Model</label>
-            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-openai" data-select-id="inpage-models-openai">
-              <input type="hidden" id="inpage-models-openai" value="auto_dynamic">
-              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="modal-custom-options-panel" role="listbox">
-                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gpt-5.4" role="option">
-                  <span class="modal-custom-option-text">GPT-5.4</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gpt-5.4-mini" role="option">
-                  <span class="modal-custom-option-text">GPT-5.4-mini</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gpt-4o" role="option">
-                  <span class="modal-custom-option-text">GPT-4o</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="gpt-4o-mini" role="option">
-                  <span class="modal-custom-option-text">GPT-4o-mini</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="o3-mini" role="option">
-                  <span class="modal-custom-option-text">o3-mini Reasoning</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="o1" role="option">
-                  <span class="modal-custom-option-text">o1 Reasoning</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Anthropic Card -->
-        <div class="modal-provider-card" id="inpage-card-anthropic">
-          <div class="modal-form-group">
-            <label for="inpage-apiKey-anthropic">Anthropic API Key</label>
-            <div class="modal-input-wrapper">
-              <input type="password" id="inpage-apiKey-anthropic" class="modal-api-key-input" placeholder="sk-ant-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-anthropic" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="modal-form-hint">Obtain from <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">Anthropic Console</a></span>
-          </div>
-
-          <div class="modal-form-group">
-            <label>Model</label>
-            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-anthropic" data-select-id="inpage-models-anthropic">
-              <input type="hidden" id="inpage-models-anthropic" value="auto_dynamic">
-              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="modal-custom-options-panel" role="listbox">
-                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="claude-3-5-haiku-20241022" role="option">
-                  <span class="modal-custom-option-text">Claude 3.5 Haiku</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="claude-3-5-sonnet-20241022" role="option">
-                  <span class="modal-custom-option-text">Claude 3.5 Sonnet</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="claude-3-7-sonnet-20250219" role="option">
-                  <span class="modal-custom-option-text">Claude 3.7 Sonnet</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="claude-3-opus-20240229" role="option">
-                  <span class="modal-custom-option-text">Claude 3 Opus</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DeepSeek Card -->
-        <div class="modal-provider-card" id="inpage-card-deepseek">
-          <div class="modal-form-group">
-            <label for="inpage-apiKey-deepseek">DeepSeek API Key</label>
-            <div class="modal-input-wrapper">
-              <input type="password" id="inpage-apiKey-deepseek" class="modal-api-key-input" placeholder="sk-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-deepseek" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="modal-form-hint">Obtain from <a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform</a></span>
-          </div>
-
-          <div class="modal-form-group">
-            <label>Model</label>
-            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-deepseek" data-select-id="inpage-models-deepseek">
-              <input type="hidden" id="inpage-models-deepseek" value="auto_dynamic">
-              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="modal-custom-options-panel" role="listbox">
-                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="deepseek-chat" role="option">
-                  <span class="modal-custom-option-text">DeepSeek-V3 (Chat)</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="deepseek-reasoner" role="option">
-                  <span class="modal-custom-option-text">DeepSeek-R1 (Reasoner)</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- OpenRouter Card -->
-        <div class="modal-provider-card" id="inpage-card-openrouter">
-          <div class="modal-form-group">
-            <label for="inpage-apiKey-openrouter">OpenRouter API Key</label>
-            <div class="modal-input-wrapper">
-              <input type="password" id="inpage-apiKey-openrouter" class="modal-api-key-input" placeholder="sk-or-v1-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="modal-toggle-eye" data-target="inpage-apiKey-openrouter" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="modal-form-hint">Obtain from <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai</a></span>
-          </div>
-
-          <div class="modal-form-group">
-            <label>Model</label>
-            <div class="modal-custom-select-wrapper" id="wrapper-inpage-models-openrouter" data-select-id="inpage-models-openrouter">
-              <input type="hidden" id="inpage-models-openrouter" value="auto_dynamic">
-              <button type="button" class="modal-custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="modal-custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="modal-custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="modal-custom-options-panel" role="listbox">
-                <div class="modal-custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="modal-custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="google/gemini-2.5-flash" role="option">
-                  <span class="modal-custom-option-text">Gemini 2.5 Flash</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="meta-llama/llama-3.3-70b-instruct:free" role="option">
-                  <span class="modal-custom-option-text">Llama 3.3 70B (Free)</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="anthropic/claude-3.5-sonnet" role="option">
-                  <span class="modal-custom-option-text">Claude 3.5 Sonnet</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="deepseek/deepseek-r1" role="option">
-                  <span class="modal-custom-option-text">DeepSeek R1</span>
-                  <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="modal-custom-option" data-value="openai/gpt-4o-mini" role="option">
-                  <span class="modal-custom-option-text">GPT-4o Mini</span>
                   <svg class="modal-custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
               </div>
@@ -1785,6 +1497,16 @@
 
     loadStoredSettings();
 
+    if (window.ResizeObserver && answerContainer) {
+      try {
+        const ro = new ResizeObserver(() => {
+          updateAnswerBoundaryShift();
+        });
+        ro.observe(answerContainer);
+      } catch (_) {}
+    }
+    window.addEventListener('resize', updateAnswerBoundaryShift);
+
     // Stealth Toggle Zone
     hiddenToggleZone.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -1858,6 +1580,7 @@
 
           if (answerText) {
             answerText.textContent = formatAnswerForBar(currentAnswerText);
+            updateAnswerBoundaryShift();
           }
         });
       } catch (err) {
@@ -1868,6 +1591,7 @@
           : `Error: ${msg}`;
         if (answerText) {
           answerText.textContent = formatAnswerForBar(currentAnswerText);
+          updateAnswerBoundaryShift();
         }
       }
     });
@@ -1939,7 +1663,7 @@
       .split('\n')
       .map(line => line.trim())
       .filter(line => line.length > 0)
-      .join('   |   ');
+      .join('\n');
   }
 
   function ensureUI() {
@@ -1959,6 +1683,7 @@
     }
     if (answerText && currentAnswerText) {
       answerText.textContent = formatAnswerForBar(currentAnswerText);
+      updateAnswerBoundaryShift();
     }
   }
 

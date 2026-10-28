@@ -13,143 +13,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const PROVIDERS = {
     gemini: {
-      name: 'Google Gemini',
+      name: 'Google AI Studio',
       keyInputId: 'apiKey-gemini',
       modelSelectId: 'google-models',
       cardId: 'card-gemini',
-      tabBtnId: 'btn-tab-gemini',
-      tabDotId: 'tab-dot-gemini',
       storageKey: 'GEMINI_API_KEY',
       altKey: 'geminiApiKey',
       modelKey: 'gemini_model',
       altModelKey: 'geminiModel',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto'))
-          ? 'gemini-3.8-flash'
-          : (model || 'gemini-3.8-flash');
-        return {
-          url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(testModel)}:generateContent?key=${encodeURIComponent(key)}`,
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Respond with OK' }] }] })
-        };
-      }
-    },
-    openai: {
-      name: 'OpenAI',
-      keyInputId: 'apiKey-openai',
-      modelSelectId: 'openai-models',
-      cardId: 'card-openai',
-      tabBtnId: 'btn-tab-openai',
-      tabDotId: 'tab-dot-openai',
-      storageKey: 'OPENAI_API_KEY',
-      modelKey: 'openai_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'gpt-5.4-mini' : model;
-        const isReasoning = testModel.startsWith('o1') || testModel.startsWith('o3') || testModel.startsWith('o4');
-        const payload = {
-          model: testModel,
-          messages: [{ role: 'user', content: 'Say OK' }]
-        };
-        if (isReasoning) {
-          payload.max_completion_tokens = 10;
-        } else {
-          payload.max_tokens = 5;
-        }
-        return {
-          url: 'https://api.openai.com/v1/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify(payload)
-        };
-      }
-    },
-    anthropic: {
-      name: 'Anthropic',
-      keyInputId: 'apiKey-anthropic',
-      modelSelectId: 'anthropic-models',
-      cardId: 'card-anthropic',
-      tabBtnId: 'btn-tab-anthropic',
-      tabDotId: 'tab-dot-anthropic',
-      storageKey: 'ANTHROPIC_API_KEY',
-      modelKey: 'anthropic_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'claude-3-5-haiku-20241022' : model;
-        return {
-          url: 'https://api.anthropic.com/v1/messages',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': key,
-            'anthropic-version': '2023-06-01'
-          },
-          body: JSON.stringify({
-            model: testModel,
-            max_tokens: 10,
-            messages: [{ role: 'user', content: 'Say OK' }]
-          })
-        };
-      }
-    },
-    deepseek: {
-      name: 'DeepSeek',
-      keyInputId: 'apiKey-deepseek',
-      modelSelectId: 'deepseek-models',
-      cardId: 'card-deepseek',
-      tabBtnId: 'btn-tab-deepseek',
-      tabDotId: 'tab-dot-deepseek',
-      storageKey: 'DEEPSEEK_API_KEY',
-      modelKey: 'deepseek_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'deepseek-chat' : model;
-        return {
-          url: 'https://api.deepseek.com/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: testModel,
-            messages: [{ role: 'user', content: 'Say OK' }],
-            max_tokens: 5
-          })
-        };
-      }
-    },
-    openrouter: {
-      name: 'OpenRouter',
-      keyInputId: 'apiKey-openrouter',
-      modelSelectId: 'openrouter-models',
-      cardId: 'card-openrouter',
-      tabBtnId: 'btn-tab-openrouter',
-      tabDotId: 'tab-dot-openrouter',
-      storageKey: 'OPENROUTER_API_KEY',
-      modelKey: 'openrouter_model',
-      defaultModel: 'auto_dynamic',
-      getTestConfig: (key, model) => {
-        const testModel = (model === 'auto_dynamic' || model?.startsWith('auto')) ? 'openrouter/free' : model;
-        return {
-          url: 'https://openrouter.ai/api/v1/chat/completions',
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: testModel,
-            messages: [{ role: 'user', content: 'Say OK' }],
-            max_tokens: 5
-          })
-        };
-      }
+      defaultModel: 'auto_dynamic'
     }
   };
 
@@ -531,13 +403,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ── Event Bindings ──
-  document.querySelectorAll('.segmented-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const prov = btn.getAttribute('data-provider');
-      switchProvider(prov);
-    });
-  });
-
   document.querySelectorAll('.toggle-eye').forEach(btn => {
     btn.addEventListener('click', () => {
       const targetId = btn.getAttribute('data-target');

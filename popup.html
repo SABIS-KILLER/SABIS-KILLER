@@ -29,31 +29,9 @@
 
     <!-- Scrollable Content -->
     <main class="popup-content">
-      <!-- AI Provider Section -->
+      <!-- AI Provider Section (Google AI Studio Only) -->
       <section class="section">
-        <label class="section-label">Active AI Provider</label>
-        <div class="segmented-nav" role="tablist">
-          <button type="button" class="segmented-btn active" data-provider="gemini" id="btn-tab-gemini">
-            <span class="provider-tab-dot" id="tab-dot-gemini"></span>
-            <span>Google</span>
-          </button>
-          <button type="button" class="segmented-btn" data-provider="openai" id="btn-tab-openai">
-            <span class="provider-tab-dot" id="tab-dot-openai"></span>
-            <span>OpenAI</span>
-          </button>
-          <button type="button" class="segmented-btn" data-provider="anthropic" id="btn-tab-anthropic">
-            <span class="provider-tab-dot" id="tab-dot-anthropic"></span>
-            <span>Anthropic</span>
-          </button>
-          <button type="button" class="segmented-btn" data-provider="deepseek" id="btn-tab-deepseek">
-            <span class="provider-tab-dot" id="tab-dot-deepseek"></span>
-            <span>DeepSeek</span>
-          </button>
-          <button type="button" class="segmented-btn" data-provider="openrouter" id="btn-tab-openrouter">
-            <span class="provider-tab-dot" id="tab-dot-openrouter"></span>
-            <span>OpenRouter</span>
-          </button>
-        </div>
+        <label class="section-label">Google AI Studio Configuration</label>
 
         <!-- Google Gemini Card -->
         <div class="provider-card active" id="card-gemini">
@@ -91,252 +69,20 @@
                   <span class="custom-option-text">Gemini 3.8 Flash</span>
                   <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="custom-option" data-value="gemini-3.8-flash-lite" role="option">
-                  <span class="custom-option-text">Gemini 3.8 Flash Lite</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gemini-3.7-flash" role="option">
-                  <span class="custom-option-text">Gemini 3.7 Flash</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
                 <div class="custom-option" data-value="gemini-3.6-flash" role="option">
                   <span class="custom-option-text">Gemini 3.6 Flash</span>
                   <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="custom-option" data-value="gemini-3.6-flash-lite" role="option">
-                  <span class="custom-option-text">Gemini 3.6 Flash Lite</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gemini-3.5-flash" role="option">
-                  <span class="custom-option-text">Gemini 3.5 Flash</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
                 <div class="custom-option" data-value="gemini-3.5-flash-lite" role="option">
-                  <span class="custom-option-text">Gemini 3.5 Flash Lite</span>
+                  <span class="custom-option-text">Gemini 3.5 Flash-Lite</span>
                   <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
-                <div class="custom-option" data-value="gemini-3.8-pro" role="option">
-                  <span class="custom-option-text">Gemini 3.8 Pro</span>
+                <div class="custom-option" data-value="gemini-3.1-flash-lite" role="option">
+                  <span class="custom-option-text">Gemini 3.1 Flash-Lite</span>
                   <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
                 <div class="custom-option" data-value="gemini-2.5-flash" role="option">
                   <span class="custom-option-text">Gemini 2.5 Flash</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- OpenAI Card -->
-        <div class="provider-card" id="card-openai">
-          <div class="form-group">
-            <label for="apiKey-openai">OpenAI API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="apiKey-openai" class="api-key-input" placeholder="sk-proj-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="toggle-eye" data-target="apiKey-openai" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="form-hint">Obtain from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">OpenAI Platform</a></span>
-          </div>
-
-          <div class="form-group">
-            <label>Model</label>
-            <div class="custom-select-wrapper" id="wrapper-openai-models" data-select-id="openai-models">
-              <input type="hidden" id="openai-models" value="auto_dynamic">
-              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="custom-options-panel" role="listbox">
-                <div class="custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gpt-5.4" role="option">
-                  <span class="custom-option-text">GPT-5.4</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gpt-5.4-mini" role="option">
-                  <span class="custom-option-text">GPT-5.4-mini</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gpt-4o" role="option">
-                  <span class="custom-option-text">GPT-4o</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="gpt-4o-mini" role="option">
-                  <span class="custom-option-text">GPT-4o-mini</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="o3-mini" role="option">
-                  <span class="custom-option-text">o3-mini Reasoning</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="o1" role="option">
-                  <span class="custom-option-text">o1 Reasoning</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Anthropic Card -->
-        <div class="provider-card" id="card-anthropic">
-          <div class="form-group">
-            <label for="apiKey-anthropic">Anthropic API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="apiKey-anthropic" class="api-key-input" placeholder="sk-ant-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="toggle-eye" data-target="apiKey-anthropic" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="form-hint">Obtain from <a href="https://console.anthropic.com/" target="_blank" rel="noreferrer">Anthropic Console</a></span>
-          </div>
-
-          <div class="form-group">
-            <label>Model</label>
-            <div class="custom-select-wrapper" id="wrapper-anthropic-models" data-select-id="anthropic-models">
-              <input type="hidden" id="anthropic-models" value="auto_dynamic">
-              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="custom-options-panel" role="listbox">
-                <div class="custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="claude-3-5-haiku-20241022" role="option">
-                  <span class="custom-option-text">Claude 3.5 Haiku</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="claude-3-5-sonnet-20241022" role="option">
-                  <span class="custom-option-text">Claude 3.5 Sonnet</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="claude-3-7-sonnet-20250219" role="option">
-                  <span class="custom-option-text">Claude 3.7 Sonnet</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="claude-3-opus-20240229" role="option">
-                  <span class="custom-option-text">Claude 3 Opus</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- DeepSeek Card -->
-        <div class="provider-card" id="card-deepseek">
-          <div class="form-group">
-            <label for="apiKey-deepseek">DeepSeek API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="apiKey-deepseek" class="api-key-input" placeholder="sk-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="toggle-eye" data-target="apiKey-deepseek" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="form-hint">Obtain from <a href="https://platform.deepseek.com/" target="_blank" rel="noreferrer">DeepSeek Platform</a></span>
-          </div>
-
-          <div class="form-group">
-            <label>Model</label>
-            <div class="custom-select-wrapper" id="wrapper-deepseek-models" data-select-id="deepseek-models">
-              <input type="hidden" id="deepseek-models" value="auto_dynamic">
-              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="custom-options-panel" role="listbox">
-                <div class="custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="deepseek-chat" role="option">
-                  <span class="custom-option-text">DeepSeek-V3 (Chat)</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="deepseek-reasoner" role="option">
-                  <span class="custom-option-text">DeepSeek-R1 (Reasoner)</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- OpenRouter Card -->
-        <div class="provider-card" id="card-openrouter">
-          <div class="form-group">
-            <label for="apiKey-openrouter">OpenRouter API Key</label>
-            <div class="input-wrapper">
-              <input type="password" id="apiKey-openrouter" class="api-key-input" placeholder="sk-or-v1-..."
-                autocomplete="new-password" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="toggle-eye" data-target="apiKey-openrouter" title="Show/Hide Key">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                  <circle cx="12" cy="12" r="3"></circle>
-                </svg>
-              </button>
-            </div>
-            <span class="form-hint">Obtain from <a href="https://openrouter.ai/keys" target="_blank" rel="noreferrer">openrouter.ai</a></span>
-          </div>
-
-          <div class="form-group">
-            <label>Model</label>
-            <div class="custom-select-wrapper" id="wrapper-openrouter-models" data-select-id="openrouter-models">
-              <input type="hidden" id="openrouter-models" value="auto_dynamic">
-              <button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false">
-                <span class="custom-select-label">Auto-Dynamic Model Picker</span>
-                <svg class="custom-select-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-              </button>
-              <div class="custom-options-panel" role="listbox">
-                <div class="custom-option selected" data-value="auto_dynamic" role="option">
-                  <span class="custom-option-text">Auto-Dynamic Model Picker</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="google/gemini-2.5-flash" role="option">
-                  <span class="custom-option-text">Gemini 2.5 Flash</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="meta-llama/llama-3.3-70b-instruct:free" role="option">
-                  <span class="custom-option-text">Llama 3.3 70B (Free)</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="anthropic/claude-3.5-sonnet" role="option">
-                  <span class="custom-option-text">Claude 3.5 Sonnet</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="deepseek/deepseek-r1" role="option">
-                  <span class="custom-option-text">DeepSeek R1</span>
-                  <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                </div>
-                <div class="custom-option" data-value="openai/gpt-4o-mini" role="option">
-                  <span class="custom-option-text">GPT-4o Mini</span>
                   <svg class="custom-option-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                 </div>
               </div>
