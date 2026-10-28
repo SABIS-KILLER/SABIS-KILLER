@@ -17,6 +17,24 @@
   let modalSaveToastTimer = null;
   let modalSaveDebounceTimer = null;
 
+  // Immediate early read of persistent UI visibility state on page refresh/navigation
+  if (isRuntimeValid() && chrome.storage && chrome.storage.local) {
+    try {
+      chrome.storage.local.get(['is_ui_visible', 'ui_visible'], (res) => {
+        if (!chrome.runtime.lastError && res) {
+          if (res.is_ui_visible !== undefined) {
+            isUIVisible = !!res.is_ui_visible;
+          } else if (res.ui_visible !== undefined) {
+            isUIVisible = !!res.ui_visible;
+          }
+          if (uiWrapper) {
+            uiWrapper.style.display = isUIVisible ? 'block' : 'none';
+          }
+        }
+      });
+    } catch (_) {}
+  }
+
   // Elements
   let host = null;
   let shadow = null;
@@ -436,6 +454,7 @@
     try {
       chrome.storage.local.get([
         'enable_prompt_input',
+        'is_ui_visible', 'ui_visible',
         'answer_text_color', 'answer_font_size',
         'button_bg_color', 'button_size',
         'prompt_bg_color', 'prompt_width',
@@ -445,7 +464,15 @@
         'answer_position', 'pos_answer',
         'panelPosition', 'panel_position'
       ], (data) => {
-        if (chrome.runtime.lastError) return;
+        if (chrome.runtime.lastError || !data) return;
+        if (data.is_ui_visible !== undefined) {
+          isUIVisible = !!data.is_ui_visible;
+        } else if (data.ui_visible !== undefined) {
+          isUIVisible = !!data.ui_visible;
+        }
+        if (uiWrapper) {
+          uiWrapper.style.display = isUIVisible ? 'block' : 'none';
+        }
         applyAppearanceSettings(data);
         const btnPos = data.button_position || data.pos_button;
         const pPos = data.prompt_position || data.pos_prompt;
@@ -498,6 +525,9 @@
     if (!isUIVisible) {
       isUIVisible = true;
       if (uiWrapper) uiWrapper.style.display = 'block';
+      try {
+        chrome.storage.local.set({ is_ui_visible: true, ui_visible: true });
+      } catch (_) {}
     }
 
     // If answer container has no text, provide temporary preview so it can be seen and dragged
@@ -1627,6 +1657,9 @@
       e.preventDefault();
       isUIVisible = !isUIVisible;
       uiWrapper.style.display = isUIVisible ? 'block' : 'none';
+      try {
+        chrome.storage.local.set({ is_ui_visible: isUIVisible, ui_visible: isUIVisible });
+      } catch (_) {}
     });
 
     // Capture & Solve
