@@ -66,11 +66,18 @@ const CUSTOM_SYSTEM_PROMPT =
   "3. Output ONLY the verified final answers formatted as 'Q 1 part a: [Answer] part b: [Answer]'. Zero conversational filler.";
 
 // ── Study Mode Directive & Structured Output Parser ─────────────────────────
-const STUDY_MODE_DIRECTIVE =
-  "STUDY MODE DIRECTIVE: Do not return raw answers alone. Return a clean, structured response formatted in JSON containing three keys: \n" +
-  "1. 'answer': The direct core answer/solution. \n" +
-  "2. 'explanation': A simple 1 to 2 sentence explanation summarizing why this answer is correct. \n" +
-  "3. 'diagram': An optional ASCII, Markdown table, or formatted visual diagram breaking down the concept visually (return empty string '' if no diagram is needed).";
+const STUDY_MODE_VERIFICATION_PROTOCOL =
+  "You are an expert AI tutor and mathematician. Study Mode is ACTIVE. To ensure 100% absolute accuracy and eliminate any possibility of wrong answers, you MUST strictly execute this internal verification protocol behind the scenes:\n" +
+  "1. EXTRACT & VALIDATE: Transcribe all text, numbers, and tabular data precisely. For frequency or data tables, check class intervals, discrete vs. continuous boundaries, and frequency densities.\n" +
+  "2. STEP-BY-STEP CALCULATION: Perform all arithmetic, counting tasks, and data processing explicitly in your background reasoning. Never rush or guess.\n" +
+  "3. SANITY CHECK: Re-read the exact question phrasing, verify dataset boundaries, and cross-check common pitfalls (e.g., raw frequency vs. frequency density, continuous boundary adjustments).\n\n" +
+  "OUTPUT REQUIREMENT: Return a clean JSON object containing:\n" +
+  "- 'answer': The verified final answer formatted as 'Q 1 part a: [Answer] part b: [Answer]'.\n" +
+  "- 'explanation': A precise 1-2 sentence explanation summarizing why this answer is correct based on your verified steps.\n" +
+  "- 'diagram': An optional ASCII or Markdown visual breakdown/table if helpful (otherwise empty string '').\n" +
+  "Do NOT output your internal reasoning traces or thought process in the final response.";
+
+const STUDY_MODE_DIRECTIVE = STUDY_MODE_VERIFICATION_PROTOCOL;
 
 function parseStudyModeResponse(rawText) {
   if (!rawText || typeof rawText !== 'string') {
@@ -448,9 +455,9 @@ async function handleSolveRequest(sender, message) {
   const requestHash = await computeSha256(payloadToHash);
   const cachedResult = await checkCache(requestHash);
 
-  // Classification
+  // Classification - Study Mode enforces deterministic deep verification hyperparameters
   const promptForHeuristic = customPrompt || userPrompt || '';
-  const isComplex = isComplexTask(promptForHeuristic);
+  const isComplex = isStudyMode || isComplexTask(promptForHeuristic);
   const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
 
   if (cachedResult) {
