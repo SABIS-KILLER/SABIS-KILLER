@@ -1064,6 +1064,115 @@
     } catch (_) {}
   }
 
+  // ── Client-Side OCR & Browser Canvas Text Extractor ─────────────────────────
+  function extractVerifiedTextFromDOMAndCanvas() {
+    try {
+      const parts = [];
+
+      // 1. Page Title & URL
+      if (document.title) {
+        parts.push(`[Page Context]: ${document.title.trim()}`);
+      }
+
+      // Check visibility within active viewport
+      const isVisibleInViewport = (el) => {
+        if (!el || el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) return false;
+        const rect = el.getBoundingClientRect();
+        return (
+          rect.width > 0 &&
+          rect.height > 0 &&
+          rect.bottom >= 0 &&
+          rect.top <= (window.innerHeight || document.documentElement.clientHeight) &&
+          rect.right >= 0 &&
+          rect.left <= (window.innerWidth || document.documentElement.clientWidth)
+        );
+      };
+
+      // 2. Extract Data Tables (Frequency tables, stem-and-leaf, matrices)
+      const tables = document.querySelectorAll('table');
+      tables.forEach((table, tIdx) => {
+        if (!isVisibleInViewport(table)) return;
+        const rows = [];
+        table.querySelectorAll('tr').forEach(tr => {
+          const cells = [];
+          tr.querySelectorAll('th, td').forEach(cell => {
+            const txt = cell.innerText.replace(/\s+/g, ' ').trim();
+            if (txt) cells.push(txt);
+          });
+          if (cells.length > 0) {
+            rows.push(cells.join(' | '));
+          }
+        });
+        if (rows.length > 0) {
+          parts.push(`[Data Table ${tIdx + 1}]:\n${rows.join('\n')}`);
+        }
+      });
+
+      // 3. Extract Dropdown Selects & Options
+      const selects = document.querySelectorAll('select');
+      selects.forEach((sel, sIdx) => {
+        if (!isVisibleInViewport(sel)) return;
+        const opts = Array.from(sel.options).map(o => o.text.trim()).filter(Boolean);
+        const selVal = sel.options[sel.selectedIndex]?.text?.trim() || '';
+        parts.push(`[Dropdown ${sIdx + 1}]: Selected: "${selVal}", Options: [${opts.join(', ')}]`);
+      });
+
+      // 4. Extract Input Fields / Blanks
+      const inputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type]), textarea');
+      inputs.forEach((inp, iIdx) => {
+        if (!isVisibleInViewport(inp)) return;
+        const val = inp.value.trim();
+        const ph = inp.placeholder || '';
+        parts.push(`[Blank/Field ${iIdx + 1}]: Current: "${val}" (Placeholder: "${ph}")`);
+      });
+
+      // 5. Extract MathJax / KaTeX / LaTeX expressions
+      const mathNodes = document.querySelectorAll('.katex, .MathJax, math, [data-latex]');
+      mathNodes.forEach((mn, mIdx) => {
+        if (!isVisibleInViewport(mn)) return;
+        const latex = mn.getAttribute('data-latex') || mn.getAttribute('alt') || mn.innerText.trim();
+        if (latex) parts.push(`[Math Formulation ${mIdx + 1}]: ${latex}`);
+      });
+
+      // 6. Extract Preformatted & Stem-and-Leaf Blocks
+      const pres = document.querySelectorAll('pre, code');
+      pres.forEach((pr, pIdx) => {
+        if (!isVisibleInViewport(pr)) return;
+        const txt = pr.innerText.trim();
+        if (txt) parts.push(`[Preformatted/Data Block ${pIdx + 1}]:\n${txt}`);
+      });
+
+      // 7. Extract Visible Question Content
+      const questionNodes = document.querySelectorAll(
+        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
+      );
+      let foundContainerText = '';
+      questionNodes.forEach(qn => {
+        if (isVisibleInViewport(qn)) {
+          const t = qn.innerText.trim();
+          if (t.length > foundContainerText.length) {
+            foundContainerText = t;
+          }
+        }
+      });
+
+      if (foundContainerText) {
+        parts.push(`[Question Body]:\n${foundContainerText}`);
+      } else {
+        const bodyText = (document.body ? document.body.innerText : '') || '';
+        const lines = bodyText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length > 0) {
+          parts.push(`[Viewport Content]:\n${lines.slice(0, 60).join('\n')}`);
+        }
+      }
+
+      return parts.join('\n\n').trim();
+    } catch (err) {
+      console.warn('[Client-Side OCR] Extraction warning:', err);
+      return '';
+    }
+  }
+
   // ── Build Shadow DOM UI Tree ────────────────────────────────────────────────
   function createShadowUI() {
     host = document.createElement('div');
@@ -1554,13 +1663,17 @@
       const isComplex = isComplexTask(rawPrompt || pageTitle);
       const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
 
+      // Client-Side OCR & Browser Canvas Text Extractor (<5ms)
+      const extractedVerifiedText = extractVerifiedTextFromDOMAndCanvas();
+
       try {
         chrome.runtime.sendMessage({
           action: 'SOLVE_SCREEN',
           customPrompt: contextAugmentedPrompt,
           rawPrompt: rawPrompt,
           pageTitle: pageTitle,
-          taskComplexity: taskComplexity
+          taskComplexity: taskComplexity,
+          extractedVerifiedText: extractedVerifiedText
         }, (response) => {
           isSolving = false;
 

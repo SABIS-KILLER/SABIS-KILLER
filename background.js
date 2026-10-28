@@ -198,13 +198,98 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+// ── Canvas Image Pre-Processing Engine ─────────────────────────────────────────
+async function preprocessScreenshotCanvas(dataUrl) {
+  try {
+    if (typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap === 'undefined') {
+      return dataUrl;
+    }
+
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const sourceBitmap = await createImageBitmap(blob);
+
+    const originalWidth = sourceBitmap.width;
+    const originalHeight = sourceBitmap.height;
+
+    // 1. Upscale low-res screen selections by 2x using bicubic Canvas rendering
+    const targetWidth = originalWidth * 2;
+    const targetHeight = originalHeight * 2;
+
+    const offscreen = new OffscreenCanvas(targetWidth, targetHeight);
+    const ctx = offscreen.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return dataUrl;
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high'; // Bicubic rendering in Chromium
+
+    // 2 & 3. Convert to high-contrast Grayscale and apply thresholding / contrast boosting
+    ctx.filter = 'contrast(180%) brightness(105%) grayscale(100%)';
+    ctx.drawImage(sourceBitmap, 0, 0, targetWidth, targetHeight);
+
+    // Pixel-level high-contrast edge thresholding to sharpen dark text against light backgrounds
+    try {
+      const imgData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+      const d = imgData.data;
+      for (let i = 0; i < d.length; i += 4) {
+        // Luminance
+        const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        const val = lum > 195 ? 255 : (lum < 75 ? 0 : lum);
+        d[i] = val;
+        d[i + 1] = val;
+        d[i + 2] = val;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    } catch (_) {}
+
+    const processedBlob = await offscreen.convertToBlob({ type: 'image/png' });
+    const arrayBuffer = await processedBlob.arrayBuffer();
+    const uint8 = new Uint8Array(arrayBuffer);
+    let binary = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < uint8.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, uint8.subarray(i, i + chunkSize));
+    }
+    const preprocessedBase64 = btoa(binary);
+    return `data:image/png;base64,${preprocessedBase64}`;
+  } catch (err) {
+    console.warn('[Image Pre-Processing Engine] Falling back to raw capture:', err);
+    return dataUrl;
+  }
+}
+
+// ── Hybrid OCR + Vision Prompt Builder ─────────────────────────────────────────
+function buildHybridPrompt(extractedVerifiedText, customUserPrompt = '') {
+  const verifiedTextContent = (extractedVerifiedText && extractedVerifiedText.trim())
+    ? extractedVerifiedText.trim()
+    : 'No text extracted. Extract and solve directly from visual screenshot context.';
+
+  let prompt =
+`VERIFIED OCR TEXT EXTRACTION:
+${verifiedTextContent}
+
+MATHEMATICAL & REASONING PROTOCOL:
+You are an expert AI tutor. Using the exact OCR text provided above and the attached image for visual context, execute your internal verification protocol. Count data points, verify boundaries, and calculate step-by-step behind the scenes.
+
+OUTPUT DIRECTIVE:
+Do NOT output your reasoning or thought process. Output ONLY the verified final answer(s) on a single line formatted as: 'Q 1 part a: [Answer] part b: [Answer]'.`;
+
+  if (customUserPrompt) {
+    prompt += `\n\nUSER SPECIFIC INSTRUCTION:\n${customUserPrompt}`;
+  }
+
+  return prompt;
+}
+
 // ── Request Handler & Orchestrator ──────────────────────────────────────────
 async function handleSolveRequest(sender, message) {
   const customPrompt = (message && typeof message.customPrompt === 'string') ? message.customPrompt.trim() : '';
+  const clientExtractedText = (message && typeof message.extractedVerifiedText === 'string')
+    ? message.extractedVerifiedText.trim()
+    : '';
+
   const systemPrompt = customPrompt ? CUSTOM_SYSTEM_PROMPT : SYSTEM_PROMPT;
-  const userPrompt = customPrompt
-    ? `USER INSTRUCTION: ${customPrompt}\n\nAnalyze the screenshot and answer ONLY the user instruction above in the simplest way possible without anything extra.`
-    : DEFAULT_USER_PROMPT;
+  const userPrompt = buildHybridPrompt(clientExtractedText, customPrompt);
 
   const storage = await chrome.storage.local.get([
     'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
@@ -267,7 +352,9 @@ async function handleSolveRequest(sender, message) {
     };
   }
 
-  const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+  // Pass through Canvas Image Pre-Processing Engine (2x bicubic upscale, high-contrast grayscale, threshold boost)
+  const processedDataUrl = await preprocessScreenshotCanvas(dataUrl);
+  const base64Data = processedDataUrl.replace(/^data:image\/\w+;base64,/, '');
 
   // Instant Cache Check (<1ms Latency)
   const payloadToHash = `${userPrompt}:::${base64Data}`;
