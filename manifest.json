@@ -34,6 +34,10 @@
   "action": {
     "default_title": "SABIS KILLER v2.1"
   },
+  "options_ui": {
+    "page": "popup.html",
+    "open_in_tab": false
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

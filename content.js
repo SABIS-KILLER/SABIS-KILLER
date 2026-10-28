@@ -10,23 +10,29 @@
 
   // State
   let isUIVisible = true;
+  let isStudyMode = false;
   let isSolving = false;
   let currentAnswerText = '';
   let isModalOpen = false;
   let currentActiveProvider = 'gemini';
   let modalSaveToastTimer = null;
   let modalSaveDebounceTimer = null;
+  let studyBubbleContainer = null;
+  let studyThreadHistory = [];
 
   // Immediate early read of persistent UI visibility state on page refresh/navigation
   // NOTE: isRuntimeValid() is defined later; inline the check here to avoid TDZ error
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.storage && chrome.storage.local) {
     try {
-      chrome.storage.local.get(['is_ui_visible', 'ui_visible'], (res) => {
+      chrome.storage.local.get(['is_ui_visible', 'ui_visible', 'studyMode'], (res) => {
         if (!chrome.runtime.lastError && res) {
           if (res.is_ui_visible !== undefined) {
             isUIVisible = !!res.is_ui_visible;
           } else if (res.ui_visible !== undefined) {
             isUIVisible = !!res.ui_visible;
+          }
+          if (res.studyMode !== undefined) {
+            isStudyMode = !!res.studyMode;
           }
           if (uiWrapper) {
             uiWrapper.style.display = isUIVisible ? 'block' : 'none';
@@ -454,7 +460,7 @@
     if (!isRuntimeValid() || !chrome.storage || !chrome.storage.local) return;
     try {
       chrome.storage.local.get([
-        'enable_prompt_input',
+        'enable_prompt_input', 'studyMode',
         'is_ui_visible', 'ui_visible',
         'answer_text_color', 'answer_font_size',
         'button_bg_color', 'button_size',
@@ -470,6 +476,13 @@
           isUIVisible = !!data.is_ui_visible;
         } else if (data.ui_visible !== undefined) {
           isUIVisible = !!data.ui_visible;
+        }
+        if (data.studyMode !== undefined) {
+          isStudyMode = !!data.studyMode;
+        }
+        const modalStudyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
+        if (modalStudyToggle) {
+          modalStudyToggle.checked = isStudyMode;
         }
         if (uiWrapper) {
           uiWrapper.style.display = isUIVisible ? 'block' : 'none';
@@ -1019,6 +1032,7 @@
 
       const glassSlider = shadow.getElementById('inpage-glass-slider');
       const promptToggle = shadow.getElementById('inpage-enable-prompt');
+      const studyToggle = shadow.getElementById('inpage-enable-study-mode');
       const ansHex = shadow.getElementById('inpage-answer-color-hex');
       const ansSlider = shadow.getElementById('inpage-answer-font-size');
       const bHex = shadow.getElementById('inpage-button-color-hex');
@@ -1028,6 +1042,8 @@
 
       data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
       data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
+      data.studyMode = studyToggle ? studyToggle.checked : false;
+      isStudyMode = data.studyMode;
       data.answer_text_color = ansHex ? ansHex.value.trim() : '#000000';
       data.answer_font_size = ansSlider ? parseInt(ansSlider.value, 10) : 14;
       data.button_bg_color = bHex ? bHex.value.trim() : '#FFFFFF';
@@ -1088,6 +1104,15 @@
 
         if (msg.action === 'UPDATE_SETTINGS' && msg.settings) {
           applyAppearanceSettings(msg.settings);
+          if (msg.settings.studyMode !== undefined) {
+            isStudyMode = !!msg.settings.studyMode;
+            const studyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
+            if (studyToggle) studyToggle.checked = isStudyMode;
+            if (!isStudyMode) {
+              unmountStudyBubble();
+              if (answerContainer) answerContainer.style.removeProperty('display');
+            }
+          }
           sendResponse({ success: true });
           return;
         }
@@ -1415,6 +1440,20 @@
           </div>
         </div>
 
+        <!-- Study Mode Toggle -->
+        <div class="modal-appearance-card">
+          <div class="modal-control-row">
+            <div>
+              <span class="modal-control-title">Study Mode</span>
+              <p class="modal-control-sub">Interactive liquid glass bubble, simple explanation, diagram area &amp; follow-up prompt</p>
+            </div>
+            <label class="modal-switch">
+              <input type="checkbox" id="inpage-enable-study-mode">
+              <span class="modal-switch-slider"></span>
+            </label>
+          </div>
+        </div>
+
         <!-- Answer Typography (Pure black default, zero shadow) -->
         <div class="modal-appearance-card">
           <span class="modal-control-title">Answer Typography</span>
@@ -1553,6 +1592,12 @@
       promptToggle.addEventListener('change', () => autoSaveModal());
     }
 
+    // Study Mode Toggle
+    const studyToggle = settingsModalDialog.querySelector('#inpage-enable-study-mode');
+    if (studyToggle) {
+      studyToggle.addEventListener('change', () => autoSaveModal());
+    }
+
     // Helper: Bind Color Picker and Hex Input Pair
     function bindColorSync(pickerId, hexId) {
       const p = shadow.getElementById(pickerId);
@@ -1658,10 +1703,389 @@
       e.preventDefault();
       isUIVisible = !isUIVisible;
       uiWrapper.style.display = isUIVisible ? 'block' : 'none';
+      if (studyBubbleContainer) {
+        studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
+      }
       try {
         chrome.storage.local.set({ is_ui_visible: isUIVisible, ui_visible: isUIVisible });
       } catch (_) {}
     });
+
+    // ── Study Mode Helper & UI Bubble Subsystem ──────────────────────────────
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function getQuestionBoundingRect() {
+      const candidates = document.querySelectorAll(
+        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
+      );
+      const vHeight = window.innerHeight || document.documentElement.clientHeight;
+      const vWidth = window.innerWidth || document.documentElement.clientWidth;
+
+      for (const el of candidates) {
+        if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 60 && r.height > 40 && r.bottom > 40 && r.top < vHeight - 40 && r.right > 40 && r.left < vWidth - 40) {
+          return r;
+        }
+      }
+
+      if (bottomControlsBar) {
+        const bRect = bottomControlsBar.getBoundingClientRect();
+        return {
+          left: Math.max(20, bRect.left),
+          top: Math.max(20, bRect.top - 180),
+          right: Math.min(vWidth - 20, bRect.right + 220),
+          bottom: bRect.top,
+          width: 320,
+          height: 160
+        };
+      }
+
+      return {
+        left: 30,
+        top: 60,
+        right: 420,
+        bottom: 240,
+        width: 390,
+        height: 180
+      };
+    }
+
+    function extractQuestionSnippet() {
+      const candidates = document.querySelectorAll(
+        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main'
+      );
+      const vHeight = window.innerHeight || document.documentElement.clientHeight;
+      const vWidth = window.innerWidth || document.documentElement.clientWidth;
+
+      for (const el of candidates) {
+        if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
+        const r = el.getBoundingClientRect();
+        if (r.width > 60 && r.height > 40 && r.bottom > 40 && r.top < vHeight - 40 && r.right > 40 && r.left < vWidth - 40) {
+          const text = el.innerText.trim();
+          if (text.length > 10) {
+            return text.length > 240 ? text.slice(0, 237) + '...' : text;
+          }
+        }
+      }
+
+      const rawPrompt = promptInput ? promptInput.value.trim() : '';
+      if (rawPrompt) return rawPrompt;
+
+      const title = (document.title || '').trim();
+      return title ? `Question on: ${title}` : 'Captured Academic Question';
+    }
+
+    function calculateStudyBubblePosition(qRect) {
+      const vW = window.innerWidth || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const estimatedCardWidth = Math.min(840, Math.floor(vW * 0.88));
+      const estimatedCardHeight = 340;
+
+      let left = 24;
+      let top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
+
+      const spaceOnRight = vW - qRect.right;
+      const spaceOnLeft = qRect.left;
+
+      // Screen edge avoidance rule:
+      // If captured region is near right boundary (<350px remaining) -> flip layout expansion to LEFT or BOTTOM
+      if (spaceOnRight < 350) {
+        if (spaceOnLeft >= estimatedCardWidth + 24) {
+          left = Math.max(20, qRect.left - estimatedCardWidth - 16);
+          top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
+        } else {
+          left = Math.max(20, Math.min(vW - estimatedCardWidth - 20, (vW - estimatedCardWidth) / 2));
+          if (vH - qRect.bottom >= 220) {
+            top = Math.min(vH - estimatedCardHeight - 20, qRect.bottom + 16);
+          } else {
+            top = Math.max(20, qRect.top - estimatedCardHeight - 16);
+          }
+        }
+      } else if (qRect.left < vW / 2) {
+        // If captured region is on the left half of the viewport -> expand to the RIGHT
+        left = Math.min(vW - estimatedCardWidth - 20, Math.max(20, qRect.right + 16));
+        top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.top));
+      } else {
+        left = Math.max(20, Math.min(vW - estimatedCardWidth - 20, qRect.left));
+        top = Math.max(20, Math.min(vH - estimatedCardHeight - 20, qRect.bottom + 16));
+      }
+
+      left = Math.max(16, Math.min(vW - 100, left));
+      top = Math.max(16, Math.min(vH - 100, top));
+
+      return { left, top };
+    }
+
+    function mountStudyBubble(questionSnippet, qRect) {
+      if (!shadow) return;
+
+      if (!studyBubbleContainer) {
+        studyBubbleContainer = document.createElement('div');
+        studyBubbleContainer.id = 'sabis-study-bubble-container';
+        studyBubbleContainer.className = 'sabis-study-bubble';
+        shadow.appendChild(studyBubbleContainer);
+      }
+
+      const pos = calculateStudyBubblePosition(qRect || getQuestionBoundingRect());
+      studyBubbleContainer.style.setProperty('position', 'fixed', 'important');
+      studyBubbleContainer.style.setProperty('top', `${pos.top}px`, 'important');
+      studyBubbleContainer.style.setProperty('left', `${pos.left}px`, 'important');
+      studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
+
+      studyBubbleContainer.innerHTML = `
+        <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+
+        <div class="study-bubble-inner">
+          <!-- LEFT REGION - QUESTION FRAME -->
+          <div class="study-question-region">
+            <div class="study-region-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+              </svg>
+              <span>Question</span>
+            </div>
+            <div class="study-question-body" id="study-question-body">${escapeHtml(questionSnippet || 'Capturing problem statement...')}</div>
+          </div>
+
+          <!-- CENTER REGION - EXPLANATION & ANSWER -->
+          <div class="study-explanation-region">
+            <div class="study-answer-row">
+              <span class="study-answer-label">ANSWER</span>
+              <div class="study-answer-text" id="study-answer-text"></div>
+            </div>
+            <div class="study-explanation-row">
+              <span class="study-explanation-label">EXPLANATION</span>
+              <div class="study-explanation-text" id="study-explanation-text"></div>
+            </div>
+          </div>
+
+          <!-- RIGHT REGION - DIAGRAM & FOLLOW-UP STACK -->
+          <div class="study-right-stack">
+            <!-- TOP AREA - SMART COLLAPSIBLE DIAGRAM CONTAINER -->
+            <div class="study-diagram-box" id="study-diagram-box">
+              <div class="study-diagram-header">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                <span>Visual Breakdown</span>
+              </div>
+              <pre class="study-diagram-content" id="study-diagram-content"></pre>
+            </div>
+
+            <!-- BOTTOM RIGHT AREA - INTERACTIVE FOLLOW-UP INPUT BAR -->
+            <div class="study-followup-box">
+              <div class="study-followup-bar">
+                <input type="text" class="study-prompt-input" id="study-prompt-input"
+                  placeholder="Ask about explanation..."
+                  autocomplete="off" autocomplete="new-password"
+                  autocorrect="off" spellcheck="false" data-lpignore="true" aria-autocomplete="none">
+                <button type="button" class="study-send-btn" id="study-send-btn" title="Send follow-up">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Top-Right Close Button
+      const closeBtn = studyBubbleContainer.querySelector('.study-bubble-close-btn');
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          unmountStudyBubble();
+        });
+      }
+
+      // Interactive Follow-Up Input Bar
+      const followInput = studyBubbleContainer.querySelector('#study-prompt-input');
+      const sendBtn = studyBubbleContainer.querySelector('#study-send-btn');
+
+      const handleSendFollowUp = () => {
+        const query = followInput ? followInput.value.trim() : '';
+        if (!query) return;
+        executeStudyFollowUp(query);
+      };
+
+      if (followInput) {
+        followInput.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSendFollowUp();
+          }
+        });
+        followInput.addEventListener('keyup', (e) => e.stopPropagation());
+        followInput.addEventListener('keypress', (e) => e.stopPropagation());
+      }
+
+      if (sendBtn) {
+        sendBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          handleSendFollowUp();
+        });
+      }
+    }
+
+    function renderStudyThinkingState(questionSnippet = '') {
+      if (!studyBubbleContainer) return;
+      const qBody = studyBubbleContainer.querySelector('#study-question-body');
+      const aText = studyBubbleContainer.querySelector('#study-answer-text');
+      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
+      const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
+
+      if (qBody) {
+        if (questionSnippet && questionSnippet.trim()) {
+          qBody.textContent = questionSnippet.trim();
+        } else {
+          qBody.innerHTML = `
+            <div class="study-skeleton-line" style="width: 85%;"></div>
+            <div class="study-skeleton-line" style="width: 95%;"></div>
+            <div class="study-skeleton-line" style="width: 70%;"></div>
+          `;
+        }
+      }
+
+      if (aText) {
+        aText.innerHTML = `<div class="study-skeleton-line" style="width: 55%; height: 16px;"></div>`;
+      }
+
+      if (eText) {
+        eText.innerHTML = `
+          <div class="study-thinking-badge">Thinking deeply behind the scenes...</div>
+          <div class="study-skeleton-line" style="width: 90%;"></div>
+          <div class="study-skeleton-line" style="width: 82%;"></div>
+        `;
+      }
+
+      if (dBox) {
+        dBox.classList.remove('is-expanded');
+        dBox.style.setProperty('display', 'none', 'important');
+        dBox.style.opacity = '0';
+        dBox.style.maxHeight = '0';
+      }
+    }
+
+    function renderStudySolution(data, questionSnippet = '') {
+      if (!studyBubbleContainer) return;
+      const qBody = studyBubbleContainer.querySelector('#study-question-body');
+      const aText = studyBubbleContainer.querySelector('#study-answer-text');
+      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
+      const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
+      const dContent = studyBubbleContainer.querySelector('#study-diagram-content');
+
+      if (qBody && questionSnippet) {
+        qBody.textContent = questionSnippet;
+      }
+
+      if (aText) {
+        aText.innerHTML = `<strong>${escapeHtml(data.answer || 'Completed')}</strong>`;
+      }
+
+      if (eText) {
+        eText.textContent = data.explanation || 'Solution calculated directly from screenshot context.';
+      }
+
+      if (dBox && dContent) {
+        const diagram = (data.diagram && typeof data.diagram === 'string') ? data.diagram.trim() : '';
+        if (diagram) {
+          dContent.textContent = diagram;
+          dBox.classList.add('is-expanded');
+          dBox.style.setProperty('display', 'block', 'important');
+          dBox.style.opacity = '1';
+          dBox.style.maxHeight = '300px';
+        } else {
+          dBox.classList.remove('is-expanded');
+          dBox.style.setProperty('display', 'none', 'important');
+          dBox.style.opacity = '0';
+          dBox.style.maxHeight = '0';
+        }
+      }
+    }
+
+    function renderStudyError(errorMsg) {
+      if (!studyBubbleContainer) return;
+      const aText = studyBubbleContainer.querySelector('#study-answer-text');
+      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
+      if (aText) aText.innerHTML = `<span style="color: #ff3b30; font-weight: 700;">Unable to solve</span>`;
+      if (eText) eText.textContent = errorMsg || 'An error occurred during verification.';
+    }
+
+    function executeStudyFollowUp(query) {
+      if (!studyBubbleContainer || !query) return;
+      const followInput = studyBubbleContainer.querySelector('#study-prompt-input');
+      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
+
+      if (followInput) followInput.value = '';
+
+      if (eText) {
+        eText.innerHTML = `
+          <div class="study-thinking-badge">Consulting AI tutor on: "${escapeHtml(query)}"...</div>
+          <div class="study-skeleton-line" style="width: 90%;"></div>
+          <div class="study-skeleton-line" style="width: 75%;"></div>
+        `;
+      }
+
+      try {
+        chrome.runtime.sendMessage({
+          action: 'STUDY_FOLLOWUP',
+          followUpQuery: query,
+          threadHistory: studyThreadHistory
+        }, (response) => {
+          let lastErr = null;
+          try { lastErr = chrome.runtime.lastError; } catch (_) {}
+
+          if (lastErr || !response || !response.success) {
+            const err = lastErr?.message || response?.error || 'Failed to answer follow-up question.';
+            renderStudyError(err);
+            return;
+          }
+
+          studyThreadHistory.push({ role: 'user', content: query });
+          studyThreadHistory.push({
+            role: 'model',
+            content: response.rawOutput || JSON.stringify({
+              answer: response.answer,
+              explanation: response.explanation,
+              diagram: response.diagram
+            })
+          });
+
+          renderStudySolution(response);
+        });
+      } catch (err) {
+        renderStudyError(err?.message || String(err));
+      }
+    }
+
+    function unmountStudyBubble() {
+      if (studyBubbleContainer && studyBubbleContainer.parentNode) {
+        studyBubbleContainer.parentNode.removeChild(studyBubbleContainer);
+      }
+      studyBubbleContainer = null;
+      studyThreadHistory = [];
+    }
 
     // Capture & Solve
     captureButton.addEventListener('click', (e) => {
@@ -1682,8 +2106,6 @@
       }
 
       isSolving = true;
-      currentAnswerText = 'Solving...';
-      answerText.textContent = currentAnswerText;
 
       const rawPrompt = promptInput ? promptInput.value.trim() : '';
       const pageTitle = (document.title || '').trim();
@@ -1700,9 +2122,76 @@
       // Client-Side OCR & Browser Canvas Text Extractor (<5ms)
       const extractedVerifiedText = extractVerifiedTextFromDOMAndCanvas();
 
+      // ── STUDY MODE EXECUTION ──
+      if (isStudyMode) {
+        // Suppress standard plain text answer overlay
+        if (answerContainer) {
+          answerContainer.style.setProperty('display', 'none', 'important');
+        }
+
+        const qRect = getQuestionBoundingRect();
+        const questionSnippet = extractQuestionSnippet();
+
+        // Mount dynamic liquid glass study card and render skeleton shimmer immediately (<50ms)
+        mountStudyBubble(questionSnippet, qRect);
+        renderStudyThinkingState(questionSnippet);
+
+        try {
+          chrome.runtime.sendMessage({
+            action: 'SOLVE_SCREEN',
+            studyMode: true,
+            customPrompt: contextAugmentedPrompt,
+            rawPrompt: rawPrompt,
+            pageTitle: pageTitle,
+            taskComplexity: taskComplexity,
+            extractedVerifiedText: extractedVerifiedText
+          }, (response) => {
+            isSolving = false;
+
+            let lastErr = null;
+            try { lastErr = chrome.runtime.lastError; } catch (_) {}
+
+            if (lastErr || !response || !response.success) {
+              const err = lastErr?.message || response?.error || 'Failed to analyze screenshot.';
+              renderStudyError(err);
+              return;
+            }
+
+            // Save conversation thread memory
+            studyThreadHistory = [
+              { role: 'user', content: contextAugmentedPrompt || 'Solve question' },
+              {
+                role: 'model',
+                content: response.rawOutput || JSON.stringify({
+                  answer: response.answer,
+                  explanation: response.explanation,
+                  diagram: response.diagram
+                })
+              }
+            ];
+
+            renderStudySolution(response, questionSnippet);
+          });
+        } catch (err) {
+          isSolving = false;
+          renderStudyError(err?.message || String(err));
+        }
+        return;
+      }
+
+      // ── STANDARD SOLUTION EXECUTION (STUDY MODE OFF) ──
+      unmountStudyBubble();
+      if (answerContainer) {
+        answerContainer.style.removeProperty('display');
+      }
+
+      currentAnswerText = 'Solving...';
+      answerText.textContent = currentAnswerText;
+
       try {
         chrome.runtime.sendMessage({
           action: 'SOLVE_SCREEN',
+          studyMode: false,
           customPrompt: contextAugmentedPrompt,
           rawPrompt: rawPrompt,
           pageTitle: pageTitle,
@@ -1767,6 +2256,16 @@
         }
         if (Object.keys(updated).length > 0) {
           applyAppearanceSettings(updated);
+        }
+
+        if (changes.studyMode !== undefined) {
+          isStudyMode = !!changes.studyMode.newValue;
+          const studyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
+          if (studyToggle) studyToggle.checked = isStudyMode;
+          if (!isStudyMode) {
+            unmountStudyBubble();
+            if (answerContainer) answerContainer.style.removeProperty('display');
+          }
         }
 
         // Live-update positions

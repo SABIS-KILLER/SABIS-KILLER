@@ -1152,3 +1152,313 @@
   transform: scale(1.02) !important;
   opacity: 0.92 !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SABIS KILLER - STUDY MODE LIQUID GLASS BUBBLE CONTAINER
+   Apple iOS 27 Liquid Glass Squircle Framing, Optical Refractions & Shimmer
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#sabis-study-bubble-container {
+  position: fixed !important;
+  z-index: 2147483646 !important;
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  background: rgba(245, 245, 247, calc(var(--glass-opacity, 0.65))) !important;
+  backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(1.05) !important;
+  border: 1px solid rgba(255, 255, 255, calc(var(--glass-refraction, 0.7))) !important;
+  box-shadow: inset 0 1.5px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(0, 0, 0, 0.15), 0 24px 48px rgba(0, 0, 0, 0.22) !important;
+  max-width: 90vw !important;
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  padding: 18px 22px !important;
+  box-sizing: border-box !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
+  color: #1c1c1e !important;
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease !important;
+}
+
+.study-bubble-close-btn {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  z-index: 10 !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: rgba(0, 0, 0, 0.1) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  border: none !important;
+  padding: 0 !important;
+  color: #1c1c1e !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+}
+
+.study-bubble-close-btn:hover {
+  background: rgba(0, 0, 0, 0.18) !important;
+}
+
+.study-bubble-close-btn:active {
+  transform: scale(0.92) !important;
+}
+
+.study-bubble-inner {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 16px !important;
+  padding-top: 4px !important;
+  box-sizing: border-box !important;
+}
+
+/* 1. LEFT REGION - QUESTION FRAME */
+.study-question-region {
+  border: 1.5px solid rgba(0, 122, 255, 0.4) !important;
+  border-radius: 16px !important;
+  padding: 12px !important;
+  background: rgba(255, 255, 255, calc(var(--glass-opacity, 0.35) * 0.85)) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  min-width: 180px !important;
+  max-width: 240px !important;
+  box-sizing: border-box !important;
+  flex: 0 0 auto !important;
+}
+
+.study-region-tag {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.6px !important;
+  color: #007aff !important;
+  margin-bottom: 8px !important;
+}
+
+.study-question-body {
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+  color: #2c2c2e !important;
+  overflow-y: auto !important;
+  max-height: 220px !important;
+  word-break: break-word !important;
+}
+
+/* 2. CENTER REGION - EXPLANATION & ANSWER */
+.study-explanation-region {
+  flex: 1 1 260px !important;
+  min-width: 220px !important;
+  max-width: 380px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+}
+
+.study-answer-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+
+.study-answer-label {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.7px !important;
+  color: #34c759 !important;
+}
+
+.study-answer-text {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #1c1c1e !important;
+  line-height: 1.35 !important;
+  word-break: break-word !important;
+}
+
+.study-explanation-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+}
+
+.study-explanation-label {
+  font-size: 10.5px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.7px !important;
+  color: #8e8e93 !important;
+}
+
+.study-explanation-text {
+  color: #1C1C1E !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+  word-break: break-word !important;
+}
+
+/* 3. RIGHT REGION - DIAGRAM & FOLLOW-UP STACK */
+.study-right-stack {
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  min-width: 260px !important;
+  max-width: 340px !important;
+  box-sizing: border-box !important;
+}
+
+/* TOP AREA - SMART COLLAPSIBLE DIAGRAM CONTAINER */
+.study-diagram-box {
+  font-family: monospace !important;
+  font-size: 12px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 12px !important;
+  padding: 10px !important;
+  box-sizing: border-box !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+  /* Smart collapse initial state */
+  display: none !important;
+  opacity: 0 !important;
+  max-height: 0 !important;
+  transition: all 0.3s ease !important;
+  overflow: hidden !important;
+}
+
+.study-diagram-box.is-expanded {
+  display: block !important;
+  opacity: 1 !important;
+  max-height: 300px !important;
+  overflow-y: auto !important;
+}
+
+.study-diagram-header {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #636366 !important;
+  margin-bottom: 6px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif !important;
+}
+
+.study-diagram-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: #1c1c1e !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* BOTTOM RIGHT AREA - INTERACTIVE FOLLOW-UP INPUT BAR */
+.study-followup-box {
+  margin-top: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.study-followup-bar {
+  display: flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.82) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  border-radius: 20px !important;
+  padding: 3px 5px 3px 12px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.study-followup-bar:focus-within {
+  border-color: #007aff !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2) !important;
+}
+
+.study-prompt-input {
+  flex: 1 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  font-size: 13px !important;
+  color: #1c1c1e !important;
+  padding: 6px 0 !important;
+  font-family: inherit !important;
+}
+
+.study-prompt-input::placeholder {
+  color: #8e8e93 !important;
+}
+
+.study-send-btn {
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 50% !important;
+  background: #007aff !important;
+  color: #ffffff !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  transition: background 0.15s ease, transform 0.15s ease !important;
+}
+
+.study-send-btn:hover {
+  background: #0062cc !important;
+}
+
+.study-send-btn:active {
+  transform: scale(0.92) !important;
+}
+
+/* 4. INSTANT THINKING STATE SKELETON SHIMMER */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.study-skeleton-line {
+  height: 13px !important;
+  border-radius: 6px !important;
+  margin-bottom: 7px !important;
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.13) 50%, rgba(0, 0, 0, 0.05) 75%) !important;
+  background-size: 200% 100% !important;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite !important;
+}
+
+.study-thinking-badge {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #007aff !important;
+  margin-bottom: 6px !important;
+}
+
+/* Responsive Narrow Screen Optimization */
+@media (max-width: 680px) {
+  .study-bubble-inner {
+    flex-direction: column !important;
+  }
+  .study-question-region,
+  .study-explanation-region,
+  .study-right-stack {
+    max-width: 100% !important;
+    min-width: 100% !important;
+  }
+}

@@ -65,6 +65,67 @@ const CUSTOM_SYSTEM_PROMPT =
   "2. Execute the 4-step verification protocol internally before finalizing the answer.\n" +
   "3. Output ONLY the verified final answers formatted as 'Q 1 part a: [Answer] part b: [Answer]'. Zero conversational filler.";
 
+// ── Study Mode Directive & Structured Output Parser ─────────────────────────
+const STUDY_MODE_DIRECTIVE =
+  "STUDY MODE DIRECTIVE: Do not return raw answers alone. Return a clean, structured response formatted in JSON containing three keys: \n" +
+  "1. 'answer': The direct core answer/solution. \n" +
+  "2. 'explanation': A simple 1 to 2 sentence explanation summarizing why this answer is correct. \n" +
+  "3. 'diagram': An optional ASCII, Markdown table, or formatted visual diagram breaking down the concept visually (return empty string '' if no diagram is needed).";
+
+function parseStudyModeResponse(rawText) {
+  if (!rawText || typeof rawText !== 'string') {
+    return { answer: 'No answer generated.', explanation: '', diagram: '' };
+  }
+  let text = rawText.trim();
+  // Strip markdown code fences (e.g. ```json ... ``` or ``` ... ```)
+  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  // 1. Direct JSON parse
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') {
+      return {
+        answer: String(parsed.answer || '').trim() || text,
+        explanation: String(parsed.explanation || '').trim(),
+        diagram: String(parsed.diagram || '').trim()
+      };
+    }
+  } catch (_) {}
+
+  // 2. Embedded JSON block extraction
+  const jsonMatch = text.match(/\{[\s\S]*?"answer"[\s\S]*?\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        answer: String(parsed.answer || '').trim() || text,
+        explanation: String(parsed.explanation || '').trim(),
+        diagram: String(parsed.diagram || '').trim()
+      };
+    } catch (_) {}
+  }
+
+  // 3. Regex key extraction fallback
+  const ansMatch = text.match(/"answer"\s*:\s*"((?:\\.|[^"\\])*)"/i);
+  const expMatch = text.match(/"explanation"\s*:\s*"((?:\\.|[^"\\])*)"/i);
+  const diaMatch = text.match(/"diagram"\s*:\s*"((?:\\.|[^"\\])*)"/i);
+
+  if (ansMatch || expMatch) {
+    return {
+      answer: ansMatch ? ansMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : text,
+      explanation: expMatch ? expMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : '',
+      diagram: diaMatch ? diaMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : ''
+    };
+  }
+
+  // 4. Clean fallback with default values
+  return {
+    answer: text,
+    explanation: '',
+    diagram: ''
+  };
+}
+
 const GEMINI_FREE_TIER_MODELS = [
   'gemini-3.8-flash',
   'gemini-3.6-flash',
@@ -196,6 +257,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
     return true;
   }
+
+  if (message.action === 'STUDY_FOLLOWUP') {
+    handleStudyFollowUp(sender, message)
+      .then((result) => sendResponse(result))
+      .catch((error) => {
+        sendResponse({
+          success: false,
+          error: error.message || 'An unexpected error occurred.'
+        });
+      });
+    return true;
+  }
 });
 
 // ── Canvas Image Pre-Processing Engine ─────────────────────────────────────────
@@ -292,11 +365,25 @@ async function handleSolveRequest(sender, message) {
   const userPrompt = buildHybridPrompt(clientExtractedText, customPrompt);
 
   const storage = await chrome.storage.local.get([
-    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
+    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel', 'studyMode'
   ]);
 
   const apiKey = (storage.GEMINI_API_KEY || storage.geminiApiKey || '').trim();
   const modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic';
+  const isStudyMode = message.studyMode !== undefined ? !!message.studyMode : !!storage.studyMode;
+
+  // Dynamic Prompt Modification for Study Mode
+  let activeSystemPrompt = systemPrompt;
+  let activeUserPrompt = userPrompt;
+
+  if (isStudyMode) {
+    activeSystemPrompt =
+      `${systemPrompt}\n\n${STUDY_MODE_DIRECTIVE}\n\n` +
+      'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}. Do not wrap in markdown code blocks.';
+    activeUserPrompt =
+      `${userPrompt}\n\n${STUDY_MODE_DIRECTIVE}\n` +
+      'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}.';
+  }
 
   // API Key Sanitization & Validation
   if (!apiKey || apiKey.length < 5) {
@@ -356,8 +443,8 @@ async function handleSolveRequest(sender, message) {
   const processedDataUrl = await preprocessScreenshotCanvas(dataUrl);
   const base64Data = processedDataUrl.replace(/^data:image\/\w+;base64,/, '');
 
-  // Instant Cache Check (<1ms Latency)
-  const payloadToHash = `${userPrompt}:::${base64Data}`;
+  // Instant Cache Check (<1ms Latency) - Scoped by mode to avoid collisions
+  const payloadToHash = `${activeUserPrompt}:::${isStudyMode ? 'study' : 'standard'}:::${base64Data}`;
   const requestHash = await computeSha256(payloadToHash);
   const cachedResult = await checkCache(requestHash);
 
@@ -368,6 +455,24 @@ async function handleSolveRequest(sender, message) {
 
   if (cachedResult) {
     console.log("[Auto-Dynamic Router] Task:", taskComplexity, "| Model Executed:", cachedResult.modelUsed, "| Latency:", 0, "ms | Fallback Triggered:", false);
+    if (isStudyMode) {
+      const studyData = parseStudyModeResponse(cachedResult.answer);
+      return {
+        success: true,
+        studyMode: true,
+        answer: studyData.answer,
+        response: studyData.answer,
+        explanation: studyData.explanation,
+        diagram: studyData.diagram,
+        studyData: studyData,
+        rawOutput: cachedResult.answer,
+        modelUsed: `${cachedResult.modelUsed} [Cache Hit]`,
+        modeActive: cachedResult.modeActive,
+        wasFallbackTriggered: false,
+        fromCache: true
+      };
+    }
+
     return {
       success: true,
       answer: cachedResult.answer,
@@ -386,8 +491,8 @@ async function handleSolveRequest(sender, message) {
       apiKey,
       modelMode,
       base64Data,
-      systemPrompt,
-      userPrompt,
+      activeSystemPrompt,
+      activeUserPrompt,
       customPrompt,
       isComplex,
       taskComplexity
@@ -404,6 +509,23 @@ async function handleSolveRequest(sender, message) {
 
     await writeCache(requestHash, result);
 
+    if (isStudyMode) {
+      const studyData = parseStudyModeResponse(result.answer);
+      return {
+        success: true,
+        studyMode: true,
+        answer: studyData.answer,
+        response: studyData.answer,
+        explanation: studyData.explanation,
+        diagram: studyData.diagram,
+        studyData: studyData,
+        rawOutput: result.answer,
+        modelUsed: result.modelUsed,
+        modeActive: result.modeActive,
+        wasFallbackTriggered: result.wasFallbackTriggered || false
+      };
+    }
+
     return {
       success: true,
       answer: result.answer,
@@ -417,6 +539,90 @@ async function handleSolveRequest(sender, message) {
     return {
       success: false,
       error: `Google AI Studio error: ${errorDetails}`
+    };
+  }
+}
+
+// ── Multi-Turn Study Mode Follow-Up Handler ───────────────────────────────────
+async function handleStudyFollowUp(sender, message) {
+  const followUpQuery = (message && typeof message.followUpQuery === 'string') ? message.followUpQuery.trim() : '';
+  if (!followUpQuery) {
+    return { success: false, error: 'Follow-up query cannot be empty.' };
+  }
+
+  const storage = await chrome.storage.local.get([
+    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
+  ]);
+  const apiKey = (storage.GEMINI_API_KEY || storage.geminiApiKey || '').trim();
+  const modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic';
+
+  if (!apiKey || apiKey.length < 5) {
+    return {
+      success: false,
+      error: 'Please save your Google AI Studio Gemini API Key in the settings panel.'
+    };
+  }
+
+  const systemPrompt =
+    `${MATHEMATICAL_THINKING_PROTOCOL}\n\n` +
+    "You are an expert tutor in Study Mode engaging in a multi-turn academic conversation. " +
+    "Directly answer the user's follow-up inquiry regarding the previous explanation, question, or diagram.\n\n" +
+    STUDY_MODE_DIRECTIVE + "\n\n" +
+    'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}. Do not wrap in markdown code blocks.';
+
+  const rawHistory = Array.isArray(message.threadHistory) ? message.threadHistory : [];
+  const contents = [];
+
+  for (const turn of rawHistory) {
+    if (turn && turn.role && turn.content) {
+      contents.push({
+        role: turn.role === 'model' ? 'model' : 'user',
+        parts: [{ text: String(turn.content) }]
+      });
+    }
+  }
+
+  contents.push({
+    role: 'user',
+    parts: [{
+      text: `User Follow-Up Query:\n${followUpQuery}\n\n${STUDY_MODE_DIRECTIVE}\nFormat response strictly as JSON with keys "answer", "explanation", "diagram".`
+    }]
+  });
+
+  const isComplex = isComplexTask(followUpQuery);
+  const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
+
+  try {
+    const result = await routeProviderRequest(
+      apiKey,
+      modelMode,
+      null,
+      systemPrompt,
+      followUpQuery,
+      followUpQuery,
+      isComplex,
+      taskComplexity,
+      contents
+    );
+
+    const studyData = parseStudyModeResponse(result.answer);
+    return {
+      success: true,
+      studyMode: true,
+      answer: studyData.answer,
+      response: studyData.answer,
+      explanation: studyData.explanation,
+      diagram: studyData.diagram,
+      studyData: studyData,
+      rawOutput: result.answer,
+      modelUsed: result.modelUsed,
+      modeActive: result.modeActive,
+      wasFallbackTriggered: result.wasFallbackTriggered || false
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: `Google AI Studio error: ${err.message || String(err)}`
     };
   }
 }
@@ -453,9 +659,10 @@ async function routeProviderRequest(
   userPrompt,
   customPrompt,
   isComplex,
-  taskComplexity
+  taskComplexity,
+  customContents = null
 ) {
-  return handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex, taskComplexity);
+  return handleGeminiRouting(apiKey, modelMode, base64Data, systemPrompt, userPrompt, isComplex, taskComplexity, customContents);
 }
 
 // ── Single Auto-Dynamic Model Picker & Zero-Wait Recovery Cascade Matrix ─────
@@ -466,7 +673,8 @@ async function handleGeminiRouting(
   systemPrompt,
   userPrompt,
   isComplex,
-  taskComplexity
+  taskComplexity,
+  customContents = null
 ) {
   let currentMode = modelMode || 'auto_dynamic';
   const isAuto = !currentMode || currentMode === 'auto_dynamic' || currentMode.startsWith('auto');
@@ -497,7 +705,7 @@ async function handleGeminiRouting(
     const isFallback = (i > 0);
 
     try {
-      const answer = await callGeminiAPI(apiKey, candidateModel, base64Data, systemPrompt, userPrompt, isComplex);
+      const answer = await callGeminiAPI(apiKey, candidateModel, base64Data, systemPrompt, userPrompt, isComplex, customContents);
       return {
         answer,
         response: answer,
@@ -518,7 +726,7 @@ async function handleGeminiRouting(
   throw lastErr || new Error('All Google AI Studio free-tier models failed.');
 }
 
-async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT, isComplex = false) {
+async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_PROMPT, userPrompt = DEFAULT_USER_PROMPT, isComplex = false, customContents = null) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
   // Deterministic hyperparameter tuning by task
@@ -535,24 +743,32 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     generationConfig.topK = 1;
   }
 
+  let contents;
+  if (customContents && Array.isArray(customContents) && customContents.length > 0) {
+    contents = customContents;
+  } else {
+    const userParts = [{ text: userPrompt }];
+    if (base64Image) {
+      userParts.push({
+        inlineData: {
+          mimeType: 'image/png',
+          data: base64Image
+        }
+      });
+    }
+    contents = [
+      {
+        role: 'user',
+        parts: userParts
+      }
+    ];
+  }
+
   const payload = {
     systemInstruction: {
       parts: [{ text: systemPrompt }]
     },
-    contents: [
-      {
-        role: 'user',
-        parts: [
-          { text: userPrompt },
-          {
-            inlineData: {
-              mimeType: 'image/png',
-              data: base64Image
-            }
-          }
-        ]
-      }
-    ],
+    contents,
     generationConfig
   };
 
