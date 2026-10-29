@@ -1202,19 +1202,34 @@
         if (txt) parts.push(`[Preformatted/Data Block ${pIdx + 1}]:\n${txt}`);
       });
 
-      // 7. Extract Visible Question Content
-      const questionNodes = document.querySelectorAll(
-        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
-      );
+      // 7. Extract Visible Question Content — use the robust SABIS detector first
       let foundContainerText = '';
-      questionNodes.forEach(qn => {
-        if (isVisibleInViewport(qn)) {
-          const t = qn.innerText.trim();
-          if (t.length > foundContainerText.length) {
-            foundContainerText = t;
+
+      // Try the cached/detected question element for an exact text extraction
+      const detectedQ = currentTargetQuestionEl || (() => {
+        try { return getQuestionTargetElement(); } catch (_) { return null; }
+      })();
+      if (detectedQ) {
+        foundContainerText = (detectedQ.innerText || '').trim();
+      }
+
+      // Fallback: scan known SABIS question selectors
+      if (!foundContainerText) {
+        const sabisQSelectors = [
+          '.divQuestion', '[id^="divQuestion"]:not(#divQuestions)',
+          '.QuestionText', '.question-wrapper', '.quiz-question',
+          '.question-container', '.question-card', '.question-item'
+        ];
+        for (const sel of sabisQSelectors) {
+          let nodes;
+          try { nodes = document.querySelectorAll(sel); } catch (_) { continue; }
+          for (const qn of nodes) {
+            if (!isVisibleInViewport(qn)) continue;
+            const t = (qn.innerText || '').trim();
+            if (t.length > foundContainerText.length) foundContainerText = t;
           }
         }
-      });
+      }
 
       if (foundContainerText) {
         parts.push(`[Question Body]:\n${foundContainerText}`);
@@ -1730,177 +1745,339 @@
     function getElementTrueBoundingRect(el) {
       if (!el) return null;
       const rect = el.getBoundingClientRect();
-      let top = rect.top;
-      let left = rect.left;
-      let right = rect.right;
-      let bottom = rect.bottom;
-
-      const vW = window.innerWidth || document.documentElement.clientWidth;
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
       const vH = window.innerHeight || document.documentElement.clientHeight;
 
-      // Expand bounding box to include all visible internal descendants (tables, rows, cells, inputs, SVGs, formulas)
-      const descendants = el.querySelectorAll('table, thead, tbody, tr, td, th, img, svg, canvas, input, select, textarea, button, label, p, span, div, .subQuestion');
-      descendants.forEach(d => {
-        if (d.offsetWidth === 0 && d.offsetHeight === 0) return;
-        const style = window.getComputedStyle(d);
-        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return;
+      let top    = rect.top;
+      let left   = rect.left;
+      let right  = rect.right;
+      let bottom = rect.bottom;
 
-        const dRect = d.getBoundingClientRect();
-        // Ignore full-viewport or degenerate overflow containers
-        if (dRect.width > 0 && dRect.height > 0 && dRect.width < vW * 0.95 && dRect.height < vH * 0.95) {
-          if (dRect.left < left) left = dRect.left;
-          if (dRect.top < top) top = dRect.top;
-          if (dRect.right > right) right = dRect.right;
-          if (dRect.bottom > bottom) bottom = dRect.bottom;
-        }
+      // Walk all visible descendants and expand the bounding union to cover them.
+      // This is critical for SABIS: a question div may have a narrow container
+      // but a wide table inside — we must capture the full rendered extent.
+      const descendants = el.querySelectorAll(
+        'table, thead, tbody, tr, td, th, img, svg, canvas, ' +
+        'input, select, textarea, button, label, p, span, div, .subQuestion'
+      );
+
+      descendants.forEach(d => {
+        // Skip zero-size and hidden nodes fast
+        if (d.offsetWidth === 0 && d.offsetHeight === 0) return;
+        const s = window.getComputedStyle(d);
+        if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) === 0) return;
+
+        const dR = d.getBoundingClientRect();
+        // Ignore degenerate rects and anything spanning the full viewport
+        // (those are page wrappers, not question content)
+        if (dR.width <= 0 || dR.height <= 0) return;
+        if (dR.width >= vW * 0.95 && dR.height >= vH * 0.95) return;
+
+        if (dR.left   < left)   left   = dR.left;
+        if (dR.top    < top)    top    = dR.top;
+        if (dR.right  > right)  right  = dR.right;
+        if (dR.bottom > bottom) bottom = dR.bottom;
       });
 
-      return {
-        top,
-        left,
-        right,
-        bottom,
-        width: Math.max(0, right - left),
-        height: Math.max(0, bottom - top)
-      };
+      // Clamp result to viewport bounds — never return negative coords or overflow
+      top    = Math.max(0, top);
+      left   = Math.max(0, left);
+      right  = Math.min(vW, right);
+      bottom = Math.min(vH, bottom);
+
+      const width  = Math.max(0, right - left);
+      const height = Math.max(0, bottom - top);
+
+      // Return null for degenerate results so caller triggers fallback
+      if (width < 10 || height < 10) return null;
+
+      return { top, left, right, bottom, width, height };
     }
 
+    /**
+     * ROBUST SABIS QUESTION DOM DETECTOR
+     * Multi-strategy cascade — exhausts every known SABIS DOM pattern
+     * before falling back to heuristic text/input detection.
+     * Returns the tightest single question card element, never the outer page wrapper.
+     */
     function getQuestionTargetElement() {
-      const vHeight = window.innerHeight || document.documentElement.clientHeight;
-      const vWidth = window.innerWidth || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
 
-      const isExcluded = (el) => {
-        if (!el || el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) return true;
+      // ── helpers ──────────────────────────────────────────────────────────────
+      const isOurs = (el) =>
+        el && (el.id === 'academic-solver-root' || !!el.closest('#academic-solver-root'));
+
+      const isPageWrapper = (el) => {
+        if (!el) return true;
         const tag = el.tagName.toUpperCase();
-        if (['HTML', 'BODY', 'MAIN', 'FORM', 'ARTICLE', 'SECTION', 'NAV', 'HEADER', 'FOOTER'].includes(tag)) return true;
-        if (el.id === 'divQuestions') return true; // Plural outer quiz wrapper on SABIS
-        const idLower = (el.id || '').toLowerCase();
-        const clsLower = (typeof el.className === 'string' ? el.className : '').toLowerCase();
-        if (clsLower.includes('quiz-container') || clsLower.includes('page-wrapper') || clsLower.includes('content-area')) return true;
-        if (idLower.includes('divquestions') || idLower.includes('quizcontainer')) return true;
-
-        const r = el.getBoundingClientRect();
-        // Exclude elements that engulf the entire page
-        if (r.width > vWidth * 0.85 && r.height > vHeight * 0.85) return true;
+        if (['HTML','BODY','MAIN','FORM','ARTICLE','SECTION','NAV','HEADER','FOOTER'].includes(tag)) return true;
+        if (el.id === 'divQuestions') return true; // SABIS outer quiz list
+        const id  = (el.id || '').toLowerCase();
+        const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
+        if (id.includes('divquestions') || id.includes('quizcontainer')) return true;
+        if (cls.includes('quiz-container') || cls.includes('page-wrapper') || cls.includes('content-area')) return true;
         return false;
       };
 
-      // Strategy 1: Targeted Question Card Containers (e.g. SABIS .divQuestion, question boxes)
-      const specificSelectors = [
-        '.divQuestion',
+      // Returns true if the rect is visible and plausibly question-sized
+      const isVisibleCard = (r) =>
+        r.width > 60 && r.height > 30 &&
+        r.bottom > 20 && r.top < vH - 20 &&
+        r.right  > 20 && r.left < vW - 20 &&
+        r.width  < vW * 0.92 &&   // not full-screen-wide
+        r.height < vH * 0.92;     // not full-screen-tall
+
+      const isRendered = (el) => {
+        const s = window.getComputedStyle(el);
+        return s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
+      };
+
+      // Does el contain multiple sibling question cards? → it's a wrapper, not a card
+      const isWrapper = (el) => {
+        const innerCards = el.querySelectorAll(
+          '.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .quiz-question-box, .question-container'
+        );
+        return innerCards.length > 1;
+      };
+
+      // ── Strategy 1 : SABIS-specific ID/class selectors (highest confidence) ──
+      const sabisSelectors = [
+        // SABIS student portal specific
+        '.divQuestion:not(#divQuestions)',
         '[id^="divQuestion"]:not(#divQuestions)',
+        // Common quiz wrappers
+        '.QuestionText',
+        '.question-wrapper',
+        '.quiz-question',
         '.quiz-question-box',
         '.question-container',
         '.question-card',
         '.question-item',
         '.exam-question',
         '.problem-container',
-        '.quiz-question',
-        '.question:not(body):not(html):not(#divQuestions)'
+        // Attribute-pattern fallbacks
+        '[id*="Question"]:not(#divQuestions)',
+        '[class*="question"]:not(body):not(html)',
       ];
 
-      for (const sel of specificSelectors) {
-        const matches = document.querySelectorAll(sel);
-        for (const el of matches) {
-          if (isExcluded(el)) continue;
-          // Must not contain multiple question children (which indicates an outer wrapper)
-          const subQuestions = el.querySelectorAll('.divQuestion, .question-container, .quiz-question-box');
-          if (subQuestions.length > 1) continue;
-
+      for (const sel of sabisSelectors) {
+        let nodes;
+        try { nodes = document.querySelectorAll(sel); } catch (_) { continue; }
+        for (const el of nodes) {
+          if (isOurs(el) || isPageWrapper(el) || isWrapper(el)) continue;
+          if (!isRendered(el)) continue;
           const r = el.getBoundingClientRect();
-          // Must be visible within or near current viewport
-          if (r.width > 60 && r.height > 40 && r.bottom > 20 && r.top < vHeight - 20 && r.right > 20 && r.left < vWidth - 20) {
-            const style = window.getComputedStyle(el);
-            if (style.display !== 'none' && style.visibility !== 'hidden') {
-              return el;
-            }
-          }
+          if (isVisibleCard(r)) return el;
         }
       }
 
-      // Strategy 2: Locate based on active question inputs/radios on screen
-      const activeInputs = Array.from(
-        document.querySelectorAll('input:not([type="hidden"]), select, textarea')
-      ).filter(inp => {
-        if (inp.id === 'academic-solver-root' || inp.closest('#academic-solver-root')) return false;
+      // ── Strategy 2 : Walk up from visible input/select/radio controls ──────
+      // SABIS fill-in-the-blank & MCQ both have inputs inside the question card
+      const interactiveEls = Array.from(document.querySelectorAll(
+        'input[type="text"], input[type="number"], input:not([type]), select, textarea, input[type="radio"], input[type="checkbox"], .quiz-option'
+      )).filter(inp => {
+        if (isOurs(inp)) return false;
         const r = inp.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 && r.bottom > 20 && r.top < vHeight - 20;
+        return r.width > 0 && r.height > 0 && r.bottom > 20 && r.top < vH - 20;
       });
 
-      if (activeInputs.length > 0) {
-        for (const inp of activeInputs) {
-          const qContainer = inp.closest('.divQuestion, [id^="divQuestion"], .question-container, .quiz-question-box, .question-card, .question');
-          if (qContainer && !isExcluded(qContainer)) {
-            return qContainer;
-          }
+      const inputAncestorSelectors = [
+        '.divQuestion', '[id^="divQuestion"]:not(#divQuestions)',
+        '.QuestionText', '.question-wrapper', '.question-container',
+        '.quiz-question-box', '.question-card', '.question',
+        'td', 'div[style*="width"]', '.card',
+      ];
+
+      for (const inp of interactiveEls) {
+        for (const anc of inputAncestorSelectors) {
+          const card = inp.closest(anc);
+          if (!card || isOurs(card) || isPageWrapper(card) || isWrapper(card)) continue;
+          if (!isRendered(card)) continue;
+          const r = card.getBoundingClientRect();
+          if (isVisibleCard(r)) return card;
         }
       }
 
-      // Strategy 3: Check visible table elements (like data sets in math questions)
+      // ── Strategy 3 : Find visible table (frequency tables, data sets) ────────
+      // Then walk up to the containing question card
       const tables = Array.from(document.querySelectorAll('table')).filter(t => {
-        if (t.id === 'academic-solver-root' || t.closest('#academic-solver-root')) return false;
+        if (isOurs(t)) return false;
         const r = t.getBoundingClientRect();
-        return r.width > 50 && r.height > 20 && r.bottom > 20 && r.top < vHeight - 20;
+        return r.width > 50 && r.height > 20 && r.bottom > 20 && r.top < vH - 20;
       });
 
       for (const tbl of tables) {
-        const parentQ = tbl.closest('.divQuestion, [id^="divQuestion"], .question-container, .quiz-question-box, .question-card, .question');
-        if (parentQ && !isExcluded(parentQ)) {
-          return parentQ;
+        const card = tbl.closest(
+          '.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .question-wrapper, .question-container, .quiz-question-box, .question-card, .question'
+        );
+        if (card && !isOurs(card) && !isPageWrapper(card) && !isWrapper(card) && isRendered(card)) {
+          const r = card.getBoundingClientRect();
+          if (isVisibleCard(r)) return card;
+        }
+        // If no named ancestor, use the table's parent if it's a plausible card
+        const tblParent = tbl.parentElement;
+        if (tblParent && !isOurs(tblParent) && !isPageWrapper(tblParent) && isRendered(tblParent)) {
+          const r = tblParent.getBoundingClientRect();
+          if (isVisibleCard(r) && !isWrapper(tblParent)) return tblParent;
         }
       }
 
-      return null;
+      // ── Strategy 4 : Text-content heuristic ─────────────────────────────────
+      // Find the smallest visible div/p that contains typical question phrasing
+      const questionPhrases = [
+        'fill in', 'what is', 'which of', 'select all', 'calculate',
+        'find the', 'how many', 'consider', 'given that', 'solve',
+        'determine', 'evaluate', 'simplify', 'complete', 'match'
+      ];
+
+      const textNodes = Array.from(document.querySelectorAll('div, p, td, li, span')).filter(node => {
+        if (isOurs(node) || isPageWrapper(node)) return false;
+        if (!isRendered(node)) return false;
+        const r = node.getBoundingClientRect();
+        if (!isVisibleCard(r)) return false;
+        const txt = (node.innerText || node.textContent || '').toLowerCase().trim();
+        if (txt.length < 8) return false;
+        return questionPhrases.some(ph => txt.includes(ph));
+      });
+
+      // Sort by area (smallest first) to get tightest question match
+      textNodes.sort((a, b) => {
+        const rA = a.getBoundingClientRect();
+        const rB = b.getBoundingClientRect();
+        return (rA.width * rA.height) - (rB.width * rB.height);
+      });
+
+      for (const node of textNodes) {
+        // Walk up to find a sensible card boundary
+        const cardCandidates = [
+          node.closest('.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .question-wrapper, .question-container, .question-card'),
+          node.parentElement,
+          node.closest('td'),
+          node.closest('div[style]'),
+        ].filter(Boolean);
+
+        for (const candidate of cardCandidates) {
+          if (isOurs(candidate) || isPageWrapper(candidate) || isWrapper(candidate)) continue;
+          if (!isRendered(candidate)) continue;
+          const r = candidate.getBoundingClientRect();
+          if (isVisibleCard(r)) return candidate;
+        }
+      }
+
+      // ── Strategy 5 : Largest visible block of interactive content ───────────
+      // Last resort: find the smallest visible div that contains ≥1 input and
+      // ≥10 chars of question text — approximate "question card" on any platform
+      const allDivs = Array.from(document.querySelectorAll('div, td')).filter(el => {
+        if (isOurs(el) || isPageWrapper(el) || isWrapper(el)) return false;
+        if (!isRendered(el)) return false;
+        const r = el.getBoundingClientRect();
+        return isVisibleCard(r) && el.querySelectorAll('input, select, textarea').length >= 1;
+      });
+
+      // Sort smallest area first to prefer tight question cards over big containers
+      allDivs.sort((a, b) => {
+        const rA = a.getBoundingClientRect();
+        const rB = b.getBoundingClientRect();
+        return (rA.width * rA.height) - (rB.width * rB.height);
+      });
+
+      for (const el of allDivs) {
+        const txt = (el.innerText || '').trim();
+        if (txt.length >= 10) return el;
+      }
+
+      return null; // Genuinely no question found — let cutout use fallback rect
+    }
+
+    function measureFallbackRectFromDOM() {
+      // Build a real bounding rect from whatever IS visible on screen
+      // rather than using hardcoded pixel percentages.
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+
+      // Collect all visible interactive + text nodes on screen
+      const candidates = Array.from(document.querySelectorAll(
+        'input, select, textarea, table, p, li, td, label, img, svg'
+      )).filter(el => {
+        if (el.closest('#academic-solver-root')) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 &&
+               r.top  < vH - 10 && r.bottom > 10 &&
+               r.left < vW - 10 && r.right  > 10;
+      });
+
+      if (candidates.length === 0) return null;
+
+      // Union of all candidate rects — the tightest real bounding box on screen
+      let top    = Infinity,  left   = Infinity;
+      let right  = -Infinity, bottom = -Infinity;
+
+      candidates.forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.top    < top)    top    = r.top;
+        if (r.left   < left)   left   = r.left;
+        if (r.right  > right)  right  = r.right;
+        if (r.bottom > bottom) bottom = r.bottom;
+      });
+
+      // Clamp to viewport — never let the fallback overflow
+      top    = Math.max(8,  top);
+      left   = Math.max(8,  left);
+      right  = Math.min(vW - 8, right);
+      bottom = Math.min(vH - 8, bottom);
+
+      // Sanity-check minimum size
+      if (right - left < 60 || bottom - top < 30) return null;
+
+      return { top, left, right, bottom, width: right - left, height: bottom - top };
     }
 
     function calculateQuestionCutout(targetElement) {
-      // Always re-query live element if none cached, for true dynamic responsiveness
+      // Fresh element detection on every call — never rely on a stale ref
       const targetEl = targetElement || getQuestionTargetElement();
-      const vWidth = window.innerWidth || document.documentElement.clientWidth;
-      const vHeight = window.innerHeight || document.documentElement.clientHeight;
+      const vWidth   = window.innerWidth  || document.documentElement.clientWidth;
+      const vHeight  = window.innerHeight || document.documentElement.clientHeight;
 
       let rect = null;
       if (targetEl) {
-        // Force a fresh layout read — no caching — so every scroll/resize gets exact dims
+        // Full descendant union bounding rect — includes tables, inputs, SVGs
         rect = getElementTrueBoundingRect(targetEl);
       }
 
-      // Fallback: estimate a sensible region if no element matched
+      // If the detected element produced a degenerate rect, try DOM measurement
+      if (!rect || rect.width < 50 || rect.height < 30) {
+        rect = measureFallbackRectFromDOM();
+      }
+
+      // Absolute last resort: reasonable proportional estimate
+      // (only reached when the page has zero visible content — e.g. during load)
       if (!rect || rect.width < 50 || rect.height < 30) {
         rect = {
-          top: Math.max(70, Math.round(vHeight * 0.10)),
-          left: Math.max(20, Math.round(vWidth * 0.08)),
-          width: Math.min(800, Math.round(vWidth * 0.55)),
-          height: Math.min(600, Math.round(vHeight * 0.72))
+          top:    Math.round(vHeight * 0.10),
+          left:   Math.round(vWidth  * 0.05),
+          width:  Math.round(vWidth  * 0.58),
+          height: Math.round(vHeight * 0.70)
         };
       }
 
-      // Dynamic adaptive padding: larger for small/tight questions, smaller for large data tables
-      // Range: 12px (question > 60% vHeight) … 16px (normal) … 20px (small compact dropdown)
+      // Adaptive padding based on question height relative to viewport
+      //   tiny  (<15% vH) → 20px  dropdown / short answer
+      //   large (>55% vH) → 12px  data table / multi-row
+      //   else            → 16px  normal question
       let padding = 16;
       const heightRatio = rect.height / vHeight;
-      if (heightRatio < 0.15) {
-        padding = 20; // Small dropdown or short question — give extra breathing room
-      } else if (heightRatio > 0.55) {
-        padding = 12; // Large table / multi-part question — tight wrap to stay in viewport
-      }
+      if      (heightRatio < 0.15) padding = 20;
+      else if (heightRatio > 0.55) padding = 12;
 
-      // IMPORTANT: Container is position:fixed, so getBoundingClientRect() IS viewport coords
-      // Do NOT add scroll offsets here — that would push the card off-screen
-      const cutoutTop = Math.max(8, Math.round(rect.top - padding));
-      const cutoutLeft = Math.max(8, Math.round(rect.left - padding));
-      const cutoutWidth = Math.max(220, Math.round(rect.width + (padding * 2)));
-      const cutoutHeight = Math.max(60, Math.round(rect.height + (padding * 2)));
+      // Container is position:fixed — getBoundingClientRect() is already in viewport coords
+      // NEVER add scrollX/scrollY here
+      const cutoutTop    = Math.max(8,   Math.round(rect.top  - padding));
+      const cutoutLeft   = Math.max(8,   Math.round(rect.left - padding));
+      const cutoutWidth  = Math.max(220, Math.round(rect.width  + padding * 2));
+      const cutoutHeight = Math.max(60,  Math.round(rect.height + padding * 2));
 
-      return {
-        element: targetEl,
-        rect,
-        padding,
-        cutoutTop,
-        cutoutLeft,
-        cutoutWidth,
-        cutoutHeight
-      };
+      return { element: targetEl, rect, padding, cutoutTop, cutoutLeft, cutoutWidth, cutoutHeight };
     }
 
     function getQuestionBoundingRect(targetEl) {
@@ -1996,23 +2173,40 @@
     }
 
     function extractQuestionSnippet() {
-      const candidates = document.querySelectorAll(
-        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main'
-      );
-      const vHeight = window.innerHeight || document.documentElement.clientHeight;
-      const vWidth = window.innerWidth || document.documentElement.clientWidth;
+      // Use the same robust detector so snippet always matches the framed question
+      const qEl = currentTargetQuestionEl || getQuestionTargetElement();
+      if (qEl) {
+        const text = (qEl.innerText || qEl.textContent || '').trim();
+        if (text.length > 10) {
+          return text.length > 300 ? text.slice(0, 297) + '...' : text;
+        }
+      }
 
-      for (const el of candidates) {
-        if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
-        const r = el.getBoundingClientRect();
-        if (r.width > 60 && r.height > 40 && r.bottom > 40 && r.top < vHeight - 40 && r.right > 40 && r.left < vWidth - 40) {
-          const text = el.innerText.trim();
-          if (text.length > 10) {
-            return text.length > 240 ? text.slice(0, 237) + '...' : text;
+      // Secondary: scan using the same SABIS-aware selectors
+      const sabisSelectors = [
+        '.divQuestion', '[id^="divQuestion"]:not(#divQuestions)',
+        '.QuestionText', '.question-wrapper', '.quiz-question',
+        '.question-container', '.question-card', '.question-item'
+      ];
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const vW = window.innerWidth  || document.documentElement.clientWidth;
+
+      for (const sel of sabisSelectors) {
+        let nodes;
+        try { nodes = document.querySelectorAll(sel); } catch (_) { continue; }
+        for (const el of nodes) {
+          if (el.closest('#academic-solver-root')) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width > 60 && r.height > 30 && r.bottom > 10 && r.top < vH - 10) {
+            const text = (el.innerText || '').trim();
+            if (text.length > 10) {
+              return text.length > 300 ? text.slice(0, 297) + '...' : text;
+            }
           }
         }
       }
 
+      // Tertiary: user's typed prompt
       const rawPrompt = promptInput ? promptInput.value.trim() : '';
       if (rawPrompt) return rawPrompt;
 
