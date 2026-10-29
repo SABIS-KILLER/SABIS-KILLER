@@ -241,7 +241,7 @@
   left: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  z-index: 999998 !important;
+  z-index: 10005 !important;
   background: rgba(0, 0, 0, calc(0.15 + var(--glass-refraction, 0.7) * 0.18)) !important;
   backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
   -webkit-backdrop-filter: blur(calc(var(--glass-blur, 28px) * 0.3)) saturate(140%) !important;
@@ -256,6 +256,7 @@
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
+  z-index: 10005 !important;
 }
 
 #settings-modal-dialog {
@@ -264,7 +265,7 @@
   top: 50% !important;
   left: 50% !important;
   transform: translate(-50%, -50%) scale(0.96) !important;
-  z-index: 999999 !important;
+  z-index: 10005 !important;
   width: 440px !important;
   max-width: 92vw !important;
   max-height: 88vh !important;
@@ -296,6 +297,7 @@
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
+  z-index: 10005 !important;
 }
 
 /* Modal Header */
@@ -445,7 +447,7 @@
   gap: 6px !important;
   opacity: 0 !important;
   pointer-events: none !important;
-  z-index: 1000000 !important;
+  z-index: 10010 !important;
   transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease !important;
 }
 
@@ -615,7 +617,7 @@
 }
 
 .modal-custom-select-wrapper.open {
-  z-index: 2147483647 !important;
+  z-index: 10007 !important;
 }
 
 .modal-custom-select-trigger {
@@ -677,7 +679,7 @@
   width: 100% !important;
   height: 100% !important;
   border-radius: 28px !important;
-  z-index: 2147483646 !important;
+  z-index: 10006 !important;
   backdrop-filter: blur(8px) !important;
   -webkit-backdrop-filter: blur(8px) !important;
   background: rgba(0, 0, 0, 0.2) !important;
@@ -691,11 +693,11 @@
 
 .modal-provider-card.has-open-select,
 .modal-provider-card:has(.modal-custom-select-wrapper.open) {
-  z-index: 2147483647 !important;
+  z-index: 10007 !important;
 }
 
 .modal-custom-select-wrapper.open {
-  z-index: 2147483647 !important;
+  z-index: 10007 !important;
   position: relative !important;
 }
 
@@ -705,7 +707,7 @@
   top: calc(100% + 6px) !important;
   left: 0 !important;
   right: 0 !important;
-  z-index: 2147483647 !important;
+  z-index: 10008 !important;
   max-height: 220px !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
@@ -1173,7 +1175,7 @@
   overflow-x: hidden !important;
   overflow-y: hidden !important;
   pointer-events: none !important;
-  z-index: 2147483646 !important;
+  z-index: 9998 !important;
   box-sizing: border-box !important;
   margin: 0 !important;
   padding: 0 !important;
@@ -1190,8 +1192,8 @@
   max-height: calc(100vh - 16px) !important;
   overflow: visible !important;
   border-radius: 20px !important;
-  z-index: 2147483646 !important;
-  transition: left 0.15s cubic-bezier(0.16, 1, 0.3, 1), top 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 9998 !important;
+  transition: left 0.18s cubic-bezier(0.16, 1, 0.3, 1), top 0.18s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Apple iOS 27 Liquid Glass Background Layer with Central Hole-Punch Cutout */
@@ -1236,6 +1238,7 @@
   background: transparent !important;
   box-sizing: border-box !important;
   z-index: 2 !important;
+  transition: left 0.18s cubic-bezier(0.16, 1, 0.3, 1), top 0.18s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 /* Prominent frosted tag above cutout with generous headroom so it never crops */

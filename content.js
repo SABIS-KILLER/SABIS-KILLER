@@ -796,6 +796,10 @@
     settingsModalDialog.style.removeProperty('visibility');
     settingsModalDialog.style.removeProperty('pointer-events');
 
+    // Guarantee settings modal always appears above the study bubble overlay
+    settingsModalBackdrop.style.setProperty('z-index', '10005', 'important');
+    settingsModalDialog.style.setProperty('z-index', '10005', 'important');
+
     settingsModalBackdrop.classList.add('open');
     settingsModalDialog.classList.add('open');
     isModalOpen = true;
@@ -1850,16 +1854,18 @@
     }
 
     function calculateQuestionCutout(targetElement) {
+      // Always re-query live element if none cached, for true dynamic responsiveness
       const targetEl = targetElement || getQuestionTargetElement();
       const vWidth = window.innerWidth || document.documentElement.clientWidth;
       const vHeight = window.innerHeight || document.documentElement.clientHeight;
 
       let rect = null;
       if (targetEl) {
+        // Force a fresh layout read — no caching — so every scroll/resize gets exact dims
         rect = getElementTrueBoundingRect(targetEl);
       }
 
-      // Fallback if no specific question container was matched
+      // Fallback: estimate a sensible region if no element matched
       if (!rect || rect.width < 50 || rect.height < 30) {
         rect = {
           top: Math.max(70, Math.round(vHeight * 0.10)),
@@ -1869,8 +1875,18 @@
         };
       }
 
-      // IMPORTANT: Fixed viewport coordinates (no scroll offsets added because container is position: fixed)
-      const padding = 16;
+      // Dynamic adaptive padding: larger for small/tight questions, smaller for large data tables
+      // Range: 12px (question > 60% vHeight) … 16px (normal) … 20px (small compact dropdown)
+      let padding = 16;
+      const heightRatio = rect.height / vHeight;
+      if (heightRatio < 0.15) {
+        padding = 20; // Small dropdown or short question — give extra breathing room
+      } else if (heightRatio > 0.55) {
+        padding = 12; // Large table / multi-part question — tight wrap to stay in viewport
+      }
+
+      // IMPORTANT: Container is position:fixed, so getBoundingClientRect() IS viewport coords
+      // Do NOT add scroll offsets here — that would push the card off-screen
       const cutoutTop = Math.max(8, Math.round(rect.top - padding));
       const cutoutLeft = Math.max(8, Math.round(rect.left - padding));
       const cutoutWidth = Math.max(220, Math.round(rect.width + (padding * 2)));
@@ -1879,6 +1895,7 @@
       return {
         element: targetEl,
         rect,
+        padding,
         cutoutTop,
         cutoutLeft,
         cutoutWidth,
@@ -2005,6 +2022,15 @@
 
     function updateCutoutPosition() {
       if (!studyBubbleContainer) return;
+
+      // Re-detect active question element dynamically on every update — handles SABIS question navigation
+      const liveEl = currentTargetQuestionEl && document.contains(currentTargetQuestionEl)
+        ? currentTargetQuestionEl
+        : getQuestionTargetElement();
+      if (liveEl && liveEl !== currentTargetQuestionEl) {
+        currentTargetQuestionEl = liveEl;
+      }
+
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
       const layout = calculateEncompassingLayout(cutout);
 
@@ -2190,6 +2216,26 @@
 
       window.addEventListener('scroll', updateCutoutPosition, { passive: true });
       window.addEventListener('resize', updateCutoutPosition, { passive: true });
+
+      // MutationObserver: detect SABIS question navigation / DOM changes and re-fit the cutout
+      if (typeof MutationObserver !== 'undefined') {
+        const quizRoot = document.getElementById('divQuestions') || document.body;
+        const _studyMutationObserver = new MutationObserver(() => {
+          // Debounce to avoid thrashing on rapid DOM changes
+          if (_studyMutationObserver._rafId) cancelAnimationFrame(_studyMutationObserver._rafId);
+          _studyMutationObserver._rafId = requestAnimationFrame(() => {
+            if (studyBubbleContainer) updateCutoutPosition();
+          });
+        });
+        _studyMutationObserver.observe(quizRoot, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['class', 'style', 'hidden']
+        });
+        // Store reference on container so unmount can disconnect it
+        studyBubbleContainer._mutationObserver = _studyMutationObserver;
+      }
     }
 
     function renderStudyThinkingState(questionSnippet = '') {
@@ -2347,6 +2393,11 @@
     function unmountStudyBubble() {
       window.removeEventListener('scroll', updateCutoutPosition);
       window.removeEventListener('resize', updateCutoutPosition);
+      // Disconnect the MutationObserver watching for question DOM changes
+      if (studyBubbleContainer && studyBubbleContainer._mutationObserver) {
+        try { studyBubbleContainer._mutationObserver.disconnect(); } catch (_) {}
+        studyBubbleContainer._mutationObserver = null;
+      }
       if (studyBubbleContainer && studyBubbleContainer.parentNode) {
         studyBubbleContainer.parentNode.removeChild(studyBubbleContainer);
       }
