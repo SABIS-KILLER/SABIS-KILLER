@@ -21,6 +21,10 @@
   let studyLoadingPill = null;
   let currentStudyLayoutData = null;
   let studyThreadHistory = [];
+  let currentTargetQuestionEl = null;
+  if (typeof window !== 'undefined') {
+    window.currentTargetQuestionEl = null;
+  }
 
   // Immediate early read of persistent UI visibility state on page refresh/navigation
   // NOTE: isRuntimeValid() is defined later; inline the check here to avoid TDZ error
@@ -1204,15 +1208,31 @@
         if (txt) parts.push(`[Preformatted/Data Block ${pIdx + 1}]:\n${txt}`);
       });
 
-      // 7. Extract Visible Question Content — use the robust SABIS detector first
+      // 7. Extract Visible Question Content — safe scope check & robust fallback
       let foundContainerText = '';
 
-      // Try the cached/detected question element for an exact text extraction
-      const detectedQ = currentTargetQuestionEl || (() => {
-        try { return getQuestionTargetElement(); } catch (_) { return null; }
-      })();
-      if (detectedQ) {
-        foundContainerText = (detectedQ.innerText || '').trim();
+      try {
+        let activeEl = null;
+
+        if (typeof currentTargetQuestionEl !== 'undefined' && currentTargetQuestionEl) {
+          activeEl = currentTargetQuestionEl;
+        } else if (typeof window !== 'undefined' && window.currentTargetQuestionEl) {
+          activeEl = window.currentTargetQuestionEl;
+        } else if (typeof getQuestionTargetElement === 'function') {
+          try { activeEl = getQuestionTargetElement(); } catch (_) { activeEl = null; }
+        }
+
+        if (!activeEl) {
+          activeEl = document.querySelector(
+            '.QuestionText, .question-wrapper, .quiz-question, [id*="Question"], [class*="question"], .divQuestion'
+          ) || document.body;
+        }
+
+        if (activeEl && activeEl !== document.body) {
+          foundContainerText = (activeEl.innerText || activeEl.textContent || '').trim();
+        }
+      } catch (scopeErr) {
+        console.warn('[Client-Side OCR] Target question element scoping fallback:', scopeErr);
       }
 
       // Fallback: scan known SABIS question selectors
@@ -1733,7 +1753,7 @@
     });
 
     // ── Study Mode Helper & UI Bubble Subsystem ──────────────────────────────
-    let currentTargetQuestionEl = null;
+    currentTargetQuestionEl = null;
 
     function escapeHtml(str) {
       if (!str) return '';
@@ -2123,14 +2143,24 @@
 
     function unmountStudyLoadingPill() {
       if (studyLoadingPill && studyLoadingPill.parentNode) {
-        studyLoadingPill.parentNode.removeChild(studyLoadingPill);
+        studyLoadingPill.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        studyLoadingPill.style.opacity = '0';
+        studyLoadingPill.style.transform = 'translate(-50%, -54%) scale(0.95)';
+        const oldPill = studyLoadingPill;
+        setTimeout(() => {
+          try {
+            if (oldPill && oldPill.parentNode) {
+              oldPill.parentNode.removeChild(oldPill);
+            }
+          } catch (_) {}
+        }, 200);
       }
       studyLoadingPill = null;
     }
 
     function applyDynamicPolygonCutout(polygonPoints) {
-      const container = (typeof shadow !== 'undefined' && shadow && shadow.getElementById('sabis-study-bubble-container')) ||
-                        document.getElementById('sabis-study-bubble-container') ||
+      const container = document.getElementById('sabis-study-bubble-container') ||
+                        (typeof shadow !== 'undefined' && shadow && shadow.getElementById('sabis-study-bubble-container')) ||
                         studyBubbleContainer;
       if (!container || !polygonPoints || polygonPoints.length === 0) return;
 
@@ -2154,6 +2184,9 @@
 
       // Apply directly to the liquid glass container's inline style
       // This smoothly morphs the shape instantly when the loading screen disappears
+      container.style.clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, ${innerPath})`;
+      container.style.webkitClipPath = container.style.clipPath;
+
       // Using evenodd fill-rule eliminates corner artifacts and diagonal cut-lines across viewport
       const evenOddPath = `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, ${innerPath})`;
       container.style.clipPath = evenOddPath;
@@ -2389,6 +2422,7 @@
         : getQuestionTargetElement();
       if (liveEl && liveEl !== currentTargetQuestionEl) {
         currentTargetQuestionEl = liveEl;
+        if (typeof window !== 'undefined') window.currentTargetQuestionEl = liveEl;
       }
 
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
@@ -2434,6 +2468,7 @@
 
       currentStudyLayoutData = layoutData || null;
       currentTargetQuestionEl = (qRect && qRect.element) ? qRect.element : getQuestionTargetElement();
+      if (typeof window !== 'undefined') window.currentTargetQuestionEl = currentTargetQuestionEl;
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
       const layout = calculateEncompassingLayout(cutout, currentStudyLayoutData);
 
@@ -2774,6 +2809,7 @@
       }
       studyBubbleContainer = null;
       currentTargetQuestionEl = null;
+      if (typeof window !== 'undefined') window.currentTargetQuestionEl = null;
       currentStudyLayoutData = null;
       studyThreadHistory = [];
     }
