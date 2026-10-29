@@ -2128,6 +2128,55 @@
       studyLoadingPill = null;
     }
 
+    function applyDynamicPolygonCutout(polygonPoints) {
+      const container = (typeof shadow !== 'undefined' && shadow && shadow.getElementById('sabis-study-bubble-container')) ||
+                        document.getElementById('sabis-study-bubble-container') ||
+                        studyBubbleContainer;
+      if (!container || !polygonPoints || polygonPoints.length === 0) return;
+
+      // Convert percentage points [x, y] into viewport pixel coordinates
+      const pixelPoints = polygonPoints.map(pt => {
+        const px = (pt[0] / 100) * window.innerWidth;
+        const py = (pt[1] / 100) * window.innerHeight;
+        return `${px.toFixed(1)}px ${py.toFixed(1)}px`;
+      });
+
+      // To create a hole-punch cutout with clip-path, we map from viewport edges inward to the polygon vertex loop, then back out
+      // Or apply a precise polygon mask covering the screen minus the question bounds.
+      // Cleanest implementation for an irregular polygon window on an absolute overlay:
+
+      // Build an outer boundary rectangle covering the screen, then trace the inner polygon counter-clockwise
+      const outerBox = "0% 0%, 100% 0%, 100% 100%, 0% 100%";
+
+      // If points are provided, construct the composite polygon clip path
+      // Format: polygon(outer clockwise box..., inner counter-clockwise polygon...)
+      const innerPath = pixelPoints.join(', ');
+
+      // Apply directly to the liquid glass container's inline style
+      // This smoothly morphs the shape instantly when the loading screen disappears
+      // Using evenodd fill-rule eliminates corner artifacts and diagonal cut-lines across viewport
+      const evenOddPath = `polygon(evenodd, 0% 0%, 100% 0%, 100% 100%, 0% 100%, ${innerPath})`;
+      container.style.clipPath = evenOddPath;
+      container.style.webkitClipPath = evenOddPath;
+
+      if (!container.style.clipPath) {
+        container.style.clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, ${innerPath})`;
+        container.style.webkitClipPath = container.style.clipPath;
+      }
+
+      // Also apply to inner encompassing glass layer if present
+      const glassBg = container.querySelector('#study-encompassing-glass-bg');
+      if (glassBg) {
+        glassBg.style.clipPath = container.style.clipPath;
+        glassBg.style.webkitClipPath = container.style.webkitClipPath;
+      }
+
+      console.log("[SABIS KILLER] Smooth Dynamic Polygon Cutout Applied Successfully.");
+    }
+    if (typeof window !== 'undefined') {
+      window.applyDynamicPolygonCutout = applyDynamicPolygonCutout;
+    }
+
     function calculateEncompassingLayout(cutout, layoutData = null) {
       const vW = window.innerWidth || document.documentElement.clientWidth;
       const vH = window.innerHeight || document.documentElement.clientHeight;
@@ -2373,6 +2422,10 @@
         contentBay.style.width = `${layout.contentBayWidth}px`;
         contentBay.style.maxHeight = `${layout.contentBayHeight}px`;
       }
+
+      if (currentStudyLayoutData && Array.isArray(currentStudyLayoutData.question_polygon_normalized) && currentStudyLayoutData.question_polygon_normalized.length > 0) {
+        applyDynamicPolygonCutout(currentStudyLayoutData.question_polygon_normalized);
+      }
     }
 
     function mountStudyBubble(questionSnippet, qRect, layoutData = null) {
@@ -2548,6 +2601,10 @@
         });
         // Store reference on container so unmount can disconnect it
         studyBubbleContainer._mutationObserver = _studyMutationObserver;
+      }
+
+      if (currentStudyLayoutData && Array.isArray(currentStudyLayoutData.question_polygon_normalized) && currentStudyLayoutData.question_polygon_normalized.length > 0) {
+        applyDynamicPolygonCutout(currentStudyLayoutData.question_polygon_normalized);
       }
     }
 
@@ -2807,6 +2864,9 @@
 
             // 2. Mount encompassing liquid glass card using AI Vision polygon & placement
             mountStudyBubble(questionSnippet, qRect, response.layoutData || null);
+            if (response.layoutData && Array.isArray(response.layoutData.question_polygon_normalized) && response.layoutData.question_polygon_normalized.length > 0) {
+              applyDynamicPolygonCutout(response.layoutData.question_polygon_normalized);
+            }
             renderStudySolution(response, questionSnippet);
           });
         } catch (err) {

@@ -1181,6 +1181,11 @@
   padding: 0 !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
   color: #1c1c1e !important;
+  transition: clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1), -webkit-clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: clip-path, transform !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
 }
 
 /* Encompassing Liquid Glass Card */
@@ -1193,7 +1198,11 @@
   overflow: visible !important;
   border-radius: 20px !important;
   z-index: 9998 !important;
-  transition: left 0.18s cubic-bezier(0.16, 1, 0.3, 1), top 0.18s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: left 0.18s cubic-bezier(0.16, 1, 0.3, 1), top 0.18s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1), clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1), -webkit-clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: transform, left, top, width, height, clip-path !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
 }
 
 /* Apple iOS 27 Liquid Glass Background Layer with Central Hole-Punch Cutout */
@@ -1208,6 +1217,11 @@
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
   pointer-events: none !important;
   z-index: 1 !important;
+  transition: clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1), -webkit-clip-path 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: clip-path !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
 }
 
 /* Pointer-events routing: explicitly re-enable interactions on inner controls */
@@ -1238,7 +1252,11 @@
   background: transparent !important;
   box-sizing: border-box !important;
   z-index: 2 !important;
-  transition: left 0.18s cubic-bezier(0.16, 1, 0.3, 1), top 0.18s cubic-bezier(0.16, 1, 0.3, 1), width 0.2s cubic-bezier(0.16, 1, 0.3, 1), height 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  transition: left 0.28s cubic-bezier(0.16, 1, 0.3, 1), top 0.28s cubic-bezier(0.16, 1, 0.3, 1), width 0.28s cubic-bezier(0.16, 1, 0.3, 1), height 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: left, top, width, height !important;
+  transform: translateZ(0) !important;
+  -webkit-backface-visibility: hidden !important;
+  backface-visibility: hidden !important;
 }
 
 /* Prominent frosted tag above cutout with generous headroom so it never crops */
