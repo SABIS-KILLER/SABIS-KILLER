@@ -88,21 +88,20 @@ const STUDY_MODE_VERIFICATION_PROTOCOL =
 
 const STUDY_MODE_DIRECTIVE = STUDY_MODE_VERIFICATION_PROTOCOL;
 
-// ── Visual Layout AI System Prompt (Stage 1 - Spatial Layout & Coordinate Analysis) ──
+// ── Visual Layout AI System Prompt (API Call 1 - Dedicated Vision Layout) ──
 const VISUAL_LAYOUT_SYSTEM_PROMPT =
-  "Analyze the provided screenshot of the quiz interface. Perform visual spatial segmentation to identify the exact bounding shape of the ACTIVE question (including question text, diagrams, tables, and input blanks/choices).\n\n" +
-  "OUTPUT FORMAT (JSON ONLY, no markdown fences, no conversational filler):\n" +
+  "Analyze the provided screenshot of the quiz interface. Locate the exact active question card (including its text, choices, and input fields). Return strict JSON with the bounding box rectangle relative to the viewport:\n" +
   "{\n" +
-  '  "question_polygon_normalized": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]],\n' +
-  '  "optimal_panel_placement": "right" | "bottom" | "top" | "left",\n' +
-  '  "cutout_shape": "rectangle" | "irregular_polygon"\n' +
+  '  "box_top": number,\n' +
+  '  "box_left": number,\n' +
+  '  "box_width": number,\n' +
+  '  "box_height": number,\n' +
+  '  "recommended_sidebar": "right" | "bottom"\n' +
   "}\n\n" +
   "Rules:\n" +
-  "- All coordinates are normalized 0-100 percentage values across the full viewport (x: 0-100 left to right, y: 0-100 top to bottom).\n" +
-  "- Give 4 or more polygon points in clockwise order closely framing the active question content.\n" +
-  "- optimal_panel_placement: choose 'right', 'bottom', 'top', or 'left' representing the best available whitespace to place the answer/explanation bay without overlapping the question.\n" +
-  "- cutout_shape: choose 'rectangle' or 'irregular_polygon'.\n" +
-  "- Output strictly valid JSON. Do not include markdown codeblocks or extra text.";
+  "- Numbers can be viewport percentages (0-100) or pixel values (e.g. box_top: 15, box_left: 8, box_width: 58, box_height: 68).\n" +
+  "- recommended_sidebar: 'right' if there is open whitespace on the right, or 'bottom' if the question spans full width.\n" +
+  "- Return strict JSON ONLY. No markdown fences, no conversational filler.";
 
 function parseStudyModeResponse(rawText) {
   if (!rawText || typeof rawText !== 'string') {
@@ -158,10 +157,10 @@ function parseStudyModeResponse(rawText) {
   };
 }
 
-// ── Stage 1: Visual Layout AI (Fast Vision Model) ───────────────────────────
+// ── API Call 1: Dedicated Vision Layout AI (gemini-2.5-flash) ────────────────
 async function callVisualLayoutAI(apiKey, rawBase64) {
   if (!apiKey || !rawBase64) return null;
-  // Use gemini-2.5-flash for ultra-fast spatial layout & boundary detection
+  // Use gemini-2.5-flash for ultra-fast spatial layout & bounding box detection
   const model = 'gemini-2.5-flash';
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
 
@@ -172,14 +171,14 @@ async function callVisualLayoutAI(apiKey, rawBase64) {
     contents: [{
       role: 'user',
       parts: [
-        { text: 'Analyze this quiz interface screenshot and output the active question normalized polygon boundary and optimal panel placement JSON.' },
+        { text: 'Analyze this quiz interface screenshot and return the active question bounding box and recommended sidebar placement in strict JSON.' },
         { inlineData: { mimeType: 'image/png', data: rawBase64 } }
       ]
     }],
     generationConfig: {
       temperature: 0.0,
       topP: 0.1,
-      maxOutputTokens: 350,
+      maxOutputTokens: 250,
       responseMimeType: 'application/json'
     }
   };
@@ -203,31 +202,28 @@ async function callVisualLayoutAI(apiKey, rawBase64) {
     const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const parsed = JSON.parse(cleaned);
 
-    if (!parsed || !Array.isArray(parsed.question_polygon_normalized) || parsed.question_polygon_normalized.length < 3) {
+    if (!parsed || typeof parsed !== 'object') return null;
+
+    const box_top = Number(parsed.box_top);
+    const box_left = Number(parsed.box_left);
+    const box_width = Number(parsed.box_width);
+    const box_height = Number(parsed.box_height);
+
+    if (isNaN(box_top) || isNaN(box_left) || isNaN(box_width) || isNaN(box_height)) {
       return null;
     }
 
-    const poly = parsed.question_polygon_normalized;
-    const validatedPoly = [];
-    for (const pt of poly) {
-      if (!Array.isArray(pt) || pt.length < 2) return null;
-      const x = Number(pt[0]);
-      const y = Number(pt[1]);
-      if (isNaN(x) || isNaN(y) || x < 0 || x > 100 || y < 0 || y > 100) return null;
-      validatedPoly.push([x, y]);
-    }
-
-    const placement = ['right', 'bottom', 'top', 'left'].includes(parsed.optimal_panel_placement)
-      ? parsed.optimal_panel_placement
-      : 'right';
+    const recommended_sidebar = (parsed.recommended_sidebar === 'bottom') ? 'bottom' : 'right';
 
     return {
-      question_polygon_normalized: validatedPoly,
-      optimal_panel_placement: placement,
-      cutout_shape: parsed.cutout_shape || 'rectangle'
+      box_top,
+      box_left,
+      box_width,
+      box_height,
+      recommended_sidebar
     };
   } catch (err) {
-    console.warn('[Stage 1 Visual Layout AI] Error analyzing layout:', err.message || err);
+    console.warn('[API Call 1 Vision Layout] Error analyzing layout:', err.message || err);
     return null;
   }
 }
@@ -600,30 +596,27 @@ async function handleSolveRequest(sender, message) {
     let result, layoutData = null;
 
     if (isStudyMode) {
-      // ── DUAL-STAGE AI PIPELINE ──
-      // Stage 1: Visual Layout & Coordinate Analysis (gemini-2.5-flash on raw capture)
-      // Stage 2: Mathematical & Statistical Verification Engine (on preprocessed capture)
-      const [layoutSettled, solveSettled] = await Promise.allSettled([
-        callVisualLayoutAI(apiKey, rawBase64Data),
-        routeProviderRequest(
-          apiKey,
-          modelMode,
-          base64Data,
-          activeSystemPrompt,
-          activeUserPrompt,
-          customPrompt,
-          isComplex,
-          taskComplexity
-        )
-      ]);
+      // ── TWO-STEP DEDICATED AI PIPELINE ──
+      // API Call 1: Dedicated Vision Layout Request (gemini-2.5-flash on raw capture)
+      try {
+        layoutData = await callVisualLayoutAI(apiKey, rawBase64Data);
+        console.log('[API Call 1] Vision layout coordinates:', layoutData);
+      } catch (e) {
+        console.warn('[API Call 1] Vision layout failed, fallback to DOM:', e);
+        layoutData = null;
+      }
 
-      if (layoutSettled.status === 'fulfilled' && layoutSettled.value) {
-        layoutData = layoutSettled.value;
-      }
-      if (solveSettled.status === 'rejected') {
-        throw solveSettled.reason;
-      }
-      result = solveSettled.value;
+      // API Call 2: Dedicated Expert Solver Request (gemini-3.8-flash down to gemini-2.5-flash)
+      result = await routeProviderRequest(
+        apiKey,
+        modelMode,
+        base64Data,
+        activeSystemPrompt,
+        activeUserPrompt,
+        customPrompt,
+        isComplex,
+        taskComplexity
+      );
     } else {
       result = await routeProviderRequest(
         apiKey,
