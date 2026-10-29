@@ -18,6 +18,8 @@
   let modalSaveToastTimer = null;
   let modalSaveDebounceTimer = null;
   let studyBubbleContainer = null;
+  let studyLoadingPill = null;
+  let currentStudyLayoutData = null;
   let studyThreadHistory = [];
 
   // Immediate early read of persistent UI visibility state on page refresh/navigation
@@ -2093,7 +2095,40 @@
       };
     }
 
-    function calculateEncompassingLayout(cutout) {
+    function mountStudyLoadingPill(statusText = 'Analyzing question layout...') {
+      if (!shadow) return;
+      unmountStudyLoadingPill();
+      unmountStudyBubble();
+
+      studyLoadingPill = document.createElement('div');
+      studyLoadingPill.id = 'sabis-study-loading-pill';
+      studyLoadingPill.innerHTML = `
+        <div class="study-loading-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+            <path d="M2 12h20"></path>
+          </svg>
+        </div>
+        <span class="study-loading-text">${escapeHtml(statusText)}</span>
+      `;
+      shadow.appendChild(studyLoadingPill);
+    }
+
+    function updateStudyLoadingPillText(text) {
+      if (!studyLoadingPill) return;
+      const txtEl = studyLoadingPill.querySelector('.study-loading-text');
+      if (txtEl) txtEl.textContent = text;
+    }
+
+    function unmountStudyLoadingPill() {
+      if (studyLoadingPill && studyLoadingPill.parentNode) {
+        studyLoadingPill.parentNode.removeChild(studyLoadingPill);
+      }
+      studyLoadingPill = null;
+    }
+
+    function calculateEncompassingLayout(cutout, layoutData = null) {
       const vW = window.innerWidth || document.documentElement.clientWidth;
       const vH = window.innerHeight || document.documentElement.clientHeight;
 
@@ -2103,57 +2138,138 @@
       const MARGIN_RIGHT = 20;
       const GAP_BETWEEN = 20;
       const DEFAULT_BAY_WIDTH = 380;
-      const MIN_BAY_WIDTH = 290;
+      const MIN_BAY_WIDTH = 280;
 
-      // 1. Safe bounded cutout dimensions
-      const safeCutoutLeft = Math.max(12, cutout.cutoutLeft);
-      const safeCutoutTop = Math.max(12, cutout.cutoutTop);
-      const maxCutoutWidth = Math.max(260, vW - safeCutoutLeft - MIN_BAY_WIDTH - GAP_BETWEEN - MARGIN_RIGHT);
-      const safeCutoutWidth = Math.min(maxCutoutWidth, cutout.cutoutWidth);
-      const safeCutoutHeight = Math.min(vH - safeCutoutTop - MARGIN_BOTTOM - 12, cutout.cutoutHeight);
+      let safeCutoutLeft, safeCutoutTop, safeCutoutWidth, safeCutoutHeight;
+      let panelPlacement = 'right';
+      let customPolygonPts = null;
 
-      // 2. Card bounds clamped strictly inside viewport
-      let cardLeft = Math.max(8, safeCutoutLeft - MARGIN_LEFT);
-      let cardTop = Math.max(8, safeCutoutTop - MARGIN_TOP);
+      const effectiveLayout = layoutData || currentStudyLayoutData;
 
-      // 3. Right bay width calculation
-      const spaceRight = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT);
-      let contentBayWidth = DEFAULT_BAY_WIDTH;
+      if (effectiveLayout && Array.isArray(effectiveLayout.question_polygon_normalized) && effectiveLayout.question_polygon_normalized.length >= 3) {
+        // ── STAGE 1 AI VISION COORDINATE PROJECTION ──
+        // Convert normalized 0-100 percentage coordinates to viewport pixels
+        const rawPts = effectiveLayout.question_polygon_normalized.map(([x, y]) => [
+          Math.max(0, Math.min(vW, (Number(x) / 100) * vW)),
+          Math.max(0, Math.min(vH, (Number(y) / 100) * vH))
+        ]);
+        const xs = rawPts.map(p => p[0]);
+        const ys = rawPts.map(p => p[1]);
+        const minX = Math.min(...xs);
+        const maxX = Math.max(...xs);
+        const minY = Math.min(...ys);
+        const maxY = Math.max(...ys);
 
-      if (spaceRight < DEFAULT_BAY_WIDTH) {
-        if (spaceRight >= MIN_BAY_WIDTH) {
-          contentBayWidth = spaceRight;
-        } else {
-          cardLeft = 8;
-          const remaining = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT + 8);
-          contentBayWidth = Math.max(MIN_BAY_WIDTH, Math.min(DEFAULT_BAY_WIDTH, remaining));
+        const pad = 14;
+        safeCutoutLeft = Math.max(8, Math.round(minX - pad));
+        safeCutoutTop = Math.max(8, Math.round(minY - pad));
+        safeCutoutWidth = Math.max(200, Math.min(vW - safeCutoutLeft - 16, Math.round((maxX - minX) + pad * 2)));
+        safeCutoutHeight = Math.max(60, Math.min(vH - safeCutoutTop - 16, Math.round((maxY - minY) + pad * 2)));
+
+        if (['right', 'bottom', 'top', 'left'].includes(effectiveLayout.optimal_panel_placement)) {
+          panelPlacement = effectiveLayout.optimal_panel_placement;
         }
+
+        if (effectiveLayout.cutout_shape === 'irregular_polygon' && rawPts.length >= 4) {
+          customPolygonPts = rawPts;
+        }
+      } else {
+        // ── DOM-BASED MEASUREMENT FALLBACK ──
+        safeCutoutLeft = Math.max(12, cutout.cutoutLeft);
+        safeCutoutTop = Math.max(12, cutout.cutoutTop);
+        const maxCutoutWidth = Math.max(260, vW - safeCutoutLeft - MIN_BAY_WIDTH - GAP_BETWEEN - MARGIN_RIGHT);
+        safeCutoutWidth = Math.min(maxCutoutWidth, cutout.cutoutWidth);
+        safeCutoutHeight = Math.min(vH - safeCutoutTop - MARGIN_BOTTOM - 12, cutout.cutoutHeight);
       }
 
-      // 4. Inner coordinates relative to .study-encompassing-card
-      const innerCutoutLeft = safeCutoutLeft - cardLeft;
-      const innerCutoutTop = safeCutoutTop - cardTop;
-      const innerCutoutWidth = safeCutoutWidth;
-      const innerCutoutHeight = safeCutoutHeight;
+      // Next: compute encompassing card geometry according to panelPlacement
+      let cardLeft, cardTop, cardWidth, cardHeight;
+      let innerCutoutLeft, innerCutoutTop, innerCutoutWidth, innerCutoutHeight;
+      let contentBayLeft, contentBayTop, contentBayWidth, contentBayHeight;
 
-      const contentBayLeft = innerCutoutLeft + innerCutoutWidth + GAP_BETWEEN;
-      const contentBayTop = innerCutoutTop;
-      const contentBayHeight = Math.max(innerCutoutHeight, 480);
+      innerCutoutWidth = safeCutoutWidth;
+      innerCutoutHeight = safeCutoutHeight;
 
-      // 5. Total encompassing card dimensions (strictly prevent horizontal/vertical overflow)
-      const cardWidth = Math.min(vW - cardLeft - 8, contentBayLeft + contentBayWidth + MARGIN_RIGHT);
-      const cardHeight = Math.min(
-        vH - cardTop - 8,
-        Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, contentBayTop + contentBayHeight + MARGIN_BOTTOM)
-      );
+      if (panelPlacement === 'left') {
+        contentBayWidth = Math.min(DEFAULT_BAY_WIDTH, Math.max(MIN_BAY_WIDTH, safeCutoutLeft - MARGIN_LEFT - GAP_BETWEEN));
+        cardLeft = Math.max(8, safeCutoutLeft - contentBayWidth - GAP_BETWEEN - MARGIN_LEFT);
+        cardTop = Math.max(8, safeCutoutTop - MARGIN_TOP);
+        contentBayLeft = MARGIN_LEFT;
+        contentBayTop = safeCutoutTop - cardTop;
+        contentBayHeight = Math.max(innerCutoutHeight, 480);
+        innerCutoutLeft = contentBayLeft + contentBayWidth + GAP_BETWEEN;
+        innerCutoutTop = safeCutoutTop - cardTop;
+        cardWidth = Math.min(vW - cardLeft - 8, innerCutoutLeft + innerCutoutWidth + MARGIN_RIGHT);
+        cardHeight = Math.min(vH - cardTop - 8, Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, contentBayTop + contentBayHeight + MARGIN_BOTTOM));
+      } else if (panelPlacement === 'bottom') {
+        cardLeft = Math.max(8, safeCutoutLeft - MARGIN_LEFT);
+        cardTop = Math.max(8, safeCutoutTop - MARGIN_TOP);
+        innerCutoutLeft = safeCutoutLeft - cardLeft;
+        innerCutoutTop = safeCutoutTop - cardTop;
+        contentBayLeft = innerCutoutLeft;
+        contentBayTop = innerCutoutTop + innerCutoutHeight + GAP_BETWEEN;
+        contentBayWidth = Math.max(innerCutoutWidth, 380);
+        contentBayHeight = Math.min(320, vH - cardTop - contentBayTop - MARGIN_BOTTOM);
+        cardWidth = Math.min(vW - cardLeft - 8, Math.max(innerCutoutLeft + innerCutoutWidth, contentBayLeft + contentBayWidth) + MARGIN_RIGHT);
+        cardHeight = Math.min(vH - cardTop - 8, contentBayTop + contentBayHeight + MARGIN_BOTTOM);
+      } else if (panelPlacement === 'top') {
+        cardLeft = Math.max(8, safeCutoutLeft - MARGIN_LEFT);
+        contentBayHeight = Math.min(260, Math.max(160, safeCutoutTop - MARGIN_TOP - GAP_BETWEEN));
+        cardTop = Math.max(8, safeCutoutTop - contentBayHeight - GAP_BETWEEN - MARGIN_TOP);
+        contentBayLeft = MARGIN_LEFT;
+        contentBayTop = MARGIN_TOP;
+        contentBayWidth = Math.max(innerCutoutWidth, 380);
+        innerCutoutLeft = MARGIN_LEFT;
+        innerCutoutTop = contentBayTop + contentBayHeight + GAP_BETWEEN;
+        cardWidth = Math.min(vW - cardLeft - 8, Math.max(innerCutoutLeft + innerCutoutWidth, contentBayLeft + contentBayWidth) + MARGIN_RIGHT);
+        cardHeight = Math.min(vH - cardTop - 8, innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM);
+      } else {
+        // Default: 'right' placement
+        cardLeft = Math.max(8, safeCutoutLeft - MARGIN_LEFT);
+        cardTop = Math.max(8, safeCutoutTop - MARGIN_TOP);
+        innerCutoutLeft = safeCutoutLeft - cardLeft;
+        innerCutoutTop = safeCutoutTop - cardTop;
 
-      // 6. Hole-punch polygon (outer CW, inner CCW)
+        const spaceRight = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT);
+        contentBayWidth = DEFAULT_BAY_WIDTH;
+        if (spaceRight < DEFAULT_BAY_WIDTH) {
+          if (spaceRight >= MIN_BAY_WIDTH) {
+            contentBayWidth = spaceRight;
+          } else {
+            cardLeft = 8;
+            innerCutoutLeft = safeCutoutLeft - cardLeft;
+            const remaining = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT + 8);
+            contentBayWidth = Math.max(MIN_BAY_WIDTH, Math.min(DEFAULT_BAY_WIDTH, remaining));
+          }
+        }
+
+        contentBayLeft = innerCutoutLeft + innerCutoutWidth + GAP_BETWEEN;
+        contentBayTop = innerCutoutTop;
+        contentBayHeight = Math.max(innerCutoutHeight, 480);
+
+        cardWidth = Math.min(vW - cardLeft - 8, contentBayLeft + contentBayWidth + MARGIN_RIGHT);
+        cardHeight = Math.min(
+          vH - cardTop - 8,
+          Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, contentBayTop + contentBayHeight + MARGIN_BOTTOM)
+        );
+      }
+
+      // Hole-punch polygon (outer CW, inner CCW)
       const cL = Math.round(innerCutoutLeft);
       const cT = Math.round(innerCutoutTop);
       const cR = Math.round(innerCutoutLeft + innerCutoutWidth);
       const cB = Math.round(innerCutoutTop + innerCutoutHeight);
 
-      const clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cL}px ${cT}px, ${cL}px ${cB}px, ${cR}px ${cB}px, ${cR}px ${cT}px, ${cL}px ${cT}px)`;
+      let clipPath;
+      if (customPolygonPts && customPolygonPts.length >= 4) {
+        const innerPolyString = customPolygonPts
+          .map(([x, y]) => `${Math.round(x - cardLeft)}px ${Math.round(y - cardTop)}px`)
+          .join(', ');
+        const firstPt = `${Math.round(customPolygonPts[0][0] - cardLeft)}px ${Math.round(customPolygonPts[0][1] - cardTop)}px`;
+        clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${innerPolyString}, ${firstPt})`;
+      } else {
+        clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cL}px ${cT}px, ${cL}px ${cB}px, ${cR}px ${cB}px, ${cR}px ${cT}px, ${cL}px ${cT}px)`;
+      }
 
       return {
         cardTop,
@@ -2168,7 +2284,8 @@
         contentBayTop,
         contentBayWidth,
         contentBayHeight,
-        clipPath
+        clipPath,
+        panelPlacement
       };
     }
 
@@ -2226,7 +2343,7 @@
       }
 
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
-      const layout = calculateEncompassingLayout(cutout);
+      const layout = calculateEncompassingLayout(cutout, currentStudyLayoutData);
 
       const card = studyBubbleContainer.querySelector('#study-encompassing-card');
       if (card) {
@@ -2258,12 +2375,14 @@
       }
     }
 
-    function mountStudyBubble(questionSnippet, qRect) {
+    function mountStudyBubble(questionSnippet, qRect, layoutData = null) {
       if (!shadow) return;
+      unmountStudyLoadingPill();
 
+      currentStudyLayoutData = layoutData || null;
       currentTargetQuestionEl = (qRect && qRect.element) ? qRect.element : getQuestionTargetElement();
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
-      const layout = calculateEncompassingLayout(cutout);
+      const layout = calculateEncompassingLayout(cutout, currentStudyLayoutData);
 
       if (!studyBubbleContainer) {
         studyBubbleContainer = document.createElement('div');
@@ -2585,6 +2704,7 @@
     }
 
     function unmountStudyBubble() {
+      unmountStudyLoadingPill();
       window.removeEventListener('scroll', updateCutoutPosition);
       window.removeEventListener('resize', updateCutoutPosition);
       // Disconnect the MutationObserver watching for question DOM changes
@@ -2597,6 +2717,7 @@
       }
       studyBubbleContainer = null;
       currentTargetQuestionEl = null;
+      currentStudyLayoutData = null;
       studyThreadHistory = [];
     }
 
@@ -2635,7 +2756,7 @@
       // Client-Side OCR & Browser Canvas Text Extractor (<5ms)
       const extractedVerifiedText = extractVerifiedTextFromDOMAndCanvas();
 
-      // ── STUDY MODE EXECUTION ──
+      // ── STUDY MODE EXECUTION (DUAL-PIPELINE AI VISION & MATH ENGINE) ──
       if (isStudyMode) {
         // Suppress standard plain text answer overlay
         if (answerContainer) {
@@ -2645,9 +2766,8 @@
         const qRect = getQuestionBoundingRect();
         const questionSnippet = extractQuestionSnippet();
 
-        // Mount dynamic liquid glass study card and render skeleton shimmer immediately (<50ms)
-        mountStudyBubble(questionSnippet, qRect);
-        renderStudyThinkingState(questionSnippet);
+        // 1. Immediately show Apple iOS 27 Liquid Glass loading capsule (<10ms)
+        mountStudyLoadingPill('Analyzing question layout...');
 
         try {
           chrome.runtime.sendMessage({
@@ -2660,12 +2780,14 @@
             extractedVerifiedText: extractedVerifiedText
           }, (response) => {
             isSolving = false;
+            unmountStudyLoadingPill();
 
             let lastErr = null;
             try { lastErr = chrome.runtime.lastError; } catch (_) {}
 
             if (lastErr || !response || !response.success) {
               const err = lastErr?.message || response?.error || 'Failed to analyze screenshot.';
+              mountStudyBubble(questionSnippet, qRect, null);
               renderStudyError(err);
               return;
             }
@@ -2683,10 +2805,14 @@
               }
             ];
 
+            // 2. Mount encompassing liquid glass card using AI Vision polygon & placement
+            mountStudyBubble(questionSnippet, qRect, response.layoutData || null);
             renderStudySolution(response, questionSnippet);
           });
         } catch (err) {
           isSolving = false;
+          unmountStudyLoadingPill();
+          mountStudyBubble(questionSnippet, qRect, null);
           renderStudyError(err?.message || String(err));
         }
         return;

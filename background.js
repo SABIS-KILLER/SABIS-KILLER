@@ -88,6 +88,22 @@ const STUDY_MODE_VERIFICATION_PROTOCOL =
 
 const STUDY_MODE_DIRECTIVE = STUDY_MODE_VERIFICATION_PROTOCOL;
 
+// ── Visual Layout AI System Prompt (Stage 1 - Spatial Layout & Coordinate Analysis) ──
+const VISUAL_LAYOUT_SYSTEM_PROMPT =
+  "Analyze the provided screenshot of the quiz interface. Perform visual spatial segmentation to identify the exact bounding shape of the ACTIVE question (including question text, diagrams, tables, and input blanks/choices).\n\n" +
+  "OUTPUT FORMAT (JSON ONLY, no markdown fences, no conversational filler):\n" +
+  "{\n" +
+  '  "question_polygon_normalized": [[x1, y1], [x2, y2], [x3, y3], [x4, y4]],\n' +
+  '  "optimal_panel_placement": "right" | "bottom" | "top" | "left",\n' +
+  '  "cutout_shape": "rectangle" | "irregular_polygon"\n' +
+  "}\n\n" +
+  "Rules:\n" +
+  "- All coordinates are normalized 0-100 percentage values across the full viewport (x: 0-100 left to right, y: 0-100 top to bottom).\n" +
+  "- Give 4 or more polygon points in clockwise order closely framing the active question content.\n" +
+  "- optimal_panel_placement: choose 'right', 'bottom', 'top', or 'left' representing the best available whitespace to place the answer/explanation bay without overlapping the question.\n" +
+  "- cutout_shape: choose 'rectangle' or 'irregular_polygon'.\n" +
+  "- Output strictly valid JSON. Do not include markdown codeblocks or extra text.";
+
 function parseStudyModeResponse(rawText) {
   if (!rawText || typeof rawText !== 'string') {
     return { answer: 'No answer generated.', explanation: '', diagram: '' };
@@ -140,6 +156,80 @@ function parseStudyModeResponse(rawText) {
     explanation: '',
     diagram: ''
   };
+}
+
+// ── Stage 1: Visual Layout AI (Fast Vision Model) ───────────────────────────
+async function callVisualLayoutAI(apiKey, rawBase64) {
+  if (!apiKey || !rawBase64) return null;
+  // Use gemini-2.5-flash for ultra-fast spatial layout & boundary detection
+  const model = 'gemini-2.5-flash';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+  const payload = {
+    systemInstruction: {
+      parts: [{ text: VISUAL_LAYOUT_SYSTEM_PROMPT }]
+    },
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: 'Analyze this quiz interface screenshot and output the active question normalized polygon boundary and optimal panel placement JSON.' },
+        { inlineData: { mimeType: 'image/png', data: rawBase64 } }
+      ]
+    }],
+    generationConfig: {
+      temperature: 0.0,
+      topP: 0.1,
+      maxOutputTokens: 350,
+      responseMimeType: 'application/json'
+    }
+  };
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json().catch(() => null);
+    if (!data) return null;
+
+    const parts = data.candidates?.[0]?.content?.parts || [];
+    const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('').trim();
+    if (!rawText) return null;
+
+    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
+
+    if (!parsed || !Array.isArray(parsed.question_polygon_normalized) || parsed.question_polygon_normalized.length < 3) {
+      return null;
+    }
+
+    const poly = parsed.question_polygon_normalized;
+    const validatedPoly = [];
+    for (const pt of poly) {
+      if (!Array.isArray(pt) || pt.length < 2) return null;
+      const x = Number(pt[0]);
+      const y = Number(pt[1]);
+      if (isNaN(x) || isNaN(y) || x < 0 || x > 100 || y < 0 || y > 100) return null;
+      validatedPoly.push([x, y]);
+    }
+
+    const placement = ['right', 'bottom', 'top', 'left'].includes(parsed.optimal_panel_placement)
+      ? parsed.optimal_panel_placement
+      : 'right';
+
+    return {
+      question_polygon_normalized: validatedPoly,
+      optimal_panel_placement: placement,
+      cutout_shape: parsed.cutout_shape || 'rectangle'
+    };
+  } catch (err) {
+    console.warn('[Stage 1 Visual Layout AI] Error analyzing layout:', err.message || err);
+    return null;
+  }
 }
 
 const GEMINI_FREE_TIER_MODELS = [
@@ -459,8 +549,11 @@ async function handleSolveRequest(sender, message) {
   const processedDataUrl = await preprocessScreenshotCanvas(dataUrl);
   const base64Data = processedDataUrl.replace(/^data:image\/\w+;base64,/, '');
 
+  // Keep original unprocessed screenshot for Stage 1 visual layout spatial analysis
+  const rawBase64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+
   // Instant Cache Check (<1ms Latency) - Scoped by mode to avoid collisions
-  const payloadToHash = `${activeUserPrompt}:::${isStudyMode ? 'study' : 'standard'}:::${base64Data}`;
+  const payloadToHash = `${activeUserPrompt}:::${isStudyMode ? 'study-v2' : 'standard'}:::${base64Data}`;
   const requestHash = await computeSha256(payloadToHash);
   const cachedResult = await checkCache(requestHash);
 
@@ -485,7 +578,8 @@ async function handleSolveRequest(sender, message) {
         modelUsed: `${cachedResult.modelUsed} [Cache Hit]`,
         modeActive: cachedResult.modeActive,
         wasFallbackTriggered: false,
-        fromCache: true
+        fromCache: true,
+        layoutData: cachedResult.layoutData || null
       };
     }
 
@@ -503,16 +597,45 @@ async function handleSolveRequest(sender, message) {
   // Execute routing with latency metric tracking
   const startTime = performance.now();
   try {
-    const result = await routeProviderRequest(
-      apiKey,
-      modelMode,
-      base64Data,
-      activeSystemPrompt,
-      activeUserPrompt,
-      customPrompt,
-      isComplex,
-      taskComplexity
-    );
+    let result, layoutData = null;
+
+    if (isStudyMode) {
+      // ── DUAL-STAGE AI PIPELINE ──
+      // Stage 1: Visual Layout & Coordinate Analysis (gemini-2.5-flash on raw capture)
+      // Stage 2: Mathematical & Statistical Verification Engine (on preprocessed capture)
+      const [layoutSettled, solveSettled] = await Promise.allSettled([
+        callVisualLayoutAI(apiKey, rawBase64Data),
+        routeProviderRequest(
+          apiKey,
+          modelMode,
+          base64Data,
+          activeSystemPrompt,
+          activeUserPrompt,
+          customPrompt,
+          isComplex,
+          taskComplexity
+        )
+      ]);
+
+      if (layoutSettled.status === 'fulfilled' && layoutSettled.value) {
+        layoutData = layoutSettled.value;
+      }
+      if (solveSettled.status === 'rejected') {
+        throw solveSettled.reason;
+      }
+      result = solveSettled.value;
+    } else {
+      result = await routeProviderRequest(
+        apiKey,
+        modelMode,
+        base64Data,
+        activeSystemPrompt,
+        activeUserPrompt,
+        customPrompt,
+        isComplex,
+        taskComplexity
+      );
+    }
 
     const executionTimeMs = Math.round(performance.now() - startTime);
 
@@ -520,9 +643,13 @@ async function handleSolveRequest(sender, message) {
       "[Auto-Dynamic Router] Task:", taskComplexity,
       "| Model Executed:", result.modelUsed,
       "| Latency:", executionTimeMs,
-      "ms | Fallback Triggered:", result.wasFallbackTriggered || false
+      "ms | Fallback Triggered:", result.wasFallbackTriggered || false,
+      "| Visual Layout:", layoutData ? 'Vision Polygon Ready' : 'DOM/Default'
     );
 
+    if (layoutData) {
+      result.layoutData = layoutData;
+    }
     await writeCache(requestHash, result);
 
     if (isStudyMode) {
@@ -538,7 +665,8 @@ async function handleSolveRequest(sender, message) {
         rawOutput: result.answer,
         modelUsed: result.modelUsed,
         modeActive: result.modeActive,
-        wasFallbackTriggered: result.wasFallbackTriggered || false
+        wasFallbackTriggered: result.wasFallbackTriggered || false,
+        layoutData: layoutData
       };
     }
 
