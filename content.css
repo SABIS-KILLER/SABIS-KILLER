@@ -24,7 +24,7 @@
   --text-secondary: #636366;
   --border-subtle: rgba(0, 0, 0, 0.08);
 
-  position: fixed !important;
+  position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   width: 0 !important;
@@ -1154,32 +1154,45 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SABIS KILLER v2.1 — STUDY MODE: UNIFIED LIQUID GLASS CONTAINER
-   Apple iOS 27 Liquid Glass | Hole-Punch Cutout | Unified Single Card
+   SABIS KILLER v2.1 — STUDY MODE: SINGLE ENCOMPASSING LIQUID GLASS CONTAINER
+   Apple iOS 27 Liquid Glass | Central Question Cutout Window | Bulletproof Alignment
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* ── Root viewport wrapper: click-through, hosts clip-path hole-punch ── */
+/* 1. Single Encompassing Liquid Glass Container (#sabis-study-bubble-container) */
 #sabis-study-bubble-container {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  pointer-events: none !important;
+  position: absolute !important;
   z-index: 2147483646 !important;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-  padding: 0 !important;
-  margin: 0 !important;
+  pointer-events: none !important;
   box-sizing: border-box !important;
+  padding-top: 24px !important;
+  padding-bottom: 24px !important;
+  padding-left: 24px !important;
+  padding-right: 24px !important;
+  margin: 0 !important;
+  border-radius: 20px !important;
+  overflow: visible !important;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
+  color: #1c1c1e !important;
+  transition: opacity 0.2s ease !important;
 }
 
-/* ── Re-enable pointer events on all interactive children ── */
+/* Encompassing Apple iOS 27 Liquid Glass background layer with central hole-punch cutout */
+.study-encompassing-glass-bg {
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(36px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(36px) saturate(200%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
+  pointer-events: none !important;
+  z-index: 1 !important;
+}
+
+/* Bulletproof Pointer-Event Routing: Re-enable mouse interaction on interactive children */
 #sabis-study-bubble-container button,
 #sabis-study-bubble-container input,
-#sabis-study-bubble-container .study-unified-card,
 #sabis-study-bubble-container .study-content-bay,
 #sabis-study-bubble-container .study-bubble-close-btn,
 #sabis-study-bubble-container .study-followup-box,
@@ -1192,120 +1205,91 @@
   pointer-events: auto !important;
 }
 
-/* ── Unified oversized Apple iOS 27 Liquid Glass card ── */
-.study-unified-card {
-  position: fixed !important;
-  z-index: 2147483647 !important;
-  pointer-events: auto !important;
-  background: rgba(255, 255, 255, 0.14) !important;
-  backdrop-filter: blur(36px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(36px) saturate(200%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+/* 2. Central Question Cutout Window Framing Ring */
+.study-cutout-frame {
+  position: absolute !important;
+  pointer-events: none !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.65) !important;
+  border-radius: 18px !important;
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4) !important;
-  border-radius: 20px !important;
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 4px 20px rgba(0, 0, 0, 0.08),
+    inset 0 0 14px rgba(255, 255, 255, 0.35) !important;
+  background: transparent !important;
   box-sizing: border-box !important;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
-  color: #1c1c1e !important;
-  overflow: hidden !important;
-  transition: left 0.2s cubic-bezier(0.16, 1, 0.3, 1), top 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 2 !important;
 }
 
-/* ── Close button ── */
+/* Prominent frosted tag above cutout with generous headroom so it never crops */
+.study-cutout-tag {
+  position: absolute !important;
+  top: -13px !important;
+  left: 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  padding: 3px 10px !important;
+  border-radius: 12px !important;
+  background: rgba(28, 28, 30, 0.85) !important;
+  backdrop-filter: blur(14px) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.65px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.22) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  white-space: nowrap !important;
+}
+
+/* 3. Right-Hand Content Bay directly inside the encompassing liquid glass card */
+.study-content-bay {
+  position: absolute !important;
+  z-index: 3 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  box-sizing: border-box !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 4px 6px 12px 6px !important;
+}
+
+/* Top-Right Close Button */
 .study-bubble-close-btn {
   position: absolute !important;
-  top: 10px !important;
-  right: 10px !important;
+  top: 14px !important;
+  right: 14px !important;
   z-index: 10 !important;
-  width: 26px !important;
-  height: 26px !important;
+  width: 28px !important;
+  height: 28px !important;
   border-radius: 50% !important;
-  background: rgba(0, 0, 0, 0.1) !important;
+  background: rgba(0, 0, 0, 0.12) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
-  border: none !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
   padding: 0 !important;
   color: #1c1c1e !important;
   transition: background 0.15s ease, transform 0.15s ease !important;
 }
-.study-bubble-close-btn:hover { background: rgba(0, 0, 0, 0.2) !important; }
-.study-bubble-close-btn:active { transform: scale(0.9) !important; }
-
-/* ── Two-column inner layout ── */
-.study-unified-inner {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: stretch !important;
-  height: 100% !important;
-  min-height: inherit !important;
-  box-sizing: border-box !important;
+.study-bubble-close-btn:hover {
+  background: rgba(0, 0, 0, 0.22) !important;
+}
+.study-bubble-close-btn:active {
+  transform: scale(0.92) !important;
 }
 
-/* ── LEFT PANE: transparent hole-punch (question shows through here) ── */
-.study-cutout-pane {
-  position: relative !important;
-  flex-shrink: 0 !important;
-  box-sizing: border-box !important;
-  pointer-events: none !important;
-  /* Completely transparent so the webpage question is visible */
-  background: transparent !important;
-}
-
-/* Small frosted label in top-left of the cutout pane */
-.study-cutout-label {
-  position: absolute !important;
-  top: 8px !important;
-  left: 10px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 5px !important;
-  padding: 3px 9px !important;
-  border-radius: 10px !important;
-  background: rgba(20, 20, 20, 0.60) !important;
-  backdrop-filter: blur(10px) !important;
-  -webkit-backdrop-filter: blur(10px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: rgba(255, 255, 255, 0.88) !important;
-  font-size: 10px !important;
-  font-weight: 700 !important;
-  text-transform: uppercase !important;
-  letter-spacing: 0.55px !important;
-  pointer-events: none !important;
-  user-select: none !important;
-  white-space: nowrap !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
-}
-
-/* Thin frosted glass border around the cutout area */
-.study-cutout-pane::before {
-  content: '' !important;
-  position: absolute !important;
-  inset: 0 !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.2) !important;
-  pointer-events: none !important;
-}
-
-/* ── RIGHT PANE: unified content bay ── */
-.study-content-bay {
-  flex-shrink: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 10px !important;
-  padding: 20px 18px 16px !important;
-  box-sizing: border-box !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-}
-
-/* Section label (ANSWER / EXPLANATION) */
+/* Section labels */
 .study-section-label {
   display: flex !important;
   align-items: center !important;
   gap: 5px !important;
-  font-size: 10px !important;
+  font-size: 10.5px !important;
   font-weight: 700 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.7px !important;
@@ -1313,39 +1297,54 @@
   margin-bottom: 4px !important;
 }
 
-/* 1. Answer card */
+/* 1. Answer Card */
 .study-answer-card {
   display: flex !important;
   flex-direction: column !important;
-  gap: 3px !important;
+  gap: 4px !important;
+  background: rgba(255, 255, 255, 0.45) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  box-sizing: border-box !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
 }
 
 .study-answer-text {
-  font-size: 15px !important;
+  font-size: 14.5px !important;
   font-weight: 700 !important;
   color: #1c1c1e !important;
   line-height: 1.4 !important;
   word-break: break-word !important;
 }
 
-/* Thin separator */
+/* Divider */
 .study-divider {
   height: 1px !important;
   background: rgba(0, 0, 0, 0.08) !important;
   border: none !important;
   flex-shrink: 0 !important;
+  margin: 2px 0 !important;
 }
 
-/* 2. Explanation block */
+/* 2. Explanation Block */
 .study-explanation-card {
   display: flex !important;
   flex-direction: column !important;
-  gap: 3px !important;
+  gap: 4px !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-radius: 14px !important;
+  padding: 12px 14px !important;
+  box-sizing: border-box !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
 }
 
 .study-explanation-text {
   font-size: 13px !important;
-  color: #3a3a3c !important;
+  color: #2c2c2e !important;
   line-height: 1.5 !important;
   word-break: break-word !important;
 }
@@ -1359,7 +1358,7 @@
 .study-followup-bar {
   display: flex !important;
   align-items: center !important;
-  background: rgba(255, 255, 255, 0.75) !important;
+  background: rgba(255, 255, 255, 0.80) !important;
   border: 1px solid rgba(0, 0, 0, 0.1) !important;
   border-radius: 20px !important;
   padding: 3px 5px 3px 12px !important;
@@ -1369,8 +1368,8 @@
 }
 
 .study-followup-bar:focus-within {
-  border-color: rgba(0, 0, 0, 0.25) !important;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.07) !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.08) !important;
 }
 
 .study-prompt-input {
@@ -1384,7 +1383,9 @@
   font-family: inherit !important;
 }
 
-.study-prompt-input::placeholder { color: #8e8e93 !important; }
+.study-prompt-input::placeholder {
+  color: #8e8e93 !important;
+}
 
 .study-send-btn {
   width: 26px !important;
@@ -1401,17 +1402,21 @@
   padding: 0 !important;
   transition: background 0.15s ease, transform 0.15s ease !important;
 }
-.study-send-btn:hover  { background: rgba(28, 28, 30, 1) !important; }
-.study-send-btn:active { transform: scale(0.92) !important; }
+.study-send-btn:hover {
+  background: rgba(0, 0, 0, 0.95) !important;
+}
+.study-send-btn:active {
+  transform: scale(0.92) !important;
+}
 
-/* 4. Multimedia diagram / visual breakdown panel */
+/* 4. Multimedia Diagram Panel */
 .study-diagram-box {
-  border-radius: 12px !important;
-  background: rgba(255, 255, 255, 0.2) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  padding: 10px !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.30) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  padding: 12px 14px !important;
   box-sizing: border-box !important;
   display: none !important;
   opacity: 0 !important;
@@ -1451,7 +1456,6 @@
   word-break: break-word !important;
 }
 
-/* Multimedia: image diagram */
 #diagram-render-panel,
 .diagram-container {
   width: 100% !important;
@@ -1470,9 +1474,9 @@
   margin-top: 4px !important;
 }
 
-/* ── Skeleton shimmer ── */
+/* Skeleton Shimmer */
 @keyframes sabis-skeleton-shimmer {
-  0%   { background-position: -200% 0; }
+  0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 
@@ -1493,16 +1497,4 @@
   font-weight: 600 !important;
   color: #636366 !important;
   margin-bottom: 6px !important;
-}
-
-/* ── Narrow screen fallback ── */
-@media (max-width: 700px) {
-  .study-unified-inner {
-    flex-direction: column !important;
-  }
-  .study-cutout-pane,
-  .study-content-bay {
-    width: 100% !important;
-    min-width: unset !important;
-  }
 }

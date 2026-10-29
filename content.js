@@ -1725,7 +1725,7 @@
 
     function getQuestionTargetElement() {
       const candidates = document.querySelectorAll(
-        '.question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
+        '#divQuestions, .divQuestion, [id*="question"], [class*="quiz"], [class*="content-area"], .question-item, .exam-question, .problem-container, .question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
       );
       const vHeight = window.innerHeight || document.documentElement.clientHeight;
       const vWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -1733,52 +1733,127 @@
       for (const el of candidates) {
         if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
         const r = el.getBoundingClientRect();
-        if (r.width > 60 && r.height > 40 && r.bottom > 40 && r.top < vHeight - 40 && r.right > 40 && r.left < vWidth - 40) {
+        if (r.width > 80 && r.height > 40 && r.bottom > 20 && r.top < vHeight - 20 && r.right > 20 && r.left < vWidth - 20) {
           return el;
         }
       }
       return null;
     }
 
-    function getQuestionBoundingRect(targetEl) {
-      const el = targetEl || getQuestionTargetElement();
-      const vHeight = window.innerHeight || document.documentElement.clientHeight;
+    function calculateQuestionCutout(targetElement) {
+      const targetEl = targetElement || getQuestionTargetElement();
+      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
+      const scrollX = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft || 0;
       const vWidth = window.innerWidth || document.documentElement.clientWidth;
+      const vHeight = window.innerHeight || document.documentElement.clientHeight;
 
-      if (el) {
-        const r = el.getBoundingClientRect();
-        return {
-          left: Math.max(10, r.left),
-          top: Math.max(10, r.top),
-          right: Math.min(vWidth - 10, r.right),
-          bottom: Math.min(vHeight - 10, r.bottom),
-          width: Math.min(vWidth - 20, Math.max(100, r.width)),
-          height: Math.min(vHeight - 20, Math.max(50, r.height)),
-          element: el
+      let rect = null;
+      if (targetEl) {
+        rect = targetEl.getBoundingClientRect();
+      }
+
+      // Fallback if no specific question container was matched
+      if (!rect || rect.width < 50 || rect.height < 30) {
+        rect = {
+          top: Math.max(70, Math.round(vHeight * 0.12)),
+          left: Math.max(20, Math.round(vWidth * 0.08)),
+          width: Math.min(680, Math.round(vWidth * 0.52)),
+          height: Math.min(500, Math.round(vHeight * 0.68))
         };
       }
 
-      if (bottomControlsBar) {
-        const bRect = bottomControlsBar.getBoundingClientRect();
-        return {
-          left: Math.max(20, bRect.left),
-          top: Math.max(20, bRect.top - 180),
-          right: Math.min(vWidth - 20, bRect.right + 220),
-          bottom: bRect.top,
-          width: 320,
-          height: 160,
-          element: null
-        };
-      }
+      // Calculate absolute page coordinates by factoring in current window scroll positions:
+      const absTop = rect.top + scrollY;
+      const absLeft = rect.left + scrollX;
+      const width = rect.width;
+      const height = rect.height;
+
+      // Add a clean padding buffer (const padding = 16;) to surround the question gracefully:
+      const padding = 16;
+      const cutoutTop = Math.max(8, absTop - padding);
+      const cutoutLeft = Math.max(8, absLeft - padding);
+      const cutoutWidth = Math.max(220, width + (padding * 2));
+      const cutoutHeight = Math.max(60, height + (padding * 2));
 
       return {
-        left: 30,
-        top: 60,
-        right: 420,
-        bottom: 240,
-        width: 390,
-        height: 180,
-        element: null
+        element: targetEl,
+        rect,
+        absTop,
+        absLeft,
+        width,
+        height,
+        padding,
+        cutoutTop,
+        cutoutLeft,
+        cutoutWidth,
+        cutoutHeight,
+        scrollX,
+        scrollY
+      };
+    }
+
+    function getQuestionBoundingRect(targetEl) {
+      const cutout = calculateQuestionCutout(targetEl);
+      return {
+        left: cutout.cutoutLeft,
+        top: cutout.cutoutTop,
+        right: cutout.cutoutLeft + cutout.cutoutWidth,
+        bottom: cutout.cutoutTop + cutout.cutoutHeight,
+        width: cutout.cutoutWidth,
+        height: cutout.cutoutHeight,
+        absTop: cutout.absTop,
+        absLeft: cutout.absLeft,
+        element: cutout.element
+      };
+    }
+
+    function calculateEncompassingLayout(cutout) {
+      const vW = window.innerWidth || document.documentElement.clientWidth;
+      const MARGIN_TOP = 48; // Room for top header & "ACTIVE QUESTION" tag with zero text cropping
+      const MARGIN_LEFT = 24;
+      const MARGIN_BOTTOM = 36;
+      const RIGHT_BAY_WIDTH = 380;
+      const GAP_BETWEEN = 20;
+      const MARGIN_RIGHT = 24;
+
+      const boxTop = Math.max(8, cutout.cutoutTop - MARGIN_TOP);
+      const boxLeft = Math.max(8, cutout.cutoutLeft - MARGIN_LEFT);
+
+      // Inner cutout coordinates relative to the encompassing container
+      const innerCutoutLeft = cutout.cutoutLeft - boxLeft;
+      const innerCutoutTop = cutout.cutoutTop - boxTop;
+      const innerCutoutWidth = cutout.cutoutWidth;
+      const innerCutoutHeight = cutout.cutoutHeight;
+
+      const contentBayLeft = innerCutoutLeft + innerCutoutWidth + GAP_BETWEEN;
+      const contentBayTop = innerCutoutTop;
+      const contentBayWidth = RIGHT_BAY_WIDTH;
+
+      const totalWidth = contentBayLeft + contentBayWidth + MARGIN_RIGHT;
+      const boxWidth = totalWidth;
+      const boxMinHeight = Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, 520);
+
+      // Construct polygon clip-path (outer CW, inner CCW)
+      const cL = innerCutoutLeft;
+      const cT = innerCutoutTop;
+      const cR = innerCutoutLeft + innerCutoutWidth;
+      const cB = innerCutoutTop + innerCutoutHeight;
+
+      const clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cL}px ${cT}px, ${cL}px ${cB}px, ${cR}px ${cB}px, ${cR}px ${cT}px, ${cL}px ${cT}px)`;
+
+      return {
+        boxTop,
+        boxLeft,
+        boxWidth,
+        boxMinHeight,
+        innerCutoutLeft,
+        innerCutoutTop,
+        innerCutoutWidth,
+        innerCutoutHeight,
+        contentBayLeft,
+        contentBayTop,
+        contentBayWidth,
+        clipPath
       };
     }
 
@@ -1807,110 +1882,45 @@
       return title ? `Question on: ${title}` : 'Captured Academic Question';
     }
 
-    function calculateStudyCardPosition(qRect) {
-      const vW = window.innerWidth || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-      const cardWidth = Math.min(560, Math.floor(vW * 0.9));
-      const cardHeight = 320;
-
-      let left = 20;
-      let top = 20;
-
-      const spaceRight = vW - qRect.right;
-      const spaceLeft = qRect.left;
-      const spaceBottom = vH - qRect.bottom;
-
-      // 1. Prefer right side of the gap if enough room (>= 350px)
-      if (spaceRight >= 350) {
-        left = Math.min(vW - cardWidth - 16, qRect.right + 14);
-        top = Math.max(16, Math.min(vH - cardHeight - 16, qRect.top));
-      }
-      // 2. If right side is tight (<350px), check left side (>= 350px)
-      else if (spaceLeft >= 350) {
-        left = Math.max(16, qRect.left - cardWidth - 14);
-        top = Math.max(16, Math.min(vH - cardHeight - 16, qRect.top));
-      }
-      // 3. Fallback: position below the question gap
-      else if (spaceBottom >= 200) {
-        left = Math.max(16, Math.min(vW - cardWidth - 16, qRect.left));
-        top = Math.min(vH - cardHeight - 16, qRect.bottom + 14);
-      }
-      // 4. Fallback: position above the question gap
-      else {
-        left = Math.max(16, Math.min(vW - cardWidth - 16, qRect.left));
-        top = Math.max(16, qRect.top - cardHeight - 14);
-      }
-
-      return {
-        left: Math.max(16, Math.min(vW - 100, left)),
-        top: Math.max(16, Math.min(vH - 100, top)),
-        maxWidth: Math.min(600, Math.floor(vW * 0.92))
-      };
-    }
-
-    function applyHolePunchClipPath(containerEl, qRect, pad) {
-      if (!containerEl) return;
-      const vW = window.innerWidth || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-      const cutoutLeft   = Math.max(0, Math.round(qRect.left  - pad));
-      const cutoutTop    = Math.max(0, Math.round(qRect.top   - pad));
-      const cutoutRight  = Math.min(vW, Math.round(qRect.right  + pad));
-      const cutoutBottom = Math.min(vH, Math.round(qRect.bottom + pad));
-      // Outer CW rect → inner CCW rect = true transparent hole
-      containerEl.style.clipPath = [
-        `polygon(`,
-        `0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%,`,
-        `${cutoutLeft}px ${cutoutTop}px,`,
-        `${cutoutLeft}px ${cutoutBottom}px,`,
-        `${cutoutRight}px ${cutoutBottom}px,`,
-        `${cutoutRight}px ${cutoutTop}px,`,
-        `${cutoutLeft}px ${cutoutTop}px`,
-        `)`
-      ].join(' ');
-    }
-
-    function updateSpotlightGapPosition() {
+    function updateCutoutPosition() {
       if (!studyBubbleContainer) return;
-      const card = studyBubbleContainer.querySelector('#study-bubble-card');
-      if (!card) return;
-      const qRect = getQuestionBoundingRect(currentTargetQuestionEl);
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
+      const cutout = calculateQuestionCutout(currentTargetQuestionEl);
+      const layout = calculateEncompassingLayout(cutout);
 
-      const CUTOUT_PAD  = 12;
-      const RIGHT_WIDTH = 380;
-      const CARD_PAD    = 20;
-      const MIN_GAP_H   = 60;
+      studyBubbleContainer.style.top = `${layout.boxTop}px`;
+      studyBubbleContainer.style.left = `${layout.boxLeft}px`;
+      studyBubbleContainer.style.width = `${layout.boxWidth}px`;
+      studyBubbleContainer.style.minHeight = `${layout.boxMinHeight}px`;
 
-      const cutoutW = Math.max(220, Math.min(Math.round(qRect.width)  + CUTOUT_PAD * 2, vW * 0.45));
-      const cutoutH = Math.max(MIN_GAP_H, Math.min(Math.round(qRect.height) + CUTOUT_PAD * 2, vH * 0.8));
-      const cardWidth  = cutoutW + RIGHT_WIDTH + CARD_PAD * 2;
-      const cardHeight = Math.max(cutoutH + CARD_PAD * 2, 340);
+      const glassBg = studyBubbleContainer.querySelector('#study-encompassing-glass-bg');
+      if (glassBg) {
+        glassBg.style.clipPath = layout.clipPath;
+      }
 
-      let cardLeft = Math.round(qRect.left) - CUTOUT_PAD - CARD_PAD;
-      let cardTop  = Math.round(qRect.top)  - CUTOUT_PAD - CARD_PAD;
-      cardLeft = Math.max(8, Math.min(cardLeft, vW - cardWidth - 8));
-      cardTop  = Math.max(8, Math.min(cardTop,  vH - cardHeight - 8));
+      const frameEl = studyBubbleContainer.querySelector('#study-cutout-frame');
+      if (frameEl) {
+        frameEl.style.left = `${layout.innerCutoutLeft}px`;
+        frameEl.style.top = `${layout.innerCutoutTop}px`;
+        frameEl.style.width = `${layout.innerCutoutWidth}px`;
+        frameEl.style.height = `${layout.innerCutoutHeight}px`;
+      }
 
-      card.style.left     = `${cardLeft}px`;
-      card.style.top      = `${cardTop}px`;
-      card.style.width    = `${cardWidth}px`;
-      card.style.minHeight = `${cardHeight}px`;
-
-      // Re-apply hole-punch at updated coords
-      applyHolePunchClipPath(studyBubbleContainer, {
-        left:   cardLeft + CARD_PAD,
-        top:    cardTop  + CARD_PAD,
-        right:  cardLeft + CARD_PAD + cutoutW,
-        bottom: cardTop  + CARD_PAD + cutoutH
-      }, 0);
+      const contentBay = studyBubbleContainer.querySelector('#study-content-bay');
+      if (contentBay) {
+        contentBay.style.left = `${layout.contentBayLeft}px`;
+        contentBay.style.top = `${layout.contentBayTop}px`;
+        contentBay.style.width = `${layout.contentBayWidth}px`;
+        contentBay.style.minHeight = `${layout.innerCutoutHeight}px`;
+        contentBay.style.maxHeight = `${Math.max(layout.innerCutoutHeight, 520)}px`;
+      }
     }
 
     function mountStudyBubble(questionSnippet, qRect) {
       if (!shadow) return;
 
       currentTargetQuestionEl = (qRect && qRect.element) ? qRect.element : getQuestionTargetElement();
-      const rect = qRect || getQuestionBoundingRect(currentTargetQuestionEl);
+      const cutout = calculateQuestionCutout(currentTargetQuestionEl);
+      const layout = calculateEncompassingLayout(cutout);
 
       if (!studyBubbleContainer) {
         studyBubbleContainer = document.createElement('div');
@@ -1920,139 +1930,98 @@
       }
 
       studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
-
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-
-      // ── Unified card geometry ──────────────────────────────────────────────
-      // Left pane width = question width + padding. Right pane = content bay.
-      const CUTOUT_PAD  = 12;  // px buffer around question
-      const RIGHT_WIDTH = 380; // right content bay fixed width
-      const CARD_PAD    = 20;  // inner card padding
-      const MIN_GAP_H   = 60;
-
-      const cutoutW = Math.max(220, Math.min(Math.round(rect.width)  + CUTOUT_PAD * 2, vW * 0.45));
-      const cutoutH = Math.max(MIN_GAP_H, Math.min(Math.round(rect.height) + CUTOUT_PAD * 2, vH * 0.8));
-
-      const cardWidth  = cutoutW + RIGHT_WIDTH + CARD_PAD * 2;
-      const cardHeight = Math.max(cutoutH + CARD_PAD * 2, 340);
-
-      // Try to position card so the left cutout window sits over the question
-      let cardLeft = Math.round(rect.left) - CUTOUT_PAD - CARD_PAD;
-      let cardTop  = Math.round(rect.top)  - CUTOUT_PAD - CARD_PAD;
-
-      // Clamp within viewport
-      cardLeft = Math.max(8, Math.min(cardLeft, vW - cardWidth - 8));
-      cardTop  = Math.max(8, Math.min(cardTop,  vH - cardHeight - 8));
-
-      // ── Cutout coords RELATIVE to card ───────────────────────────────────
-      // The cutout is a transparent hole in the LEFT portion of the card
-      const holeLeft   = CARD_PAD;
-      const holeTop    = CARD_PAD;
-      const holeRight  = CARD_PAD + cutoutW;
-      const holeBottom = CARD_PAD + cutoutH;
-
-      // Apply CSS clip-path hole-punch (absolute coords on viewport)
-      applyHolePunchClipPath(studyBubbleContainer, {
-        left:   cardLeft + holeLeft,
-        top:    cardTop  + holeTop,
-        right:  cardLeft + holeRight,
-        bottom: cardTop  + holeBottom
-      }, 0);
+      studyBubbleContainer.style.top = `${layout.boxTop}px`;
+      studyBubbleContainer.style.left = `${layout.boxLeft}px`;
+      studyBubbleContainer.style.width = `${layout.boxWidth}px`;
+      studyBubbleContainer.style.minHeight = `${layout.boxMinHeight}px`;
 
       studyBubbleContainer.innerHTML = `
-        <!-- Unified Single Liquid Glass Card -->
-        <div class="study-unified-card" id="study-bubble-card"
-             style="left:${cardLeft}px; top:${cardTop}px; width:${cardWidth}px; min-height:${cardHeight}px;">
+        <!-- Liquid Glass Background with Central Hole-Punch Cutout Polygon -->
+        <div class="study-encompassing-glass-bg" id="study-encompassing-glass-bg" style="clip-path: ${layout.clipPath};"></div>
 
-          <!-- Close button -->
-          <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
+        <!-- Central Question Cutout Window Framing & Header Tag -->
+        <div class="study-cutout-frame" id="study-cutout-frame"
+             style="left: ${layout.innerCutoutLeft}px; top: ${layout.innerCutoutTop}px; width: ${layout.innerCutoutWidth}px; height: ${layout.innerCutoutHeight}px;">
+          <div class="study-cutout-tag">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <circle cx="12" cy="12" r="3"></circle>
             </svg>
-          </button>
+            <span>ACTIVE QUESTION</span>
+          </div>
+        </div>
 
-          <!-- Two-column inner layout -->
-          <div class="study-unified-inner">
+        <!-- Top-Right Close Button -->
+        <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
 
-            <!-- LEFT: transparent hole-punch window (the actual webpage question shows through) -->
-            <div class="study-cutout-pane"
-                 style="width:${cutoutW}px; min-height:${cutoutH}px;">
-              <!-- Frosted glass ring label -->
-              <div class="study-cutout-label">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <circle cx="12" cy="12" r="3"></circle>
+        <!-- Right-Hand Content Bay directly inside the encompassing liquid glass card -->
+        <div class="study-content-bay" id="study-content-bay"
+             style="left: ${layout.contentBayLeft}px; top: ${layout.contentBayTop}px; width: ${layout.contentBayWidth}px; min-height: ${layout.innerCutoutHeight}px; max-height: ${Math.max(layout.innerCutoutHeight, 520)}px;">
+
+          <!-- 1. ANSWER CARD -->
+          <div class="study-answer-card">
+            <span class="study-section-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Answer Summary
+            </span>
+            <div class="study-answer-text" id="study-answer-text"></div>
+          </div>
+
+          <!-- Divider -->
+          <div class="study-divider"></div>
+
+          <!-- 2. EXPLANATION BLOCK -->
+          <div class="study-explanation-card">
+            <span class="study-section-label">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              Explanation
+            </span>
+            <div class="study-explanation-text" id="study-explanation-text"></div>
+          </div>
+
+          <!-- 3. FOLLOW-UP INPUT PILL -->
+          <div class="study-followup-box">
+            <div class="study-followup-bar">
+              <input type="text" class="study-prompt-input" id="study-prompt-input"
+                placeholder="Ask about explanation..."
+                autocomplete="off" autocorrect="off" spellcheck="false"
+                data-lpignore="true" aria-autocomplete="none">
+              <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                 </svg>
-                <span>Active Question</span>
-              </div>
+              </button>
             </div>
+          </div>
 
-            <!-- RIGHT: unified content bay -->
-            <div class="study-content-bay" style="width:${RIGHT_WIDTH}px;">
+          <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
+          <div class="study-diagram-box diagram-container" id="study-diagram-box">
+            <div class="study-diagram-header">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+              </svg>
+              <span>Visual Diagrams</span>
+            </div>
+            <div class="diagram-container" id="diagram-render-panel">
+              <pre class="study-diagram-content" id="study-diagram-content"></pre>
+            </div>
+          </div>
 
-              <!-- 1. ANSWER CARD -->
-              <div class="study-answer-card">
-                <span class="study-section-label">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  Answer
-                </span>
-                <div class="study-answer-text" id="study-answer-text"></div>
-              </div>
-
-              <!-- divider -->
-              <div class="study-divider"></div>
-
-              <!-- 2. EXPLANATION BLOCK -->
-              <div class="study-explanation-card">
-                <span class="study-section-label">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="8" x2="12" y2="12"></line>
-                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                  </svg>
-                  Explanation
-                </span>
-                <div class="study-explanation-text" id="study-explanation-text"></div>
-              </div>
-
-              <!-- 3. FOLLOW-UP INPUT PILL -->
-              <div class="study-followup-box">
-                <div class="study-followup-bar">
-                  <input type="text" class="study-prompt-input" id="study-prompt-input"
-                    placeholder="Ask about explanation..."
-                    autocomplete="off" autocorrect="off" spellcheck="false"
-                    data-lpignore="true" aria-autocomplete="none">
-                  <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
-              <div class="study-diagram-box" id="study-diagram-box">
-                <div class="study-diagram-header">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                  </svg>
-                  <span>Visual Breakdown</span>
-                </div>
-                <div class="diagram-container" id="diagram-render-panel">
-                  <pre class="study-diagram-content" id="study-diagram-content"></pre>
-                </div>
-              </div>
-
-            </div><!-- /study-content-bay -->
-          </div><!-- /study-unified-inner -->
-        </div><!-- /study-unified-card -->
+        </div><!-- /study-content-bay -->
       `;
 
       // Top-Right Close Button
@@ -2095,8 +2064,8 @@
         });
       }
 
-      window.addEventListener('scroll', updateSpotlightGapPosition, { passive: true });
-      window.addEventListener('resize', updateSpotlightGapPosition, { passive: true });
+      window.addEventListener('scroll', updateCutoutPosition, { passive: true });
+      window.addEventListener('resize', updateCutoutPosition, { passive: true });
     }
 
     function renderStudyThinkingState(questionSnippet = '') {
@@ -2252,8 +2221,8 @@
     }
 
     function unmountStudyBubble() {
-      window.removeEventListener('scroll', updateSpotlightGapPosition);
-      window.removeEventListener('resize', updateSpotlightGapPosition);
+      window.removeEventListener('scroll', updateCutoutPosition);
+      window.removeEventListener('resize', updateCutoutPosition);
       if (studyBubbleContainer && studyBubbleContainer.parentNode) {
         studyBubbleContainer.parentNode.removeChild(studyBubbleContainer);
       }
