@@ -24,11 +24,14 @@
   --text-secondary: #636366;
   --border-subtle: rgba(0, 0, 0, 0.08);
 
-  position: absolute !important;
+  position: fixed !important;
   top: 0 !important;
   left: 0 !important;
   width: 0 !important;
   height: 0 !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  overflow: visible !important;
   z-index: 2147483647 !important;
   pointer-events: none !important;
   border: none !important;
@@ -1155,28 +1158,43 @@
 
 /* ═══════════════════════════════════════════════════════════════════════════
    SABIS KILLER v2.1 — STUDY MODE: SINGLE ENCOMPASSING LIQUID GLASS CONTAINER
-   Apple iOS 27 Liquid Glass | Central Question Cutout Window | Bulletproof Alignment
+   Fixed Viewport Sizing | Precise Question Cutout | Bulletproof Alignment
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* 1. Single Encompassing Liquid Glass Container (#sabis-study-bubble-container) */
+/* 1. Main Viewport Container: Fixed Viewport Sizing & Eliminate Horizontal Scrolling */
 #sabis-study-bubble-container {
-  position: absolute !important;
-  z-index: 2147483646 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  overflow-x: hidden !important;
+  overflow-y: hidden !important;
   pointer-events: none !important;
+  z-index: 2147483646 !important;
   box-sizing: border-box !important;
-  padding-top: 24px !important;
-  padding-bottom: 24px !important;
-  padding-left: 24px !important;
-  padding-right: 24px !important;
   margin: 0 !important;
-  border-radius: 20px !important;
-  overflow: visible !important;
+  padding: 0 !important;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif !important;
   color: #1c1c1e !important;
-  transition: opacity 0.2s ease !important;
 }
 
-/* Encompassing Apple iOS 27 Liquid Glass background layer with central hole-punch cutout */
+/* Encompassing Liquid Glass Card */
+.study-encompassing-card {
+  position: absolute !important;
+  pointer-events: none !important;
+  box-sizing: border-box !important;
+  max-width: calc(100vw - 16px) !important;
+  max-height: calc(100vh - 16px) !important;
+  overflow: visible !important;
+  border-radius: 20px !important;
+  z-index: 2147483646 !important;
+  transition: left 0.15s cubic-bezier(0.16, 1, 0.3, 1), top 0.15s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Apple iOS 27 Liquid Glass Background Layer with Central Hole-Punch Cutout */
 .study-encompassing-glass-bg {
   position: absolute !important;
   inset: 0 !important;
@@ -1190,7 +1208,7 @@
   z-index: 1 !important;
 }
 
-/* Bulletproof Pointer-Event Routing: Re-enable mouse interaction on interactive children */
+/* Pointer-events routing: explicitly re-enable interactions on inner controls */
 #sabis-study-bubble-container button,
 #sabis-study-bubble-container input,
 #sabis-study-bubble-container .study-content-bay,
@@ -1205,7 +1223,7 @@
   pointer-events: auto !important;
 }
 
-/* 2. Central Question Cutout Window Framing Ring */
+/* Central Question Cutout Window Framing Ring */
 .study-cutout-frame {
   position: absolute !important;
   pointer-events: none !important;
@@ -1245,17 +1263,20 @@
   white-space: nowrap !important;
 }
 
-/* 3. Right-Hand Content Bay directly inside the encompassing liquid glass card */
+/* Right-Hand Sidebar Bay: fixed/sticky width, no horizontal overflow */
 .study-content-bay {
   position: absolute !important;
   z-index: 3 !important;
   display: flex !important;
   flex-direction: column !important;
-  gap: 12px !important;
+  gap: 10px !important;
   box-sizing: border-box !important;
+  width: 380px !important;
+  max-width: calc(100vw - 32px) !important;
   overflow-y: auto !important;
   overflow-x: hidden !important;
-  padding: 4px 6px 12px 6px !important;
+  padding: 4px 8px 12px 8px !important;
+  pointer-events: auto !important;
 }
 
 /* Top-Right Close Button */
@@ -1317,6 +1338,7 @@
   color: #1c1c1e !important;
   line-height: 1.4 !important;
   word-break: break-word !important;
+  white-space: pre-wrap !important;
 }
 
 /* Divider */
@@ -1347,6 +1369,7 @@
   color: #2c2c2e !important;
   line-height: 1.5 !important;
   word-break: break-word !important;
+  white-space: pre-wrap !important;
 }
 
 /* 3. Follow-up input pill */

@@ -1723,72 +1723,166 @@
         .replace(/"/g, '&quot;');
     }
 
+    function getElementTrueBoundingRect(el) {
+      if (!el) return null;
+      const rect = el.getBoundingClientRect();
+      let top = rect.top;
+      let left = rect.left;
+      let right = rect.right;
+      let bottom = rect.bottom;
+
+      const vW = window.innerWidth || document.documentElement.clientWidth;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+
+      // Expand bounding box to include all visible internal descendants (tables, rows, cells, inputs, SVGs, formulas)
+      const descendants = el.querySelectorAll('table, thead, tbody, tr, td, th, img, svg, canvas, input, select, textarea, button, label, p, span, div, .subQuestion');
+      descendants.forEach(d => {
+        if (d.offsetWidth === 0 && d.offsetHeight === 0) return;
+        const style = window.getComputedStyle(d);
+        if (style.display === 'none' || style.visibility === 'hidden' || parseFloat(style.opacity) === 0) return;
+
+        const dRect = d.getBoundingClientRect();
+        // Ignore full-viewport or degenerate overflow containers
+        if (dRect.width > 0 && dRect.height > 0 && dRect.width < vW * 0.95 && dRect.height < vH * 0.95) {
+          if (dRect.left < left) left = dRect.left;
+          if (dRect.top < top) top = dRect.top;
+          if (dRect.right > right) right = dRect.right;
+          if (dRect.bottom > bottom) bottom = dRect.bottom;
+        }
+      });
+
+      return {
+        top,
+        left,
+        right,
+        bottom,
+        width: Math.max(0, right - left),
+        height: Math.max(0, bottom - top)
+      };
+    }
+
     function getQuestionTargetElement() {
-      const candidates = document.querySelectorAll(
-        '#divQuestions, .divQuestion, [id*="question"], [class*="quiz"], [class*="content-area"], .question-item, .exam-question, .problem-container, .question, .quiz-question, .problem, .question-container, [class*="question"], [class*="problem"], article, main, form'
-      );
       const vHeight = window.innerHeight || document.documentElement.clientHeight;
       const vWidth = window.innerWidth || document.documentElement.clientWidth;
 
-      for (const el of candidates) {
-        if (el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) continue;
+      const isExcluded = (el) => {
+        if (!el || el.id === 'academic-solver-root' || el.closest('#academic-solver-root')) return true;
+        const tag = el.tagName.toUpperCase();
+        if (['HTML', 'BODY', 'MAIN', 'FORM', 'ARTICLE', 'SECTION', 'NAV', 'HEADER', 'FOOTER'].includes(tag)) return true;
+        if (el.id === 'divQuestions') return true; // Plural outer quiz wrapper on SABIS
+        const idLower = (el.id || '').toLowerCase();
+        const clsLower = (typeof el.className === 'string' ? el.className : '').toLowerCase();
+        if (clsLower.includes('quiz-container') || clsLower.includes('page-wrapper') || clsLower.includes('content-area')) return true;
+        if (idLower.includes('divquestions') || idLower.includes('quizcontainer')) return true;
+
         const r = el.getBoundingClientRect();
-        if (r.width > 80 && r.height > 40 && r.bottom > 20 && r.top < vHeight - 20 && r.right > 20 && r.left < vWidth - 20) {
-          return el;
+        // Exclude elements that engulf the entire page
+        if (r.width > vWidth * 0.85 && r.height > vHeight * 0.85) return true;
+        return false;
+      };
+
+      // Strategy 1: Targeted Question Card Containers (e.g. SABIS .divQuestion, question boxes)
+      const specificSelectors = [
+        '.divQuestion',
+        '[id^="divQuestion"]:not(#divQuestions)',
+        '.quiz-question-box',
+        '.question-container',
+        '.question-card',
+        '.question-item',
+        '.exam-question',
+        '.problem-container',
+        '.quiz-question',
+        '.question:not(body):not(html):not(#divQuestions)'
+      ];
+
+      for (const sel of specificSelectors) {
+        const matches = document.querySelectorAll(sel);
+        for (const el of matches) {
+          if (isExcluded(el)) continue;
+          // Must not contain multiple question children (which indicates an outer wrapper)
+          const subQuestions = el.querySelectorAll('.divQuestion, .question-container, .quiz-question-box');
+          if (subQuestions.length > 1) continue;
+
+          const r = el.getBoundingClientRect();
+          // Must be visible within or near current viewport
+          if (r.width > 60 && r.height > 40 && r.bottom > 20 && r.top < vHeight - 20 && r.right > 20 && r.left < vWidth - 20) {
+            const style = window.getComputedStyle(el);
+            if (style.display !== 'none' && style.visibility !== 'hidden') {
+              return el;
+            }
+          }
         }
       }
+
+      // Strategy 2: Locate based on active question inputs/radios on screen
+      const activeInputs = Array.from(
+        document.querySelectorAll('input:not([type="hidden"]), select, textarea')
+      ).filter(inp => {
+        if (inp.id === 'academic-solver-root' || inp.closest('#academic-solver-root')) return false;
+        const r = inp.getBoundingClientRect();
+        return r.width > 0 && r.height > 0 && r.bottom > 20 && r.top < vHeight - 20;
+      });
+
+      if (activeInputs.length > 0) {
+        for (const inp of activeInputs) {
+          const qContainer = inp.closest('.divQuestion, [id^="divQuestion"], .question-container, .quiz-question-box, .question-card, .question');
+          if (qContainer && !isExcluded(qContainer)) {
+            return qContainer;
+          }
+        }
+      }
+
+      // Strategy 3: Check visible table elements (like data sets in math questions)
+      const tables = Array.from(document.querySelectorAll('table')).filter(t => {
+        if (t.id === 'academic-solver-root' || t.closest('#academic-solver-root')) return false;
+        const r = t.getBoundingClientRect();
+        return r.width > 50 && r.height > 20 && r.bottom > 20 && r.top < vHeight - 20;
+      });
+
+      for (const tbl of tables) {
+        const parentQ = tbl.closest('.divQuestion, [id^="divQuestion"], .question-container, .quiz-question-box, .question-card, .question');
+        if (parentQ && !isExcluded(parentQ)) {
+          return parentQ;
+        }
+      }
+
       return null;
     }
 
     function calculateQuestionCutout(targetElement) {
       const targetEl = targetElement || getQuestionTargetElement();
-      const scrollY = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || 0;
-      const scrollX = window.scrollX || window.pageXOffset || document.documentElement.scrollLeft || 0;
       const vWidth = window.innerWidth || document.documentElement.clientWidth;
       const vHeight = window.innerHeight || document.documentElement.clientHeight;
 
       let rect = null;
       if (targetEl) {
-        rect = targetEl.getBoundingClientRect();
+        rect = getElementTrueBoundingRect(targetEl);
       }
 
       // Fallback if no specific question container was matched
       if (!rect || rect.width < 50 || rect.height < 30) {
         rect = {
-          top: Math.max(70, Math.round(vHeight * 0.12)),
+          top: Math.max(70, Math.round(vHeight * 0.10)),
           left: Math.max(20, Math.round(vWidth * 0.08)),
-          width: Math.min(680, Math.round(vWidth * 0.52)),
-          height: Math.min(500, Math.round(vHeight * 0.68))
+          width: Math.min(800, Math.round(vWidth * 0.55)),
+          height: Math.min(600, Math.round(vHeight * 0.72))
         };
       }
 
-      // Calculate absolute page coordinates by factoring in current window scroll positions:
-      const absTop = rect.top + scrollY;
-      const absLeft = rect.left + scrollX;
-      const width = rect.width;
-      const height = rect.height;
-
-      // Add a clean padding buffer (const padding = 16;) to surround the question gracefully:
+      // IMPORTANT: Fixed viewport coordinates (no scroll offsets added because container is position: fixed)
       const padding = 16;
-      const cutoutTop = Math.max(8, absTop - padding);
-      const cutoutLeft = Math.max(8, absLeft - padding);
-      const cutoutWidth = Math.max(220, width + (padding * 2));
-      const cutoutHeight = Math.max(60, height + (padding * 2));
+      const cutoutTop = Math.max(8, Math.round(rect.top - padding));
+      const cutoutLeft = Math.max(8, Math.round(rect.left - padding));
+      const cutoutWidth = Math.max(220, Math.round(rect.width + (padding * 2)));
+      const cutoutHeight = Math.max(60, Math.round(rect.height + (padding * 2)));
 
       return {
         element: targetEl,
         rect,
-        absTop,
-        absLeft,
-        width,
-        height,
-        padding,
         cutoutTop,
         cutoutLeft,
         cutoutWidth,
-        cutoutHeight,
-        scrollX,
-        scrollY
+        cutoutHeight
       };
     }
 
@@ -1801,51 +1895,77 @@
         bottom: cutout.cutoutTop + cutout.cutoutHeight,
         width: cutout.cutoutWidth,
         height: cutout.cutoutHeight,
-        absTop: cutout.absTop,
-        absLeft: cutout.absLeft,
         element: cutout.element
       };
     }
 
     function calculateEncompassingLayout(cutout) {
       const vW = window.innerWidth || document.documentElement.clientWidth;
-      const MARGIN_TOP = 48; // Room for top header & "ACTIVE QUESTION" tag with zero text cropping
-      const MARGIN_LEFT = 24;
-      const MARGIN_BOTTOM = 36;
-      const RIGHT_BAY_WIDTH = 380;
+      const vH = window.innerHeight || document.documentElement.clientHeight;
+
+      const MARGIN_TOP = 42; // Headroom for "ACTIVE QUESTION" frosted tag and close button
+      const MARGIN_LEFT = 20;
+      const MARGIN_BOTTOM = 24;
+      const MARGIN_RIGHT = 20;
       const GAP_BETWEEN = 20;
-      const MARGIN_RIGHT = 24;
+      const DEFAULT_BAY_WIDTH = 380;
+      const MIN_BAY_WIDTH = 290;
 
-      const boxTop = Math.max(8, cutout.cutoutTop - MARGIN_TOP);
-      const boxLeft = Math.max(8, cutout.cutoutLeft - MARGIN_LEFT);
+      // 1. Safe bounded cutout dimensions
+      const safeCutoutLeft = Math.max(12, cutout.cutoutLeft);
+      const safeCutoutTop = Math.max(12, cutout.cutoutTop);
+      const maxCutoutWidth = Math.max(260, vW - safeCutoutLeft - MIN_BAY_WIDTH - GAP_BETWEEN - MARGIN_RIGHT);
+      const safeCutoutWidth = Math.min(maxCutoutWidth, cutout.cutoutWidth);
+      const safeCutoutHeight = Math.min(vH - safeCutoutTop - MARGIN_BOTTOM - 12, cutout.cutoutHeight);
 
-      // Inner cutout coordinates relative to the encompassing container
-      const innerCutoutLeft = cutout.cutoutLeft - boxLeft;
-      const innerCutoutTop = cutout.cutoutTop - boxTop;
-      const innerCutoutWidth = cutout.cutoutWidth;
-      const innerCutoutHeight = cutout.cutoutHeight;
+      // 2. Card bounds clamped strictly inside viewport
+      let cardLeft = Math.max(8, safeCutoutLeft - MARGIN_LEFT);
+      let cardTop = Math.max(8, safeCutoutTop - MARGIN_TOP);
+
+      // 3. Right bay width calculation
+      const spaceRight = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT);
+      let contentBayWidth = DEFAULT_BAY_WIDTH;
+
+      if (spaceRight < DEFAULT_BAY_WIDTH) {
+        if (spaceRight >= MIN_BAY_WIDTH) {
+          contentBayWidth = spaceRight;
+        } else {
+          cardLeft = 8;
+          const remaining = vW - (safeCutoutLeft + safeCutoutWidth + GAP_BETWEEN + MARGIN_RIGHT + 8);
+          contentBayWidth = Math.max(MIN_BAY_WIDTH, Math.min(DEFAULT_BAY_WIDTH, remaining));
+        }
+      }
+
+      // 4. Inner coordinates relative to .study-encompassing-card
+      const innerCutoutLeft = safeCutoutLeft - cardLeft;
+      const innerCutoutTop = safeCutoutTop - cardTop;
+      const innerCutoutWidth = safeCutoutWidth;
+      const innerCutoutHeight = safeCutoutHeight;
 
       const contentBayLeft = innerCutoutLeft + innerCutoutWidth + GAP_BETWEEN;
       const contentBayTop = innerCutoutTop;
-      const contentBayWidth = RIGHT_BAY_WIDTH;
+      const contentBayHeight = Math.max(innerCutoutHeight, 480);
 
-      const totalWidth = contentBayLeft + contentBayWidth + MARGIN_RIGHT;
-      const boxWidth = totalWidth;
-      const boxMinHeight = Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, 520);
+      // 5. Total encompassing card dimensions (strictly prevent horizontal/vertical overflow)
+      const cardWidth = Math.min(vW - cardLeft - 8, contentBayLeft + contentBayWidth + MARGIN_RIGHT);
+      const cardHeight = Math.min(
+        vH - cardTop - 8,
+        Math.max(innerCutoutTop + innerCutoutHeight + MARGIN_BOTTOM, contentBayTop + contentBayHeight + MARGIN_BOTTOM)
+      );
 
-      // Construct polygon clip-path (outer CW, inner CCW)
-      const cL = innerCutoutLeft;
-      const cT = innerCutoutTop;
-      const cR = innerCutoutLeft + innerCutoutWidth;
-      const cB = innerCutoutTop + innerCutoutHeight;
+      // 6. Hole-punch polygon (outer CW, inner CCW)
+      const cL = Math.round(innerCutoutLeft);
+      const cT = Math.round(innerCutoutTop);
+      const cR = Math.round(innerCutoutLeft + innerCutoutWidth);
+      const cB = Math.round(innerCutoutTop + innerCutoutHeight);
 
       const clipPath = `polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 0%, ${cL}px ${cT}px, ${cL}px ${cB}px, ${cR}px ${cB}px, ${cR}px ${cT}px, ${cL}px ${cT}px)`;
 
       return {
-        boxTop,
-        boxLeft,
-        boxWidth,
-        boxMinHeight,
+        cardTop,
+        cardLeft,
+        cardWidth,
+        cardHeight,
         innerCutoutLeft,
         innerCutoutTop,
         innerCutoutWidth,
@@ -1853,6 +1973,7 @@
         contentBayLeft,
         contentBayTop,
         contentBayWidth,
+        contentBayHeight,
         clipPath
       };
     }
@@ -1887,10 +2008,13 @@
       const cutout = calculateQuestionCutout(currentTargetQuestionEl);
       const layout = calculateEncompassingLayout(cutout);
 
-      studyBubbleContainer.style.top = `${layout.boxTop}px`;
-      studyBubbleContainer.style.left = `${layout.boxLeft}px`;
-      studyBubbleContainer.style.width = `${layout.boxWidth}px`;
-      studyBubbleContainer.style.minHeight = `${layout.boxMinHeight}px`;
+      const card = studyBubbleContainer.querySelector('#study-encompassing-card');
+      if (card) {
+        card.style.top = `${layout.cardTop}px`;
+        card.style.left = `${layout.cardLeft}px`;
+        card.style.width = `${layout.cardWidth}px`;
+        card.style.height = `${layout.cardHeight}px`;
+      }
 
       const glassBg = studyBubbleContainer.querySelector('#study-encompassing-glass-bg');
       if (glassBg) {
@@ -1910,8 +2034,7 @@
         contentBay.style.left = `${layout.contentBayLeft}px`;
         contentBay.style.top = `${layout.contentBayTop}px`;
         contentBay.style.width = `${layout.contentBayWidth}px`;
-        contentBay.style.minHeight = `${layout.innerCutoutHeight}px`;
-        contentBay.style.maxHeight = `${Math.max(layout.innerCutoutHeight, 520)}px`;
+        contentBay.style.maxHeight = `${layout.contentBayHeight}px`;
       }
     }
 
@@ -1930,98 +2053,99 @@
       }
 
       studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
-      studyBubbleContainer.style.top = `${layout.boxTop}px`;
-      studyBubbleContainer.style.left = `${layout.boxLeft}px`;
-      studyBubbleContainer.style.width = `${layout.boxWidth}px`;
-      studyBubbleContainer.style.minHeight = `${layout.boxMinHeight}px`;
 
       studyBubbleContainer.innerHTML = `
-        <!-- Liquid Glass Background with Central Hole-Punch Cutout Polygon -->
-        <div class="study-encompassing-glass-bg" id="study-encompassing-glass-bg" style="clip-path: ${layout.clipPath};"></div>
+        <!-- Single Encompassing Liquid Glass Card -->
+        <div class="study-encompassing-card" id="study-encompassing-card"
+             style="top: ${layout.cardTop}px; left: ${layout.cardLeft}px; width: ${layout.cardWidth}px; height: ${layout.cardHeight}px;">
 
-        <!-- Central Question Cutout Window Framing & Header Tag -->
-        <div class="study-cutout-frame" id="study-cutout-frame"
-             style="left: ${layout.innerCutoutLeft}px; top: ${layout.innerCutoutTop}px; width: ${layout.innerCutoutWidth}px; height: ${layout.innerCutoutHeight}px;">
-          <div class="study-cutout-tag">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <span>ACTIVE QUESTION</span>
-          </div>
-        </div>
+          <!-- Liquid Glass Background with Central Hole-Punch Cutout Polygon -->
+          <div class="study-encompassing-glass-bg" id="study-encompassing-glass-bg" style="clip-path: ${layout.clipPath};"></div>
 
-        <!-- Top-Right Close Button -->
-        <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-
-        <!-- Right-Hand Content Bay directly inside the encompassing liquid glass card -->
-        <div class="study-content-bay" id="study-content-bay"
-             style="left: ${layout.contentBayLeft}px; top: ${layout.contentBayTop}px; width: ${layout.contentBayWidth}px; min-height: ${layout.innerCutoutHeight}px; max-height: ${Math.max(layout.innerCutoutHeight, 520)}px;">
-
-          <!-- 1. ANSWER CARD -->
-          <div class="study-answer-card">
-            <span class="study-section-label">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Answer Summary
-            </span>
-            <div class="study-answer-text" id="study-answer-text"></div>
-          </div>
-
-          <!-- Divider -->
-          <div class="study-divider"></div>
-
-          <!-- 2. EXPLANATION BLOCK -->
-          <div class="study-explanation-card">
-            <span class="study-section-label">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+          <!-- Central Question Cutout Window Framing & Header Tag -->
+          <div class="study-cutout-frame" id="study-cutout-frame"
+               style="left: ${layout.innerCutoutLeft}px; top: ${layout.innerCutoutTop}px; width: ${layout.innerCutoutWidth}px; height: ${layout.innerCutoutHeight}px;">
+            <div class="study-cutout-tag">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                <circle cx="12" cy="12" r="3"></circle>
               </svg>
-              Explanation
-            </span>
-            <div class="study-explanation-text" id="study-explanation-text"></div>
+              <span>ACTIVE QUESTION</span>
+            </div>
           </div>
 
-          <!-- 3. FOLLOW-UP INPUT PILL -->
-          <div class="study-followup-box">
-            <div class="study-followup-bar">
-              <input type="text" class="study-prompt-input" id="study-prompt-input"
-                placeholder="Ask about explanation..."
-                autocomplete="off" autocorrect="off" spellcheck="false"
-                data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          <!-- Top-Right Close Button -->
+          <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+
+          <!-- Right-Hand Content Bay directly inside the encompassing liquid glass card -->
+          <div class="study-content-bay" id="study-content-bay"
+               style="left: ${layout.contentBayLeft}px; top: ${layout.contentBayTop}px; width: ${layout.contentBayWidth}px; max-height: ${layout.contentBayHeight}px;">
+
+            <!-- 1. ANSWER CARD -->
+            <div class="study-answer-card">
+              <span class="study-section-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
-              </button>
+                Answer Summary
+              </span>
+              <div class="study-answer-text" id="study-answer-text"></div>
             </div>
-          </div>
 
-          <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
-          <div class="study-diagram-box diagram-container" id="study-diagram-box">
-            <div class="study-diagram-header">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="9" y1="21" x2="9" y2="9"></line>
-              </svg>
-              <span>Visual Diagrams</span>
-            </div>
-            <div class="diagram-container" id="diagram-render-panel">
-              <pre class="study-diagram-content" id="study-diagram-content"></pre>
-            </div>
-          </div>
+            <!-- Divider -->
+            <div class="study-divider"></div>
 
-        </div><!-- /study-content-bay -->
+            <!-- 2. EXPLANATION BLOCK -->
+            <div class="study-explanation-card">
+              <span class="study-section-label">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="12"></line>
+                  <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+                Explanation
+              </span>
+              <div class="study-explanation-text" id="study-explanation-text"></div>
+            </div>
+
+            <!-- 3. FOLLOW-UP INPUT PILL -->
+            <div class="study-followup-box">
+              <div class="study-followup-bar">
+                <input type="text" class="study-prompt-input" id="study-prompt-input"
+                  placeholder="Ask about explanation..."
+                  autocomplete="off" autocorrect="off" spellcheck="false"
+                  data-lpignore="true" aria-autocomplete="none">
+                <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
+            <div class="study-diagram-box diagram-container" id="study-diagram-box">
+              <div class="study-diagram-header">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="3" y1="9" x2="21" y2="9"></line>
+                  <line x1="9" y1="21" x2="9" y2="9"></line>
+                </svg>
+                <span>Visual Diagrams</span>
+              </div>
+              <div class="diagram-container" id="diagram-render-panel">
+                <pre class="study-diagram-content" id="study-diagram-content"></pre>
+              </div>
+            </div>
+
+          </div><!-- /study-content-bay -->
+        </div><!-- /study-encompassing-card -->
       `;
 
       // Top-Right Close Button
