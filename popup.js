@@ -141,7 +141,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const glassSlider = document.getElementById('glass-refraction-slider');
     const promptToggle = document.getElementById('enable-prompt-input');
-    const studyToggle = document.getElementById('enable-study-mode');
     const ansColorHex = document.getElementById('answer-color-hex');
     const ansSizeSlider = document.getElementById('answer-font-size');
     const btnColorHex = document.getElementById('button-color-hex');
@@ -151,7 +150,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
     data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
-    data.studyMode = studyToggle ? studyToggle.checked : false;
     data.answer_text_color = ansColorHex ? ansColorHex.value.trim() : '#000000';
     data.answer_font_size = ansSizeSlider ? parseInt(ansSizeSlider.value, 10) : 14;
     data.button_bg_color = btnColorHex ? btnColorHex.value.trim() : '#FFFFFF';
@@ -285,8 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function loadStoredSettings() {
     const keysToFetch = [
       'ai_provider', 'active_provider',
-      'glass_refraction', 'enable_prompt_input', 'studyMode',
-      'answer_text_color', 'answer_font_size',
+      'glass_refraction', 'enable_prompt_input', 'answer_text_color', 'answer_font_size',
       'button_bg_color', 'button_size',
       'prompt_bg_color', 'prompt_width'
     ];
@@ -328,9 +325,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const promptToggle = document.getElementById('enable-prompt-input');
       if (promptToggle) promptToggle.checked = items.enable_prompt_input !== false;
-
-      const studyToggle = document.getElementById('enable-study-mode');
-      if (studyToggle) studyToggle.checked = items.studyMode === true;
 
       // Pure black default answer typography
       const ansColor = items.answer_text_color || '#000000';
@@ -445,11 +439,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const promptToggle = document.getElementById('enable-prompt-input');
   if (promptToggle) {
     promptToggle.addEventListener('change', () => autoSave());
-  }
-
-  const studyToggle = document.getElementById('enable-study-mode');
-  if (studyToggle) {
-    studyToggle.addEventListener('change', () => autoSave());
   }
 
   bindColorPair('answer-color-picker', 'answer-color-hex');

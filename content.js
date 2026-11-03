@@ -10,35 +10,23 @@
 
   // State
   let isUIVisible = true;
-  let isStudyMode = false;
   let isSolving = false;
   let currentAnswerText = '';
   let isModalOpen = false;
   let currentActiveProvider = 'gemini';
   let modalSaveToastTimer = null;
   let modalSaveDebounceTimer = null;
-  let studyBubbleContainer = null;
-  let studyLoadingPill = null;
-  let currentStudyLayoutData = null;
-  let studyThreadHistory = [];
-  let currentTargetQuestionEl = null;
-  if (typeof window !== 'undefined') {
-    window.currentTargetQuestionEl = null;
-  }
 
   // Immediate early read of persistent UI visibility state on page refresh/navigation
   // NOTE: isRuntimeValid() is defined later; inline the check here to avoid TDZ error
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id && chrome.storage && chrome.storage.local) {
     try {
-      chrome.storage.local.get(['is_ui_visible', 'ui_visible', 'studyMode'], (res) => {
+      chrome.storage.local.get(['is_ui_visible', 'ui_visible'], (res) => {
         if (!chrome.runtime.lastError && res) {
           if (res.is_ui_visible !== undefined) {
             isUIVisible = !!res.is_ui_visible;
           } else if (res.ui_visible !== undefined) {
             isUIVisible = !!res.ui_visible;
-          }
-          if (res.studyMode !== undefined) {
-            isStudyMode = !!res.studyMode;
           }
           if (uiWrapper) {
             uiWrapper.style.display = isUIVisible ? 'block' : 'none';
@@ -466,7 +454,7 @@
     if (!isRuntimeValid() || !chrome.storage || !chrome.storage.local) return;
     try {
       chrome.storage.local.get([
-        'enable_prompt_input', 'studyMode',
+        'enable_prompt_input',
         'is_ui_visible', 'ui_visible',
         'answer_text_color', 'answer_font_size',
         'button_bg_color', 'button_size',
@@ -482,13 +470,6 @@
           isUIVisible = !!data.is_ui_visible;
         } else if (data.ui_visible !== undefined) {
           isUIVisible = !!data.ui_visible;
-        }
-        if (data.studyMode !== undefined) {
-          isStudyMode = !!data.studyMode;
-        }
-        const modalStudyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
-        if (modalStudyToggle) {
-          modalStudyToggle.checked = isStudyMode;
         }
         if (uiWrapper) {
           uiWrapper.style.display = isUIVisible ? 'block' : 'none';
@@ -801,8 +782,6 @@
     settingsModalDialog.style.removeProperty('opacity');
     settingsModalDialog.style.removeProperty('visibility');
     settingsModalDialog.style.removeProperty('pointer-events');
-
-    // Guarantee settings modal always appears above the study bubble overlay
     settingsModalBackdrop.style.setProperty('z-index', '10005', 'important');
     settingsModalDialog.style.setProperty('z-index', '10005', 'important');
 
@@ -1042,7 +1021,6 @@
 
       const glassSlider = shadow.getElementById('inpage-glass-slider');
       const promptToggle = shadow.getElementById('inpage-enable-prompt');
-      const studyToggle = shadow.getElementById('inpage-enable-study-mode');
       const ansHex = shadow.getElementById('inpage-answer-color-hex');
       const ansSlider = shadow.getElementById('inpage-answer-font-size');
       const bHex = shadow.getElementById('inpage-button-color-hex');
@@ -1052,8 +1030,6 @@
 
       data.glass_refraction = glassSlider ? parseInt(glassSlider.value, 10) : 70;
       data.enable_prompt_input = promptToggle ? promptToggle.checked : true;
-      data.studyMode = studyToggle ? studyToggle.checked : false;
-      isStudyMode = data.studyMode;
       data.answer_text_color = ansHex ? ansHex.value.trim() : '#000000';
       data.answer_font_size = ansSlider ? parseInt(ansSlider.value, 10) : 14;
       data.button_bg_color = bHex ? bHex.value.trim() : '#FFFFFF';
@@ -1114,15 +1090,6 @@
 
         if (msg.action === 'UPDATE_SETTINGS' && msg.settings) {
           applyAppearanceSettings(msg.settings);
-          if (msg.settings.studyMode !== undefined) {
-            isStudyMode = !!msg.settings.studyMode;
-            const studyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
-            if (studyToggle) studyToggle.checked = isStudyMode;
-            if (!isStudyMode) {
-              unmountStudyBubble();
-              if (answerContainer) answerContainer.style.removeProperty('display');
-            }
-          }
           sendResponse({ success: true });
           return;
         }
@@ -1214,13 +1181,9 @@
       try {
         let activeEl = null;
 
-        if (typeof currentTargetQuestionEl !== 'undefined' && currentTargetQuestionEl) {
-          activeEl = currentTargetQuestionEl;
-        } else if (typeof window !== 'undefined' && window.currentTargetQuestionEl) {
-          activeEl = window.currentTargetQuestionEl;
-        } else if (typeof getQuestionTargetElement === 'function') {
-          try { activeEl = getQuestionTargetElement(); } catch (_) { activeEl = null; }
-        }
+        activeEl = document.querySelector(
+          '.QuestionText, .question-wrapper, .quiz-question, [id*="Question"], [class*="question"], .divQuestion'
+        ) || document.body;
 
         if (!activeEl) {
           activeEl = document.querySelector(
@@ -1481,20 +1444,6 @@
           </div>
         </div>
 
-        <!-- Study Mode Toggle -->
-        <div class="modal-appearance-card">
-          <div class="modal-control-row">
-            <div>
-              <span class="modal-control-title">Study Mode</span>
-              <p class="modal-control-sub">Interactive liquid glass bubble, simple explanation, diagram area &amp; follow-up prompt</p>
-            </div>
-            <label class="modal-switch">
-              <input type="checkbox" id="inpage-enable-study-mode">
-              <span class="modal-switch-slider"></span>
-            </label>
-          </div>
-        </div>
-
         <!-- Answer Typography (Pure black default, zero shadow) -->
         <div class="modal-appearance-card">
           <span class="modal-control-title">Answer Typography</span>
@@ -1633,12 +1582,6 @@
       promptToggle.addEventListener('change', () => autoSaveModal());
     }
 
-    // Study Mode Toggle
-    const studyToggle = settingsModalDialog.querySelector('#inpage-enable-study-mode');
-    if (studyToggle) {
-      studyToggle.addEventListener('change', () => autoSaveModal());
-    }
-
     // Helper: Bind Color Picker and Hex Input Pair
     function bindColorSync(pickerId, hexId) {
       const p = shadow.getElementById(pickerId);
@@ -1744,924 +1687,10 @@
       e.preventDefault();
       isUIVisible = !isUIVisible;
       uiWrapper.style.display = isUIVisible ? 'block' : 'none';
-      if (studyBubbleContainer) {
-        studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
-      }
       try {
         chrome.storage.local.set({ is_ui_visible: isUIVisible, ui_visible: isUIVisible });
       } catch (_) {}
     });
-
-    // ── Study Mode Helper & UI Bubble Subsystem ──────────────────────────────
-    currentTargetQuestionEl = null;
-
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
-
-    function getElementTrueBoundingRect(el) {
-      if (!el) return null;
-      const rect = el.getBoundingClientRect();
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-
-      let top    = rect.top;
-      let left   = rect.left;
-      let right  = rect.right;
-      let bottom = rect.bottom;
-
-      // Walk all visible descendants and expand the bounding union to cover them.
-      // This is critical for SABIS: a question div may have a narrow container
-      // but a wide table inside — we must capture the full rendered extent.
-      const descendants = el.querySelectorAll(
-        'table, thead, tbody, tr, td, th, img, svg, canvas, ' +
-        'input, select, textarea, button, label, p, span, div, .subQuestion'
-      );
-
-      descendants.forEach(d => {
-        // Skip zero-size and hidden nodes fast
-        if (d.offsetWidth === 0 && d.offsetHeight === 0) return;
-        const s = window.getComputedStyle(d);
-        if (s.display === 'none' || s.visibility === 'hidden' || parseFloat(s.opacity) === 0) return;
-
-        const dR = d.getBoundingClientRect();
-        // Ignore degenerate rects and anything spanning the full viewport
-        // (those are page wrappers, not question content)
-        if (dR.width <= 0 || dR.height <= 0) return;
-        if (dR.width >= vW * 0.95 && dR.height >= vH * 0.95) return;
-
-        if (dR.left   < left)   left   = dR.left;
-        if (dR.top    < top)    top    = dR.top;
-        if (dR.right  > right)  right  = dR.right;
-        if (dR.bottom > bottom) bottom = dR.bottom;
-      });
-
-      // Clamp result to viewport bounds — never return negative coords or overflow
-      top    = Math.max(0, top);
-      left   = Math.max(0, left);
-      right  = Math.min(vW, right);
-      bottom = Math.min(vH, bottom);
-
-      const width  = Math.max(0, right - left);
-      const height = Math.max(0, bottom - top);
-
-      // Return null for degenerate results so caller triggers fallback
-      if (width < 10 || height < 10) return null;
-
-      return { top, left, right, bottom, width, height };
-    }
-
-    /**
-     * ROBUST SABIS QUESTION DOM DETECTOR
-     * Multi-strategy cascade — exhausts every known SABIS DOM pattern
-     * before falling back to heuristic text/input detection.
-     * Returns the tightest single question card element, never the outer page wrapper.
-     */
-    function getQuestionTargetElement() {
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-
-      // ── helpers ──────────────────────────────────────────────────────────────
-      const isOurs = (el) =>
-        el && (el.id === 'academic-solver-root' || !!el.closest('#academic-solver-root'));
-
-      const isPageWrapper = (el) => {
-        if (!el) return true;
-        const tag = el.tagName.toUpperCase();
-        if (['HTML','BODY','MAIN','FORM','ARTICLE','SECTION','NAV','HEADER','FOOTER'].includes(tag)) return true;
-        if (el.id === 'divQuestions') return true; // SABIS outer quiz list
-        const id  = (el.id || '').toLowerCase();
-        const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
-        if (id.includes('divquestions') || id.includes('quizcontainer')) return true;
-        if (cls.includes('quiz-container') || cls.includes('page-wrapper') || cls.includes('content-area')) return true;
-        return false;
-      };
-
-      // Returns true if the rect is visible and plausibly question-sized
-      const isVisibleCard = (r) =>
-        r.width > 60 && r.height > 30 &&
-        r.bottom > 20 && r.top < vH - 20 &&
-        r.right  > 20 && r.left < vW - 20 &&
-        r.width  < vW * 0.92 &&   // not full-screen-wide
-        r.height < vH * 0.92;     // not full-screen-tall
-
-      const isRendered = (el) => {
-        const s = window.getComputedStyle(el);
-        return s.display !== 'none' && s.visibility !== 'hidden' && s.opacity !== '0';
-      };
-
-      // Does el contain multiple sibling question cards? → it's a wrapper, not a card
-      const isWrapper = (el) => {
-        const innerCards = el.querySelectorAll(
-          '.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .quiz-question-box, .question-container'
-        );
-        return innerCards.length > 1;
-      };
-
-      // ── Strategy 1 : SABIS-specific ID/class selectors (highest confidence) ──
-      const sabisSelectors = [
-        // SABIS student portal specific
-        '.divQuestion:not(#divQuestions)',
-        '[id^="divQuestion"]:not(#divQuestions)',
-        // Common quiz wrappers
-        '.QuestionText',
-        '.question-wrapper',
-        '.quiz-question',
-        '.quiz-question-box',
-        '.question-container',
-        '.question-card',
-        '.question-item',
-        '.exam-question',
-        '.problem-container',
-        // Attribute-pattern fallbacks
-        '[id*="Question"]:not(#divQuestions)',
-        '[class*="question"]:not(body):not(html)',
-      ];
-
-      for (const sel of sabisSelectors) {
-        let nodes;
-        try { nodes = document.querySelectorAll(sel); } catch (_) { continue; }
-        for (const el of nodes) {
-          if (isOurs(el) || isPageWrapper(el) || isWrapper(el)) continue;
-          if (!isRendered(el)) continue;
-          const r = el.getBoundingClientRect();
-          if (isVisibleCard(r)) return el;
-        }
-      }
-
-      // ── Strategy 2 : Walk up from visible input/select/radio controls ──────
-      // SABIS fill-in-the-blank & MCQ both have inputs inside the question card
-      const interactiveEls = Array.from(document.querySelectorAll(
-        'input[type="text"], input[type="number"], input:not([type]), select, textarea, input[type="radio"], input[type="checkbox"], .quiz-option'
-      )).filter(inp => {
-        if (isOurs(inp)) return false;
-        const r = inp.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 && r.bottom > 20 && r.top < vH - 20;
-      });
-
-      const inputAncestorSelectors = [
-        '.divQuestion', '[id^="divQuestion"]:not(#divQuestions)',
-        '.QuestionText', '.question-wrapper', '.question-container',
-        '.quiz-question-box', '.question-card', '.question',
-        'td', 'div[style*="width"]', '.card',
-      ];
-
-      for (const inp of interactiveEls) {
-        for (const anc of inputAncestorSelectors) {
-          const card = inp.closest(anc);
-          if (!card || isOurs(card) || isPageWrapper(card) || isWrapper(card)) continue;
-          if (!isRendered(card)) continue;
-          const r = card.getBoundingClientRect();
-          if (isVisibleCard(r)) return card;
-        }
-      }
-
-      // ── Strategy 3 : Find visible table (frequency tables, data sets) ────────
-      // Then walk up to the containing question card
-      const tables = Array.from(document.querySelectorAll('table')).filter(t => {
-        if (isOurs(t)) return false;
-        const r = t.getBoundingClientRect();
-        return r.width > 50 && r.height > 20 && r.bottom > 20 && r.top < vH - 20;
-      });
-
-      for (const tbl of tables) {
-        const card = tbl.closest(
-          '.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .question-wrapper, .question-container, .quiz-question-box, .question-card, .question'
-        );
-        if (card && !isOurs(card) && !isPageWrapper(card) && !isWrapper(card) && isRendered(card)) {
-          const r = card.getBoundingClientRect();
-          if (isVisibleCard(r)) return card;
-        }
-        // If no named ancestor, use the table's parent if it's a plausible card
-        const tblParent = tbl.parentElement;
-        if (tblParent && !isOurs(tblParent) && !isPageWrapper(tblParent) && isRendered(tblParent)) {
-          const r = tblParent.getBoundingClientRect();
-          if (isVisibleCard(r) && !isWrapper(tblParent)) return tblParent;
-        }
-      }
-
-      // ── Strategy 4 : Text-content heuristic ─────────────────────────────────
-      // Find the smallest visible div/p that contains typical question phrasing
-      const questionPhrases = [
-        'fill in', 'what is', 'which of', 'select all', 'calculate',
-        'find the', 'how many', 'consider', 'given that', 'solve',
-        'determine', 'evaluate', 'simplify', 'complete', 'match'
-      ];
-
-      const textNodes = Array.from(document.querySelectorAll('div, p, td, li, span')).filter(node => {
-        if (isOurs(node) || isPageWrapper(node)) return false;
-        if (!isRendered(node)) return false;
-        const r = node.getBoundingClientRect();
-        if (!isVisibleCard(r)) return false;
-        const txt = (node.innerText || node.textContent || '').toLowerCase().trim();
-        if (txt.length < 8) return false;
-        return questionPhrases.some(ph => txt.includes(ph));
-      });
-
-      // Sort by area (smallest first) to get tightest question match
-      textNodes.sort((a, b) => {
-        const rA = a.getBoundingClientRect();
-        const rB = b.getBoundingClientRect();
-        return (rA.width * rA.height) - (rB.width * rB.height);
-      });
-
-      for (const node of textNodes) {
-        // Walk up to find a sensible card boundary
-        const cardCandidates = [
-          node.closest('.divQuestion, [id^="divQuestion"]:not(#divQuestions), .QuestionText, .question-wrapper, .question-container, .question-card'),
-          node.parentElement,
-          node.closest('td'),
-          node.closest('div[style]'),
-        ].filter(Boolean);
-
-        for (const candidate of cardCandidates) {
-          if (isOurs(candidate) || isPageWrapper(candidate) || isWrapper(candidate)) continue;
-          if (!isRendered(candidate)) continue;
-          const r = candidate.getBoundingClientRect();
-          if (isVisibleCard(r)) return candidate;
-        }
-      }
-
-      // ── Strategy 5 : Largest visible block of interactive content ───────────
-      // Last resort: find the smallest visible div that contains ≥1 input and
-      // ≥10 chars of question text — approximate "question card" on any platform
-      const allDivs = Array.from(document.querySelectorAll('div, td')).filter(el => {
-        if (isOurs(el) || isPageWrapper(el) || isWrapper(el)) return false;
-        if (!isRendered(el)) return false;
-        const r = el.getBoundingClientRect();
-        return isVisibleCard(r) && el.querySelectorAll('input, select, textarea').length >= 1;
-      });
-
-      // Sort smallest area first to prefer tight question cards over big containers
-      allDivs.sort((a, b) => {
-        const rA = a.getBoundingClientRect();
-        const rB = b.getBoundingClientRect();
-        return (rA.width * rA.height) - (rB.width * rB.height);
-      });
-
-      for (const el of allDivs) {
-        const txt = (el.innerText || '').trim();
-        if (txt.length >= 10) return el;
-      }
-
-      return null; // Genuinely no question found — let cutout use fallback rect
-    }
-
-    function measureFallbackRectFromDOM() {
-      // Build a real bounding rect from whatever IS visible on screen
-      // rather than using hardcoded pixel percentages.
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-
-      // Collect all visible interactive + text nodes on screen
-      const candidates = Array.from(document.querySelectorAll(
-        'input, select, textarea, table, p, li, td, label, img, svg'
-      )).filter(el => {
-        if (el.closest('#academic-solver-root')) return false;
-        const r = el.getBoundingClientRect();
-        return r.width > 0 && r.height > 0 &&
-               r.top  < vH - 10 && r.bottom > 10 &&
-               r.left < vW - 10 && r.right  > 10;
-      });
-
-      if (candidates.length === 0) return null;
-
-      // Union of all candidate rects — the tightest real bounding box on screen
-      let top    = Infinity,  left   = Infinity;
-      let right  = -Infinity, bottom = -Infinity;
-
-      candidates.forEach(el => {
-        const r = el.getBoundingClientRect();
-        if (r.top    < top)    top    = r.top;
-        if (r.left   < left)   left   = r.left;
-        if (r.right  > right)  right  = r.right;
-        if (r.bottom > bottom) bottom = r.bottom;
-      });
-
-      // Clamp to viewport — never let the fallback overflow
-      top    = Math.max(8,  top);
-      left   = Math.max(8,  left);
-      right  = Math.min(vW - 8, right);
-      bottom = Math.min(vH - 8, bottom);
-
-      // Sanity-check minimum size
-      if (right - left < 60 || bottom - top < 30) return null;
-
-      return { top, left, right, bottom, width: right - left, height: bottom - top };
-    }
-
-    function calculateQuestionCutout(targetElement) {
-      // Fresh element detection on every call — never rely on a stale ref
-      const targetEl = targetElement || getQuestionTargetElement();
-      const vWidth   = window.innerWidth  || document.documentElement.clientWidth;
-      const vHeight  = window.innerHeight || document.documentElement.clientHeight;
-
-      let rect = null;
-      if (targetEl) {
-        // Full descendant union bounding rect — includes tables, inputs, SVGs
-        rect = getElementTrueBoundingRect(targetEl);
-      }
-
-      // If the detected element produced a degenerate rect, try DOM measurement
-      if (!rect || rect.width < 50 || rect.height < 30) {
-        rect = measureFallbackRectFromDOM();
-      }
-
-      // Absolute last resort: reasonable proportional estimate
-      // (only reached when the page has zero visible content — e.g. during load)
-      if (!rect || rect.width < 50 || rect.height < 30) {
-        rect = {
-          top:    Math.round(vHeight * 0.10),
-          left:   Math.round(vWidth  * 0.05),
-          width:  Math.round(vWidth  * 0.58),
-          height: Math.round(vHeight * 0.70)
-        };
-      }
-
-      // Adaptive padding based on question height relative to viewport
-      //   tiny  (<15% vH) → 20px  dropdown / short answer
-      //   large (>55% vH) → 12px  data table / multi-row
-      //   else            → 16px  normal question
-      let padding = 16;
-      const heightRatio = rect.height / vHeight;
-      if      (heightRatio < 0.15) padding = 20;
-      else if (heightRatio > 0.55) padding = 12;
-
-      // Container is position:fixed — getBoundingClientRect() is already in viewport coords
-      // NEVER add scrollX/scrollY here
-      const cutoutTop    = Math.max(8,   Math.round(rect.top  - padding));
-      const cutoutLeft   = Math.max(8,   Math.round(rect.left - padding));
-      const cutoutWidth  = Math.max(220, Math.round(rect.width  + padding * 2));
-      const cutoutHeight = Math.max(60,  Math.round(rect.height + padding * 2));
-
-      return { element: targetEl, rect, padding, cutoutTop, cutoutLeft, cutoutWidth, cutoutHeight };
-    }
-
-    function getQuestionBoundingRect(targetEl) {
-      const cutout = calculateQuestionCutout(targetEl);
-      return {
-        left: cutout.cutoutLeft,
-        top: cutout.cutoutTop,
-        right: cutout.cutoutLeft + cutout.cutoutWidth,
-        bottom: cutout.cutoutTop + cutout.cutoutHeight,
-        width: cutout.cutoutWidth,
-        height: cutout.cutoutHeight,
-        element: cutout.element
-      };
-    }
-
-    function mountStudyLoadingPill(statusText = 'Analyzing question layout...') {
-      if (!shadow) return;
-      unmountStudyLoadingPill();
-      unmountStudyBubble();
-
-      studyLoadingPill = document.createElement('div');
-      studyLoadingPill.id = 'sabis-study-loading-pill';
-      studyLoadingPill.innerHTML = `
-        <div class="study-loading-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
-            <path d="M2 12h20"></path>
-          </svg>
-        </div>
-        <span class="study-loading-text">${escapeHtml(statusText)}</span>
-      `;
-      shadow.appendChild(studyLoadingPill);
-    }
-
-    function updateStudyLoadingPillText(text) {
-      if (!studyLoadingPill) return;
-      const txtEl = studyLoadingPill.querySelector('.study-loading-text');
-      if (txtEl) txtEl.textContent = text;
-    }
-
-    function unmountStudyLoadingPill() {
-      if (studyLoadingPill && studyLoadingPill.parentNode) {
-        studyLoadingPill.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
-        studyLoadingPill.style.opacity = '0';
-        studyLoadingPill.style.transform = 'translate(-50%, -54%) scale(0.95)';
-        const oldPill = studyLoadingPill;
-        setTimeout(() => {
-          try {
-            if (oldPill && oldPill.parentNode) {
-              oldPill.parentNode.removeChild(oldPill);
-            }
-          } catch (_) {}
-        }, 200);
-      }
-      studyLoadingPill = null;
-    }
-
-    // ── Multi-Card Liquid Glass Layout Engine ──────────────────────────────────
-    function calculateMultiCardLayout(layoutData = null) {
-      const vW = window.innerWidth || document.documentElement.clientWidth;
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-
-      let qTop, qLeft, qWidth, qHeight;
-      let recommendedSidebar = 'right';
-
-      if (layoutData && typeof layoutData === 'object' && layoutData.box_width > 0 && layoutData.box_height > 0) {
-        if (layoutData.box_width <= 100 && layoutData.box_height <= 100) {
-          // Normalized percentages (0-100)
-          qTop = (layoutData.box_top / 100) * vH;
-          qLeft = (layoutData.box_left / 100) * vW;
-          qWidth = (layoutData.box_width / 100) * vW;
-          qHeight = (layoutData.box_height / 100) * vH;
-        } else {
-          // Pixel coordinates
-          qTop = layoutData.box_top;
-          qLeft = layoutData.box_left;
-          qWidth = layoutData.box_width;
-          qHeight = layoutData.box_height;
-        }
-        if (layoutData.recommended_sidebar === 'bottom') {
-          recommendedSidebar = 'bottom';
-        }
-      } else {
-        // Fallback: robust DOM-based measurement
-        const targetEl = currentTargetQuestionEl || getQuestionTargetElement();
-        const cutout = calculateQuestionCutout(targetEl);
-        qTop = cutout.cutoutTop;
-        qLeft = cutout.cutoutLeft;
-        qWidth = cutout.cutoutWidth;
-        qHeight = cutout.cutoutHeight;
-      }
-
-      // Card A: The Question Glass Frame
-      const pad = 12;
-      const frameTop = Math.max(12, Math.round(qTop - pad));
-      const frameLeft = Math.max(12, Math.round(qLeft - pad));
-      const frameWidth = Math.max(220, Math.min(vW - frameLeft - 16, Math.round(qWidth + pad * 2)));
-      const frameHeight = Math.max(80, Math.min(vH - frameTop - 16, Math.round(qHeight + pad * 2)));
-
-      // Card B: The Right-Sidebar Content Bay
-      const DEFAULT_BAY_WIDTH = 380;
-      const MIN_BAY_WIDTH = 280;
-
-      let sidebarLeft, sidebarTop, sidebarWidth, sidebarMaxHeight;
-      const spaceOnRight = vW - (frameLeft + frameWidth + 24);
-
-      if (recommendedSidebar === 'right' && spaceOnRight >= MIN_BAY_WIDTH) {
-        sidebarLeft = frameLeft + frameWidth + 20;
-        sidebarTop = frameTop;
-        sidebarWidth = Math.min(DEFAULT_BAY_WIDTH, spaceOnRight - 16);
-        sidebarMaxHeight = Math.max(380, vH - sidebarTop - 24);
-      } else {
-        // Fallback: bottom placement or right clamping
-        if (spaceOnRight >= MIN_BAY_WIDTH) {
-          sidebarLeft = frameLeft + frameWidth + 20;
-          sidebarTop = frameTop;
-          sidebarWidth = Math.min(DEFAULT_BAY_WIDTH, spaceOnRight - 16);
-          sidebarMaxHeight = Math.max(380, vH - sidebarTop - 24);
-        } else {
-          sidebarLeft = Math.max(12, frameLeft);
-          sidebarTop = Math.min(vH - 320, frameTop + frameHeight + 16);
-          sidebarWidth = Math.min(vW - sidebarLeft - 24, Math.max(frameWidth, DEFAULT_BAY_WIDTH));
-          sidebarMaxHeight = Math.min(420, vH - sidebarTop - 16);
-        }
-      }
-
-      return {
-        frameTop,
-        frameLeft,
-        frameWidth,
-        frameHeight,
-        sidebarLeft,
-        sidebarTop,
-        sidebarWidth,
-        sidebarMaxHeight
-      };
-    }
-
-    function extractQuestionSnippet() {
-      // Use the same robust detector so snippet always matches the framed question
-      const qEl = currentTargetQuestionEl || getQuestionTargetElement();
-      if (qEl) {
-        const text = (qEl.innerText || qEl.textContent || '').trim();
-        if (text.length > 10) {
-          return text.length > 300 ? text.slice(0, 297) + '...' : text;
-        }
-      }
-
-      // Secondary: scan using the same SABIS-aware selectors
-      const sabisSelectors = [
-        '.divQuestion', '[id^="divQuestion"]:not(#divQuestions)',
-        '.QuestionText', '.question-wrapper', '.quiz-question',
-        '.question-container', '.question-card', '.question-item'
-      ];
-      const vH = window.innerHeight || document.documentElement.clientHeight;
-      const vW = window.innerWidth  || document.documentElement.clientWidth;
-
-      for (const sel of sabisSelectors) {
-        let nodes;
-        try { nodes = document.querySelectorAll(sel); } catch (_) { continue; }
-        for (const el of nodes) {
-          if (el.closest('#academic-solver-root')) continue;
-          const r = el.getBoundingClientRect();
-          if (r.width > 60 && r.height > 30 && r.bottom > 10 && r.top < vH - 10) {
-            const text = (el.innerText || '').trim();
-            if (text.length > 10) {
-              return text.length > 300 ? text.slice(0, 297) + '...' : text;
-            }
-          }
-        }
-      }
-
-      // Tertiary: user's typed prompt
-      const rawPrompt = promptInput ? promptInput.value.trim() : '';
-      if (rawPrompt) return rawPrompt;
-
-      const title = (document.title || '').trim();
-      return title ? `Question on: ${title}` : 'Captured Academic Question';
-    }
-
-    function updateCutoutPosition() {
-      if (!studyBubbleContainer) return;
-
-      // Re-detect active question element dynamically on every update — handles SABIS question navigation
-      const liveEl = currentTargetQuestionEl && document.contains(currentTargetQuestionEl)
-        ? currentTargetQuestionEl
-        : getQuestionTargetElement();
-      if (liveEl && liveEl !== currentTargetQuestionEl) {
-        currentTargetQuestionEl = liveEl;
-        if (typeof window !== 'undefined') window.currentTargetQuestionEl = liveEl;
-      }
-
-      const layout = calculateMultiCardLayout(currentStudyLayoutData);
-
-      const frameEl = studyBubbleContainer.querySelector('#study-question-frame');
-      if (frameEl) {
-        frameEl.style.top = `${layout.frameTop}px`;
-        frameEl.style.left = `${layout.frameLeft}px`;
-        frameEl.style.width = `${layout.frameWidth}px`;
-        frameEl.style.height = `${layout.frameHeight}px`;
-      }
-
-      const sidebarEl = studyBubbleContainer.querySelector('#study-sidebar-bay');
-      if (sidebarEl) {
-        sidebarEl.style.top = `${layout.sidebarTop}px`;
-        sidebarEl.style.left = `${layout.sidebarLeft}px`;
-        sidebarEl.style.width = `${layout.sidebarWidth}px`;
-        sidebarEl.style.maxHeight = `${layout.sidebarMaxHeight}px`;
-      }
-    }
-
-    function mountStudyBubble(questionSnippet, qRect, layoutData = null) {
-      if (!shadow) return;
-      unmountStudyLoadingPill();
-
-      currentStudyLayoutData = layoutData || null;
-      currentTargetQuestionEl = (qRect && qRect.element) ? qRect.element : getQuestionTargetElement();
-      if (typeof window !== 'undefined') window.currentTargetQuestionEl = currentTargetQuestionEl;
-
-      const layout = calculateMultiCardLayout(currentStudyLayoutData);
-
-      if (!studyBubbleContainer) {
-        studyBubbleContainer = document.createElement('div');
-        studyBubbleContainer.id = 'sabis-study-bubble-container';
-        studyBubbleContainer.className = 'sabis-study-bubble';
-        shadow.appendChild(studyBubbleContainer);
-      }
-
-      studyBubbleContainer.style.display = isUIVisible ? 'block' : 'none';
-
-      studyBubbleContainer.innerHTML = `
-        <!-- CARD A: THE QUESTION GLASS FRAME -->
-        <div class="study-question-frame" id="study-question-frame"
-             style="top: ${layout.frameTop}px; left: ${layout.frameLeft}px; width: ${layout.frameWidth}px; height: ${layout.frameHeight}px;">
-          <div class="study-question-tag">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-            <span>ACTIVE QUESTION</span>
-          </div>
-        </div>
-
-        <!-- CARD B: THE RIGHT-SIDEBAR CONTENT BAY -->
-        <div class="study-sidebar-bay" id="study-sidebar-bay"
-             style="top: ${layout.sidebarTop}px; left: ${layout.sidebarLeft}px; width: ${layout.sidebarWidth}px; max-height: ${layout.sidebarMaxHeight}px;">
-          
-          <div class="study-sidebar-header">
-            <div class="study-sidebar-title">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>Study Mode</span>
-            </div>
-            <button type="button" class="study-bubble-close-btn" title="Close Study Mode">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-
-          <!-- 1. ANSWER CARD -->
-          <div class="study-answer-card">
-            <span class="study-section-label">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              Answer Summary
-            </span>
-            <div class="study-answer-text" id="study-answer-text"></div>
-          </div>
-
-          <!-- Divider -->
-          <div class="study-divider"></div>
-
-          <!-- 2. EXPLANATION BLOCK -->
-          <div class="study-explanation-card">
-            <span class="study-section-label">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-              </svg>
-              Explanation
-            </span>
-            <div class="study-explanation-text" id="study-explanation-text"></div>
-          </div>
-
-          <!-- 3. FOLLOW-UP INPUT PILL -->
-          <div class="study-followup-box">
-            <div class="study-followup-bar">
-              <input type="text" class="study-prompt-input" id="study-prompt-input"
-                placeholder="Ask about explanation..."
-                autocomplete="off" autocorrect="off" spellcheck="false"
-                data-lpignore="true" aria-autocomplete="none">
-              <button type="button" class="study-send-btn" id="study-send-btn" title="Send">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13"></line>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <!-- 4. MULTIMEDIA DIAGRAM / VISUAL BREAKDOWN PANEL -->
-          <div class="study-diagram-box diagram-container" id="study-diagram-box">
-            <div class="study-diagram-header">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="9" y1="21" x2="9" y2="9"></line>
-              </svg>
-              <span>Visual Diagrams</span>
-            </div>
-            <div class="diagram-container" id="diagram-render-panel">
-              <pre class="study-diagram-content" id="study-diagram-content"></pre>
-            </div>
-          </div>
-
-        </div><!-- /study-sidebar-bay -->
-      `;
-
-      // Top-Right Close Button
-      const closeBtn = studyBubbleContainer.querySelector('.study-bubble-close-btn');
-      if (closeBtn) {
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          unmountStudyBubble();
-        });
-      }
-
-      // Interactive Follow-Up Input Bar
-      const followInput = studyBubbleContainer.querySelector('#study-prompt-input');
-      const sendBtn = studyBubbleContainer.querySelector('#study-send-btn');
-
-      const handleSendFollowUp = () => {
-        const query = followInput ? followInput.value.trim() : '';
-        if (!query) return;
-        executeStudyFollowUp(query);
-      };
-
-      if (followInput) {
-        followInput.addEventListener('keydown', (e) => {
-          e.stopPropagation();
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            handleSendFollowUp();
-          }
-        });
-        followInput.addEventListener('keyup', (e) => e.stopPropagation());
-        followInput.addEventListener('keypress', (e) => e.stopPropagation());
-      }
-
-      if (sendBtn) {
-        sendBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          handleSendFollowUp();
-        });
-      }
-
-      window.addEventListener('scroll', updateCutoutPosition, { passive: true });
-      window.addEventListener('resize', updateCutoutPosition, { passive: true });
-
-      // MutationObserver: detect SABIS question navigation / DOM changes and re-fit the cutout
-      if (typeof MutationObserver !== 'undefined') {
-        const quizRoot = document.getElementById('divQuestions') || document.body;
-        const _studyMutationObserver = new MutationObserver(() => {
-          // Debounce to avoid thrashing on rapid DOM changes
-          if (_studyMutationObserver._rafId) cancelAnimationFrame(_studyMutationObserver._rafId);
-          _studyMutationObserver._rafId = requestAnimationFrame(() => {
-            if (studyBubbleContainer) updateCutoutPosition();
-          });
-        });
-        _studyMutationObserver.observe(quizRoot, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ['class', 'style', 'hidden']
-        });
-        // Store reference on container so unmount can disconnect it
-        studyBubbleContainer._mutationObserver = _studyMutationObserver;
-      }
-
-      if (currentStudyLayoutData && Array.isArray(currentStudyLayoutData.question_polygon_normalized) && currentStudyLayoutData.question_polygon_normalized.length > 0) {
-        applyDynamicPolygonCutout(currentStudyLayoutData.question_polygon_normalized);
-      }
-    }
-
-    function renderStudyThinkingState(questionSnippet = '') {
-      if (!studyBubbleContainer) return;
-      const aText = studyBubbleContainer.querySelector('#study-answer-text');
-      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
-      const dBox = studyBubbleContainer.querySelector('#study-diagram-box');
-
-      if (aText) {
-        aText.innerHTML = `<div class="study-skeleton-line" style="width: 55%; height: 16px;"></div>`;
-      }
-
-      if (eText) {
-        eText.innerHTML = `
-          <div class="study-thinking-badge">Thinking deeply behind the scenes...</div>
-          <div class="study-skeleton-line" style="width: 90%;"></div>
-          <div class="study-skeleton-line" style="width: 82%;"></div>
-        `;
-      }
-
-      if (dBox) {
-        dBox.classList.remove('is-expanded');
-        dBox.style.setProperty('display', 'none', 'important');
-        dBox.style.opacity = '0';
-        dBox.style.maxHeight = '0';
-      }
-    }
-
-    function renderStudySolution(data, questionSnippet = '') {
-      if (!studyBubbleContainer) return;
-      const aText    = studyBubbleContainer.querySelector('#study-answer-text');
-      const eText    = studyBubbleContainer.querySelector('#study-explanation-text');
-      const dBox     = studyBubbleContainer.querySelector('#study-diagram-box');
-      const dPanel   = studyBubbleContainer.querySelector('#diagram-render-panel');
-      const dContent = studyBubbleContainer.querySelector('#study-diagram-content');
-
-      if (aText) {
-        aText.innerHTML = `<strong>${escapeHtml(data.answer || 'Completed')}</strong>`;
-      }
-
-      if (eText) {
-        eText.textContent = data.explanation || 'Solution calculated directly from screenshot context.';
-      }
-
-      if (dBox && dPanel) {
-        const diagram = (data.diagram && typeof data.diagram === 'string') ? data.diagram.trim() : '';
-        if (diagram) {
-          dBox.classList.add('is-expanded');
-          dBox.style.setProperty('display', 'block', 'important');
-          dBox.style.opacity = '1';
-          dBox.style.maxHeight = '420px';
-
-          // Detect payload type: base64 image, URL, HTML <img>, or markdown image syntax
-          const isBase64Image = /^data:image\//i.test(diagram);
-          const isUrlImage    = /^https?:\/\/.+\.(png|jpg|jpeg|gif|svg|webp)/i.test(diagram);
-          const isHtmlImg     = /<img\s/i.test(diagram);
-          const isMdImage     = /^!\[.*?\]\((.+?)\)/.test(diagram);
-
-          if (isBase64Image || isUrlImage) {
-            dPanel.innerHTML = `<img src="${escapeHtml(diagram)}" alt="Visual Diagram" class="diagram-fluid-img" />`;
-            if (dContent) dContent.textContent = '';
-          } else if (isHtmlImg) {
-            // Safely set only <img> tags by stripping anything other than img
-            const tmpDiv = document.createElement('div');
-            tmpDiv.innerHTML = diagram;
-            const imgEl = tmpDiv.querySelector('img');
-            if (imgEl) {
-              imgEl.className = 'diagram-fluid-img';
-              imgEl.alt = imgEl.alt || 'Visual Diagram';
-              dPanel.innerHTML = '';
-              dPanel.appendChild(imgEl);
-              if (dContent) dContent.textContent = '';
-            } else {
-              if (dContent) dContent.textContent = diagram;
-            }
-          } else if (isMdImage) {
-            const mdMatch = diagram.match(/^!\[.*?\]\((.+?)\)/);
-            const imgSrc = mdMatch ? mdMatch[1] : '';
-            if (imgSrc) {
-              dPanel.innerHTML = `<img src="${escapeHtml(imgSrc)}" alt="Visual Diagram" class="diagram-fluid-img" />`;
-              if (dContent) dContent.textContent = '';
-            } else {
-              if (dContent) dContent.textContent = diagram;
-            }
-          } else {
-            // Plain text / ASCII / Markdown table — render in <pre>
-            if (dContent) dContent.textContent = diagram;
-            dPanel.innerHTML = '';
-            dPanel.appendChild(dContent);
-          }
-        } else {
-          dBox.classList.remove('is-expanded');
-          dBox.style.setProperty('display', 'none', 'important');
-          dBox.style.opacity = '0';
-          dBox.style.maxHeight = '0';
-        }
-      }
-    }
-
-    function renderStudyError(errorMsg) {
-      if (!studyBubbleContainer) return;
-      const aText = studyBubbleContainer.querySelector('#study-answer-text');
-      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
-      if (aText) aText.innerHTML = `<span style="color: #ff3b30; font-weight: 700;">Unable to solve</span>`;
-      if (eText) eText.textContent = errorMsg || 'An error occurred during verification.';
-    }
-
-    function executeStudyFollowUp(query) {
-      if (!studyBubbleContainer || !query) return;
-      const followInput = studyBubbleContainer.querySelector('#study-prompt-input');
-      const eText = studyBubbleContainer.querySelector('#study-explanation-text');
-
-      if (followInput) followInput.value = '';
-
-      if (eText) {
-        eText.innerHTML = `
-          <div class="study-thinking-badge">Consulting AI tutor on: "${escapeHtml(query)}"...</div>
-          <div class="study-skeleton-line" style="width: 90%;"></div>
-          <div class="study-skeleton-line" style="width: 75%;"></div>
-        `;
-      }
-
-      try {
-        chrome.runtime.sendMessage({
-          action: 'STUDY_FOLLOWUP',
-          followUpQuery: query,
-          threadHistory: studyThreadHistory
-        }, (response) => {
-          let lastErr = null;
-          try { lastErr = chrome.runtime.lastError; } catch (_) {}
-
-          if (lastErr || !response || !response.success) {
-            const err = lastErr?.message || response?.error || 'Failed to answer follow-up question.';
-            renderStudyError(err);
-            return;
-          }
-
-          studyThreadHistory.push({ role: 'user', content: query });
-          studyThreadHistory.push({
-            role: 'model',
-            content: response.rawOutput || JSON.stringify({
-              answer: response.answer,
-              explanation: response.explanation,
-              diagram: response.diagram
-            })
-          });
-
-          renderStudySolution(response);
-        });
-      } catch (err) {
-        renderStudyError(err?.message || String(err));
-      }
-    }
-
-    function unmountStudyBubble() {
-      unmountStudyLoadingPill();
-      window.removeEventListener('scroll', updateCutoutPosition);
-      window.removeEventListener('resize', updateCutoutPosition);
-      // Disconnect the MutationObserver watching for question DOM changes
-      if (studyBubbleContainer && studyBubbleContainer._mutationObserver) {
-        try { studyBubbleContainer._mutationObserver.disconnect(); } catch (_) {}
-        studyBubbleContainer._mutationObserver = null;
-      }
-      if (studyBubbleContainer && studyBubbleContainer.parentNode) {
-        studyBubbleContainer.parentNode.removeChild(studyBubbleContainer);
-      }
-      studyBubbleContainer = null;
-      currentTargetQuestionEl = null;
-      if (typeof window !== 'undefined') window.currentTargetQuestionEl = null;
-      currentStudyLayoutData = null;
-      studyThreadHistory = [];
-    }
 
     // Capture & Solve
     captureButton.addEventListener('click', (e) => {
@@ -2698,70 +1727,6 @@
       // Client-Side OCR & Browser Canvas Text Extractor (<5ms)
       const extractedVerifiedText = extractVerifiedTextFromDOMAndCanvas();
 
-      // ── STUDY MODE EXECUTION (DUAL-PIPELINE AI VISION & MATH ENGINE) ──
-      if (isStudyMode) {
-        // Suppress standard plain text answer overlay
-        if (answerContainer) {
-          answerContainer.style.setProperty('display', 'none', 'important');
-        }
-
-        const qRect = getQuestionBoundingRect();
-        const questionSnippet = extractQuestionSnippet();
-
-        // 1. Immediately show Apple iOS 27 Liquid Glass loading capsule (<10ms)
-        mountStudyLoadingPill('Analyzing question layout...');
-
-        try {
-          chrome.runtime.sendMessage({
-            action: 'SOLVE_SCREEN',
-            studyMode: true,
-            customPrompt: contextAugmentedPrompt,
-            rawPrompt: rawPrompt,
-            pageTitle: pageTitle,
-            taskComplexity: taskComplexity,
-            extractedVerifiedText: extractedVerifiedText
-          }, (response) => {
-            isSolving = false;
-            unmountStudyLoadingPill();
-
-            let lastErr = null;
-            try { lastErr = chrome.runtime.lastError; } catch (_) {}
-
-            if (lastErr || !response || !response.success) {
-              const err = lastErr?.message || response?.error || 'Failed to analyze screenshot.';
-              mountStudyBubble(questionSnippet, qRect, null);
-              renderStudyError(err);
-              return;
-            }
-
-            // Save conversation thread memory
-            studyThreadHistory = [
-              { role: 'user', content: contextAugmentedPrompt || 'Solve question' },
-              {
-                role: 'model',
-                content: response.rawOutput || JSON.stringify({
-                  answer: response.answer,
-                  explanation: response.explanation,
-                  diagram: response.diagram
-                })
-              }
-            ];
-
-            // 2. Mount Card A (Question Frame) and Card B (Sidebar Bay) with zero lag
-            mountStudyBubble(questionSnippet, qRect, response.layoutData || null);
-            renderStudySolution(response, questionSnippet);
-          });
-        } catch (err) {
-          isSolving = false;
-          unmountStudyLoadingPill();
-          mountStudyBubble(questionSnippet, qRect, null);
-          renderStudyError(err?.message || String(err));
-        }
-        return;
-      }
-
-      // ── STANDARD SOLUTION EXECUTION (STUDY MODE OFF) ──
-      unmountStudyBubble();
       if (answerContainer) {
         answerContainer.style.removeProperty('display');
       }
@@ -2772,7 +1737,6 @@
       try {
         chrome.runtime.sendMessage({
           action: 'SOLVE_SCREEN',
-          studyMode: false,
           customPrompt: contextAugmentedPrompt,
           rawPrompt: rawPrompt,
           pageTitle: pageTitle,
@@ -2786,7 +1750,7 @@
 
           if (lastErr) {
             const msg = lastErr.message || String(lastErr);
-            currentAnswerText = msg.includes('context') || msg.includes('receiving end')
+            currentAnswerText = (msg.includes('context') || msg.includes('receiving end') || msg.includes('message port'))
               ? 'Extension reloaded — please refresh this page (F5).'
               : `Error: ${msg}`;
           } else if (!response) {
@@ -2794,7 +1758,7 @@
           } else if (!response.success) {
             currentAnswerText = response.error || 'Failed to analyze screenshot.';
           } else {
-            currentAnswerText = response.answer;
+            currentAnswerText = response.answers || response.answer;
             if (response.fromCache) {
               console.log('[Cache Hit] Received instant 0ms cached answer');
             }
@@ -2839,15 +1803,7 @@
           applyAppearanceSettings(updated);
         }
 
-        if (changes.studyMode !== undefined) {
-          isStudyMode = !!changes.studyMode.newValue;
-          const studyToggle = shadow ? shadow.getElementById('inpage-enable-study-mode') : null;
-          if (studyToggle) studyToggle.checked = isStudyMode;
-          if (!isStudyMode) {
-            unmountStudyBubble();
-            if (answerContainer) answerContainer.style.removeProperty('display');
-          }
-        }
+
 
         // Live-update positions
         ['button', 'prompt', 'answer'].forEach(target => {

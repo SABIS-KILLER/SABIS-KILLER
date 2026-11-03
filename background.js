@@ -30,218 +30,113 @@ chrome.action.onClicked.addListener((tab) => {
   });
 });
 
-// ── Mathematical Thinking & Verification Protocol System Instructions ────────
-const MATHEMATICAL_THINKING_PROTOCOL =
-  "You are an expert AI tutor specializing in advanced mathematics, statistics, computer science, and data analysis. Your primary goal is to provide 100% accurate solutions to questions extracted from user screenshots.\n\n" +
-  "To eliminate mistakes, you MUST strictly execute this internal thinking and verification protocol in your background reasoning before generating the final output:\n\n" +
-  "1. DATA EXTRACTION & VALIDATION:\n" +
-  "   - Transcribe all text, numbers, and tabular data from the image exactly as written.\n" +
-  "   - Inspect data structures immediately. For frequency tables: determine if class intervals are equal/unequal and whether classes are discrete or continuous. Convert discrete classes to continuous boundaries (e.g. 10-19 → 9.5-19.5) before calculating.\n\n" +
-  "2. FORMULA RECALL & CONCEPT CHECK:\n" +
-  "   - Explicitly verify statistical rules and formulas. Examples:\n" +
-  "     * Histograms: bar height = Frequency Density = Frequency ÷ Class Width (for unequal intervals). Modal Class = class with highest frequency density.\n" +
-  "     * Estimations: use cumulative frequency tables and interpolation.\n" +
-  "     * Box plots: Q1 = 25th percentile, Median = 50th, Q3 = 75th, IQR = Q3 - Q1, Range = Max - Min.\n\n" +
-  "3. STEP-BY-STEP CALCULATION:\n" +
-  "   - Execute every single calculation step internally. Construct internal working tables for hidden variables (Class Widths, Frequency Densities, Cumulative Frequencies) and verify intermediate arithmetic before finalizing.\n\n" +
-  "4. SANITY CHECK & DOUBLE VERIFICATION:\n" +
-  "   - Re-read question text to confirm exact intent (e.g., 'above k' vs 'below k', 'lower quartile' vs 'upper quartile').\n" +
-  "   - Verify calculated answers are physically plausible within dataset boundaries.\n" +
-  "   - Check common pitfalls: raw frequency vs. frequency density, continuous boundary adjustments, inclusive vs. exclusive intervals.\n\n" +
+// ── Gemini Vision System Instructions (Arabic Support & Calculation Double-Check) ──
+const GEMINI_VISION_SYSTEM_PROMPT =
+  "You are an expert academic tutor and visual solver specializing in mathematics, sciences, languages, and general quiz questions.\n\n" +
   "======================================================================\n" +
-  "OUTPUT & FORMATTING DIRECTIVES (STRICT):\n" +
+  "1. MANDATORY CALCULATION DOUBLE-CHECK:\n" +
   "======================================================================\n" +
-  "- HIDDEN REASONING: Perform ALL steps of the verification protocol entirely behind the scenes. Do NOT output your internal thought process, formulas, working tables, or intermediate calculations.\n" +
-  "- MULTI-PART / MULTI-BLANK FORMATTING: Identify ALL parts, blanks, or drop-down menus in the question. Format the response on a single line:\n" +
-  "  Format: 'Q 1 part a: [Answer] part b: [Answer]' (or 'Q 1 part a: [Answer] Q 2 part a: [Answer]' for multi-question captures).\n" +
-  "- ULTRA-CONCISE: Output ONLY the verified final answers with their part labels. Zero conversational filler.";
+  "- For ANY question involving numbers, arithmetic, addition, subtraction, multiplication, division, fractions, formulas, or calculations, you MUST explicitly verify your step-by-step mathematical method.\n" +
+  "- Double-check all intermediate numeric operations, boundary adjustments, and final calculation results before outputting to guarantee 100% absolute accuracy.\n" +
+  "- Verify that calculated values are plausible and directly answer the exact question phrasing.\n\n" +
+  "======================================================================\n" +
+  "2. ARABIC LANGUAGE HANDLING:\n" +
+  "======================================================================\n" +
+  "- Maintain the standard structured label format at all times (e.g., 'Q 1 part a:', 'Q 1 part b:').\n" +
+  "- If the quiz question in the image is in Arabic, provide the specific answer values in Arabic.\n" +
+  "- If the question is an Arabic grammar or language-specific question (e.g. نحو, صرف, إعراب, بلاغة, لغة عربية), write BOTH the answers and the explanation fully in Arabic while keeping the standard 'Q 1 part...' label format.\n" +
+  "- If the question is a standard subject (like Math, Physics, or Chemistry) written in English, keep the answer values and explanations in English.\n\n" +
+  "======================================================================\n" +
+  "3. OUTPUT FORMAT (STRICT JSON ONLY):\n" +
+  "======================================================================\n" +
+  "You MUST output valid, parseable JSON matching this exact schema:\n" +
+  "{\n" +
+  '  "success": true,\n' +
+  '  "answers": "Q 1 part a: [Answer], part b: [Answer]",\n' +
+  '  "explanation": "Verified step-by-step reasoning."\n' +
+  "}\n" +
+  "- 'answers': A single concise line containing all parts of the question formatted as 'Q 1 part a: [Answer], part b: [Answer]'.\n" +
+  "- 'explanation': A concise 1-2 sentence verified step-by-step reasoning demonstrating the double-checked calculation or linguistic rule.\n" +
+  "- Return raw JSON only. Do not wrap in markdown code blocks or add introductory/concluding conversational text.";
 
-const HARDENED_SYSTEM_INSTRUCTION = MATHEMATICAL_THINKING_PROTOCOL;
-const SYSTEM_PROMPT = MATHEMATICAL_THINKING_PROTOCOL;
-
-const DEFAULT_USER_PROMPT =
-  "Solve all academic/quiz questions visible in this screenshot according to instructions. " +
-  "Execute the internal mathematical thinking protocol and output ONLY the verified final answers formatted as 'Q 1 part a: [Answer] part b: [Answer]'.";
+const SYSTEM_PROMPT = GEMINI_VISION_SYSTEM_PROMPT;
+const HARDENED_SYSTEM_INSTRUCTION = GEMINI_VISION_SYSTEM_PROMPT;
 
 const CUSTOM_SYSTEM_PROMPT =
-  `${MATHEMATICAL_THINKING_PROTOCOL}\n\n` +
-  "Task: Analyze the screenshot and answer ONLY the user's specific custom instruction.\n" +
-  "1. Strictly focus on answering the user's prompt about what is visible on screen.\n" +
-  "2. Execute the 4-step verification protocol internally before finalizing the answer.\n" +
-  "3. Output ONLY the verified final answers formatted as 'Q 1 part a: [Answer] part b: [Answer]'. Zero conversational filler.";
+  `${GEMINI_VISION_SYSTEM_PROMPT}\n\n` +
+  "Task: Analyze the screenshot and answer according to the user's specific instruction while strictly preserving the calculation double-check, Arabic/English language handling rules, and JSON output schema.";
 
-// ── Study Mode Directive & Structured Output Parser ─────────────────────────
-const STUDY_MODE_VERIFICATION_PROTOCOL =
-  "You are an expert AI tutor and mathematician. Study Mode is ACTIVE. To ensure 100% absolute accuracy and eliminate any possibility of wrong answers, you MUST strictly execute this internal verification protocol behind the scenes:\n\n" +
-  "1. DATA EXTRACTION & VALIDATION: Transcribe all text, numbers, and tabular data precisely from the image AND the provided OCR text. For frequency or data tables, check class intervals (equal/unequal, discrete vs. continuous). Convert discrete classes to continuous boundaries immediately (e.g., 10-19 → 9.5-19.5) before any calculations.\n\n" +
-  "2. FORMULA RECALL & CONCEPT CHECK: Explicitly verify all required formulas. Key rules:\n" +
-  "   - Histograms: Frequency Density = Frequency ÷ Class Width (unequal intervals). Modal Class = highest frequency density bar.\n" +
-  "   - Box plots & data sets: Q1=25th percentile, Median=50th, Q3=75th, IQR=Q3-Q1, Range=Max-Min.\n" +
-  "   - Estimations: cumulative frequency interpolation.\n\n" +
-  "3. STEP-BY-STEP CALCULATION: Perform ALL arithmetic, counting tasks, and data processing explicitly in your background reasoning. Build internal working tables. Never rush or guess.\n\n" +
-  "4. SANITY CHECK & DOUBLE VERIFICATION: Re-read the exact question phrasing, verify all answer boundaries lie within the dataset range, and cross-check every common pitfall (raw frequency vs. frequency density, inclusive/exclusive boundaries, 'above k' vs 'below k', lower vs. upper quartile).\n\n" +
-  "OUTPUT REQUIREMENT: Return a clean JSON object with these exact three keys:\n" +
-  "- 'answer': The verified final answer formatted as 'Q 1 part a: [Answer] part b: [Answer]' (covering EVERY blank, part, or drop-down in the question).\n" +
-  "- 'explanation': A precise 1-2 sentence explanation summarizing the method and why this answer is correct.\n" +
-  "- 'diagram': An optional ASCII table or Markdown visual breakdown if it aids understanding (return empty string '' if not needed).\n" +
-  "STRICT: Do NOT output your internal reasoning traces, working tables, or thought process. Return ONLY the JSON object.";
+const DEFAULT_USER_PROMPT =
+  "Analyze the quiz question in this screenshot. Execute the mandatory calculation double-check, apply the Arabic/English language handling rules, and return the verified solution strictly as JSON matching {\"success\": true, \"answers\": \"...\", \"explanation\": \"...\"}.";
 
-const STUDY_MODE_DIRECTIVE = STUDY_MODE_VERIFICATION_PROTOCOL;
-
-// ── Visual Layout AI System Prompt (API Call 1 - Dedicated Vision Layout) ──
-const VISUAL_LAYOUT_SYSTEM_PROMPT =
-  "Analyze the provided screenshot of the quiz interface. Locate the exact active question card (including its text, choices, and input fields). Return strict JSON with the bounding box rectangle relative to the viewport:\n" +
-  "{\n" +
-  '  "box_top": number,\n' +
-  '  "box_left": number,\n' +
-  '  "box_width": number,\n' +
-  '  "box_height": number,\n' +
-  '  "recommended_sidebar": "right" | "bottom"\n' +
-  "}\n\n" +
-  "Rules:\n" +
-  "- Numbers can be viewport percentages (0-100) or pixel values (e.g. box_top: 15, box_left: 8, box_width: 58, box_height: 68).\n" +
-  "- recommended_sidebar: 'right' if there is open whitespace on the right, or 'bottom' if the question spans full width.\n" +
-  "- Return strict JSON ONLY. No markdown fences, no conversational filler.";
-
-function parseStudyModeResponse(rawText) {
+function parseGeminiStructuredResponse(rawText) {
   if (!rawText || typeof rawText !== 'string') {
-    return { answer: 'No answer generated.', explanation: '', diagram: '' };
+    return {
+      success: false,
+      answers: 'No answer generated.',
+      explanation: 'No response from model.'
+    };
   }
+
   let text = rawText.trim();
-  // Strip markdown code fences (e.g. ```json ... ``` or ``` ... ```)
-  text = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  // Strip markdown code fences if present (e.g. ```json ... ```)
+  text = text.replace(/^\`\`\`(?:json)?\s*/i, '').replace(/\s*\`\`\`$/i, '').trim();
 
   // 1. Direct JSON parse
   try {
     const parsed = JSON.parse(text);
     if (parsed && typeof parsed === 'object') {
-      return {
-        answer: String(parsed.answer || '').trim() || text,
-        explanation: String(parsed.explanation || '').trim(),
-        diagram: String(parsed.diagram || '').trim()
-      };
+      const answers = String(parsed.answers || parsed.answer || '').trim();
+      const explanation = String(parsed.explanation || '').trim();
+      if (answers) {
+        return {
+          success: true,
+          answers,
+          explanation: explanation || 'Calculation and language rules verified.'
+        };
+      }
     }
   } catch (_) {}
 
-  // 2. Embedded JSON block extraction
-  const jsonMatch = text.match(/\{[\s\S]*?"answer"[\s\S]*?\}/);
+  // 2. Embedded JSON block regex extraction
+  const jsonMatch = text.match(/\{[\s\S]*?"answers"[\s\S]*?\}/) || text.match(/\{[\s\S]*?"answer"[\s\S]*?\}/);
   if (jsonMatch) {
     try {
       const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        answer: String(parsed.answer || '').trim() || text,
-        explanation: String(parsed.explanation || '').trim(),
-        diagram: String(parsed.diagram || '').trim()
-      };
+      const answers = String(parsed.answers || parsed.answer || '').trim();
+      const explanation = String(parsed.explanation || '').trim();
+      if (answers) {
+        return {
+          success: true,
+          answers,
+          explanation: explanation || 'Calculation and language rules verified.'
+        };
+      }
     } catch (_) {}
   }
 
-  // 3. Regex key extraction fallback
-  const ansMatch = text.match(/"answer"\s*:\s*"((?:\\.|[^"\\])*)"/i);
-  const expMatch = text.match(/"explanation"\s*:\s*"((?:\\.|[^"\\])*)"/i);
-  const diaMatch = text.match(/"diagram"\s*:\s*"((?:\\.|[^"\\])*)"/i);
-
-  if (ansMatch || expMatch) {
-    return {
-      answer: ansMatch ? ansMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : text,
-      explanation: expMatch ? expMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : '',
-      diagram: diaMatch ? diaMatch[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').trim() : ''
-    };
-  }
-
-  // 4. Clean fallback with default values
+  // 3. Fallback: text returned directly
   return {
-    answer: text,
-    explanation: '',
-    diagram: ''
+    success: true,
+    answers: text,
+    explanation: 'Direct verified output.'
   };
-}
-
-// ── API Call 1: Dedicated Vision Layout AI (gemini-2.5-flash) ────────────────
-async function callVisualLayoutAI(apiKey, rawBase64) {
-  if (!apiKey || !rawBase64) return null;
-  // Use gemini-2.5-flash for ultra-fast spatial layout & bounding box detection
-  const model = 'gemini-2.5-flash';
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-
-  const payload = {
-    systemInstruction: {
-      parts: [{ text: VISUAL_LAYOUT_SYSTEM_PROMPT }]
-    },
-    contents: [{
-      role: 'user',
-      parts: [
-        { text: 'Analyze this quiz interface screenshot and return the active question bounding box and recommended sidebar placement in strict JSON.' },
-        { inlineData: { mimeType: 'image/png', data: rawBase64 } }
-      ]
-    }],
-    generationConfig: {
-      temperature: 0.0,
-      topP: 0.1,
-      maxOutputTokens: 250,
-      responseMimeType: 'application/json'
-    }
-  };
-
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json().catch(() => null);
-    if (!data) return null;
-
-    const parts = data.candidates?.[0]?.content?.parts || [];
-    const rawText = parts.filter(p => !p.thought && p.text).map(p => p.text).join('').trim();
-    if (!rawText) return null;
-
-    const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    if (!parsed || typeof parsed !== 'object') return null;
-
-    const box_top = Number(parsed.box_top);
-    const box_left = Number(parsed.box_left);
-    const box_width = Number(parsed.box_width);
-    const box_height = Number(parsed.box_height);
-
-    if (isNaN(box_top) || isNaN(box_left) || isNaN(box_width) || isNaN(box_height)) {
-      return null;
-    }
-
-    const recommended_sidebar = (parsed.recommended_sidebar === 'bottom') ? 'bottom' : 'right';
-
-    return {
-      box_top,
-      box_left,
-      box_width,
-      box_height,
-      recommended_sidebar
-    };
-  } catch (err) {
-    console.warn('[API Call 1 Vision Layout] Error analyzing layout:', err.message || err);
-    return null;
-  }
 }
 
 const GEMINI_FREE_TIER_MODELS = [
+  'gemini-2.5-flash',
   'gemini-3.8-flash',
   'gemini-3.6-flash',
   'gemini-3.5-flash-lite',
-  'gemini-3.1-flash-lite',
-  'gemini-2.5-flash'
+  'gemini-3.1-flash-lite'
 ];
 
 const GEMINI_MODELS_CATALOG = {
+  'gemini-2.5-flash':      { fallback: 'gemini-3.8-flash' },
   'gemini-3.8-flash':      { fallback: 'gemini-3.6-flash' },
   'gemini-3.6-flash':      { fallback: 'gemini-3.5-flash-lite' },
   'gemini-3.5-flash-lite': { fallback: 'gemini-3.1-flash-lite' },
-  'gemini-3.1-flash-lite': { fallback: 'gemini-2.5-flash' },
-  'gemini-2.5-flash':      { fallback: 'gemini-3.8-flash' }
+  'gemini-3.1-flash-lite': { fallback: 'gemini-2.5-flash' }
 };
 
 const PROVIDER_NAMES = {
@@ -348,29 +243,28 @@ async function writeCache(hash, result) {
 
 // ── Message Listener ────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Guard: malformed message
+  if (!message || !message.action) return false;
+
   if (message.action === 'SOLVE_SCREEN') {
     handleSolveRequest(sender, message)
-      .then((result) => sendResponse(result))
+      .then((result) => {
+        try { sendResponse(result); } catch (_) {}
+      })
       .catch((error) => {
-        sendResponse({
-          success: false,
-          error: error.message || 'An unexpected error occurred.'
-        });
+        console.error('[BACKGROUND ERROR] handleSolveRequest:', error);
+        try {
+          sendResponse({
+            success: false,
+            error: error.message || 'An unexpected error occurred.'
+          });
+        } catch (_) {}
       });
-    return true;
+    return true; // Keep message channel open for async response
   }
 
-  if (message.action === 'STUDY_FOLLOWUP') {
-    handleStudyFollowUp(sender, message)
-      .then((result) => sendResponse(result))
-      .catch((error) => {
-        sendResponse({
-          success: false,
-          error: error.message || 'An unexpected error occurred.'
-        });
-      });
-    return true;
-  }
+  // Unknown action — return false so Chrome can immediately close the port
+  return false;
 });
 
 // ── Canvas Image Pre-Processing Engine ─────────────────────────────────────────
@@ -435,19 +329,11 @@ async function preprocessScreenshotCanvas(dataUrl) {
 
 // ── Hybrid OCR + Vision Prompt Builder ─────────────────────────────────────────
 function buildHybridPrompt(extractedVerifiedText, customUserPrompt = '') {
-  const verifiedTextContent = (extractedVerifiedText && extractedVerifiedText.trim())
-    ? extractedVerifiedText.trim()
-    : 'No text extracted. Extract and solve directly from visual screenshot context.';
+  let prompt = DEFAULT_USER_PROMPT;
 
-  let prompt =
-`VERIFIED OCR TEXT EXTRACTION:
-${verifiedTextContent}
-
-MATHEMATICAL & REASONING PROTOCOL:
-You are an expert AI tutor. Using the exact OCR text provided above and the attached image for visual context, execute your internal verification protocol. Count data points, verify boundaries, and calculate step-by-step behind the scenes.
-
-OUTPUT DIRECTIVE:
-Do NOT output your reasoning or thought process. Output ONLY the verified final answer(s) on a single line formatted as: 'Q 1 part a: [Answer] part b: [Answer]'.`;
+  if (extractedVerifiedText && extractedVerifiedText.trim()) {
+    prompt += `\n\nVERIFIED OCR TEXT EXTRACTION FROM DOM:\n${extractedVerifiedText.trim()}`;
+  }
 
   if (customUserPrompt) {
     prompt += `\n\nUSER SPECIFIC INSTRUCTION:\n${customUserPrompt}`;
@@ -467,25 +353,11 @@ async function handleSolveRequest(sender, message) {
   const userPrompt = buildHybridPrompt(clientExtractedText, customPrompt);
 
   const storage = await chrome.storage.local.get([
-    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel', 'studyMode'
+    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
   ]);
 
   const apiKey = (storage.GEMINI_API_KEY || storage.geminiApiKey || '').trim();
-  const modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic';
-  const isStudyMode = message.studyMode !== undefined ? !!message.studyMode : !!storage.studyMode;
-
-  // Dynamic Prompt Modification for Study Mode
-  let activeSystemPrompt = systemPrompt;
-  let activeUserPrompt = userPrompt;
-
-  if (isStudyMode) {
-    activeSystemPrompt =
-      `${systemPrompt}\n\n${STUDY_MODE_DIRECTIVE}\n\n` +
-      'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}. Do not wrap in markdown code blocks.';
-    activeUserPrompt =
-      `${userPrompt}\n\n${STUDY_MODE_DIRECTIVE}\n` +
-      'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}.';
-  }
+  const modelMode = storage.gemini_model || storage.geminiModel || 'gemini-2.5-flash';
 
   // API Key Sanitization & Validation
   if (!apiKey || apiKey.length < 5) {
@@ -502,24 +374,22 @@ async function handleSolveRequest(sender, message) {
     try { return JSON.stringify(e); } catch (_) { return String(e); }
   };
 
-  // Screen capture
+  // 1. Capture visible tab screenshot via chrome.tabs.captureVisibleTab(null, { format: "png" })
   let dataUrl = null;
   let captureError = 'No capture strategy succeeded';
 
-  const senderWindowId = sender?.tab?.windowId;
-  if (senderWindowId != null) {
-    try {
-      dataUrl = await chrome.tabs.captureVisibleTab(senderWindowId, { format: 'png' });
-    } catch (e) {
-      captureError = errStr(e.message || e);
-    }
-  }
-
-  if (!dataUrl) {
-    try {
-      dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-    } catch (e) {
-      captureError = errStr(e.message || e);
+  try {
+    dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+  } catch (e) {
+    captureError = errStr(e.message || e);
+    // Fallback: capture by sender tab's window if null target fails
+    const senderWindowId = sender?.tab?.windowId;
+    if (senderWindowId != null) {
+      try {
+        dataUrl = await chrome.tabs.captureVisibleTab(senderWindowId, { format: 'png' });
+      } catch (e2) {
+        captureError = errStr(e2.message || e2);
+      }
     }
   }
 
@@ -541,48 +411,28 @@ async function handleSolveRequest(sender, message) {
     };
   }
 
-  // Pass through Canvas Image Pre-Processing Engine (2x bicubic upscale, high-contrast grayscale, threshold boost)
+  // 2. Preprocess screenshot & extract base64 data payload
   const processedDataUrl = await preprocessScreenshotCanvas(dataUrl);
   const base64Data = processedDataUrl.replace(/^data:image\/\w+;base64,/, '');
 
-  // Keep original unprocessed screenshot for Stage 1 visual layout spatial analysis
-  const rawBase64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
-
-  // Instant Cache Check (<1ms Latency) - Scoped by mode to avoid collisions
-  const payloadToHash = `${activeUserPrompt}:::${isStudyMode ? 'study-v2' : 'standard'}:::${base64Data}`;
+  // Instant Cache Check (<1ms Latency)
+  const payloadToHash = `${userPrompt}:::${base64Data}`;
   const requestHash = await computeSha256(payloadToHash);
   const cachedResult = await checkCache(requestHash);
 
-  // Classification - Study Mode enforces deterministic deep verification hyperparameters
+  // Classification - Edge Heuristic Task Classifier
   const promptForHeuristic = customPrompt || userPrompt || '';
-  const isComplex = isStudyMode || isComplexTask(promptForHeuristic);
+  const isComplex = isComplexTask(promptForHeuristic);
   const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
 
   if (cachedResult) {
     console.log("[Auto-Dynamic Router] Task:", taskComplexity, "| Model Executed:", cachedResult.modelUsed, "| Latency:", 0, "ms | Fallback Triggered:", false);
-    if (isStudyMode) {
-      const studyData = parseStudyModeResponse(cachedResult.answer);
-      return {
-        success: true,
-        studyMode: true,
-        answer: studyData.answer,
-        response: studyData.answer,
-        explanation: studyData.explanation,
-        diagram: studyData.diagram,
-        studyData: studyData,
-        rawOutput: cachedResult.answer,
-        modelUsed: `${cachedResult.modelUsed} [Cache Hit]`,
-        modeActive: cachedResult.modeActive,
-        wasFallbackTriggered: false,
-        fromCache: true,
-        layoutData: cachedResult.layoutData || null
-      };
-    }
-
+    const answers = cachedResult.answers || cachedResult.answer;
     return {
       success: true,
-      answer: cachedResult.answer,
-      response: cachedResult.answer,
+      answers: answers,
+      answer: answers,
+      explanation: cachedResult.explanation || 'Verified from cache.',
       modelUsed: `${cachedResult.modelUsed} [Cache Hit]`,
       modeActive: cachedResult.modeActive,
       wasFallbackTriggered: false,
@@ -590,45 +440,19 @@ async function handleSolveRequest(sender, message) {
     };
   }
 
-  // Execute routing with latency metric tracking
+  // 3. Send base64 image payload in a single API request to Gemini Vision model (gemini-2.5-flash)
   const startTime = performance.now();
   try {
-    let result, layoutData = null;
-
-    if (isStudyMode) {
-      // ── TWO-STEP DEDICATED AI PIPELINE ──
-      // API Call 1: Dedicated Vision Layout Request (gemini-2.5-flash on raw capture)
-      try {
-        layoutData = await callVisualLayoutAI(apiKey, rawBase64Data);
-        console.log('[API Call 1] Vision layout coordinates:', layoutData);
-      } catch (e) {
-        console.warn('[API Call 1] Vision layout failed, fallback to DOM:', e);
-        layoutData = null;
-      }
-
-      // API Call 2: Dedicated Expert Solver Request (gemini-3.8-flash down to gemini-2.5-flash)
-      result = await routeProviderRequest(
-        apiKey,
-        modelMode,
-        base64Data,
-        activeSystemPrompt,
-        activeUserPrompt,
-        customPrompt,
-        isComplex,
-        taskComplexity
-      );
-    } else {
-      result = await routeProviderRequest(
-        apiKey,
-        modelMode,
-        base64Data,
-        activeSystemPrompt,
-        activeUserPrompt,
-        customPrompt,
-        isComplex,
-        taskComplexity
-      );
-    }
+    const result = await routeProviderRequest(
+      apiKey,
+      modelMode,
+      base64Data,
+      systemPrompt,
+      userPrompt,
+      customPrompt,
+      isComplex,
+      taskComplexity
+    );
 
     const executionTimeMs = Math.round(performance.now() - startTime);
 
@@ -636,130 +460,34 @@ async function handleSolveRequest(sender, message) {
       "[Auto-Dynamic Router] Task:", taskComplexity,
       "| Model Executed:", result.modelUsed,
       "| Latency:", executionTimeMs,
-      "ms | Fallback Triggered:", result.wasFallbackTriggered || false,
-      "| Visual Layout:", layoutData ? 'Vision Polygon Ready' : 'DOM/Default'
+      "ms | Fallback Triggered:", result.wasFallbackTriggered || false
     );
 
-    if (layoutData) {
-      result.layoutData = layoutData;
-    }
-    await writeCache(requestHash, result);
+    // 4. Parse structured JSON response matching exact schema
+    const parsed = parseGeminiStructuredResponse(result.answer);
 
-    if (isStudyMode) {
-      const studyData = parseStudyModeResponse(result.answer);
-      return {
-        success: true,
-        studyMode: true,
-        answer: studyData.answer,
-        response: studyData.answer,
-        explanation: studyData.explanation,
-        diagram: studyData.diagram,
-        studyData: studyData,
-        rawOutput: result.answer,
-        modelUsed: result.modelUsed,
-        modeActive: result.modeActive,
-        wasFallbackTriggered: result.wasFallbackTriggered || false,
-        layoutData: layoutData
-      };
-    }
-
-    return {
+    const responsePayload = {
       success: true,
-      answer: result.answer,
-      response: result.answer,
+      answers: parsed.answers,
+      answer: parsed.answers, // backward-compatibility for UI bar
+      explanation: parsed.explanation,
       modelUsed: result.modelUsed,
       modeActive: result.modeActive,
       wasFallbackTriggered: result.wasFallbackTriggered || false
     };
+
+    await writeCache(requestHash, {
+      ...result,
+      answers: parsed.answers,
+      explanation: parsed.explanation
+    });
+
+    return responsePayload;
   } catch (err) {
     const errorDetails = errStr(err.message || err);
     return {
       success: false,
       error: `Google AI Studio error: ${errorDetails}`
-    };
-  }
-}
-
-// ── Multi-Turn Study Mode Follow-Up Handler ───────────────────────────────────
-async function handleStudyFollowUp(sender, message) {
-  const followUpQuery = (message && typeof message.followUpQuery === 'string') ? message.followUpQuery.trim() : '';
-  if (!followUpQuery) {
-    return { success: false, error: 'Follow-up query cannot be empty.' };
-  }
-
-  const storage = await chrome.storage.local.get([
-    'GEMINI_API_KEY', 'geminiApiKey', 'gemini_model', 'geminiModel'
-  ]);
-  const apiKey = (storage.GEMINI_API_KEY || storage.geminiApiKey || '').trim();
-  const modelMode = storage.gemini_model || storage.geminiModel || 'auto_dynamic';
-
-  if (!apiKey || apiKey.length < 5) {
-    return {
-      success: false,
-      error: 'Please save your Google AI Studio Gemini API Key in the settings panel.'
-    };
-  }
-
-  const systemPrompt =
-    `${MATHEMATICAL_THINKING_PROTOCOL}\n\n` +
-    "You are an expert tutor in Study Mode engaging in a multi-turn academic conversation. " +
-    "Directly answer the user's follow-up inquiry regarding the previous explanation, question, or diagram.\n\n" +
-    STUDY_MODE_DIRECTIVE + "\n\n" +
-    'Return strictly a valid JSON object matching: {"answer": "...", "explanation": "...", "diagram": "..."}. Do not wrap in markdown code blocks.';
-
-  const rawHistory = Array.isArray(message.threadHistory) ? message.threadHistory : [];
-  const contents = [];
-
-  for (const turn of rawHistory) {
-    if (turn && turn.role && turn.content) {
-      contents.push({
-        role: turn.role === 'model' ? 'model' : 'user',
-        parts: [{ text: String(turn.content) }]
-      });
-    }
-  }
-
-  contents.push({
-    role: 'user',
-    parts: [{
-      text: `User Follow-Up Query:\n${followUpQuery}\n\n${STUDY_MODE_DIRECTIVE}\nFormat response strictly as JSON with keys "answer", "explanation", "diagram".`
-    }]
-  });
-
-  const isComplex = isComplexTask(followUpQuery);
-  const taskComplexity = isComplex ? 'HIGH_COMPLEXITY' : 'LIGHTWEIGHT';
-
-  try {
-    const result = await routeProviderRequest(
-      apiKey,
-      modelMode,
-      null,
-      systemPrompt,
-      followUpQuery,
-      followUpQuery,
-      isComplex,
-      taskComplexity,
-      contents
-    );
-
-    const studyData = parseStudyModeResponse(result.answer);
-    return {
-      success: true,
-      studyMode: true,
-      answer: studyData.answer,
-      response: studyData.answer,
-      explanation: studyData.explanation,
-      diagram: studyData.diagram,
-      studyData: studyData,
-      rawOutput: result.answer,
-      modelUsed: result.modelUsed,
-      modeActive: result.modeActive,
-      wasFallbackTriggered: result.wasFallbackTriggered || false
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: `Google AI Studio error: ${err.message || String(err)}`
     };
   }
 }
@@ -822,11 +550,11 @@ async function handleGeminiRouting(
     // Dynamic cycle through verified Google AI Studio free tier models:
     // gemini-3.8-flash -> gemini-3.6-flash -> gemini-3.5-flash-lite -> gemini-3.1-flash-lite -> gemini-2.5-flash
     cascadeList = [
+      'gemini-2.5-flash',
       'gemini-3.8-flash',
       'gemini-3.6-flash',
       'gemini-3.5-flash-lite',
-      'gemini-3.1-flash-lite',
-      'gemini-2.5-flash'
+      'gemini-3.1-flash-lite'
     ];
   } else {
     // Manual model selection with cascade failover through remaining free tier models
@@ -868,9 +596,10 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
 
   // Deterministic hyperparameter tuning by task
   const generationConfig = {
-    temperature: isComplex ? 0.0 : 0.2,
-    topP: isComplex ? 0.1 : 0.8,
+    temperature: 0.0,
+    topP: 0.1,
     maxOutputTokens: 2048,
+    responseMimeType: "application/json",
     thinking_summaries: "none",
     thinkingConfig: {
       thinking_summaries: "none"
