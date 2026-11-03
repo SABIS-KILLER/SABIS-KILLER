@@ -599,11 +599,7 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
     temperature: 0.0,
     topP: 0.1,
     maxOutputTokens: 2048,
-    responseMimeType: "application/json",
-    thinking_summaries: "none",
-    thinkingConfig: {
-      thinking_summaries: "none"
-    }
+    responseMimeType: "application/json"
   };
   if (isComplex) {
     generationConfig.topK = 1;
@@ -651,7 +647,8 @@ async function callGeminiAPI(apiKey, model, base64Image, systemPrompt = SYSTEM_P
 
   let data = await response.json().catch(() => ({}));
 
-  if (!response.ok && response.status === 400 && (data.error?.message?.includes('thinkingConfig') || data.error?.message?.includes('thinking_summaries'))) {
+  if (!response.ok && response.status === 400 && data.error?.message && (data.error.message.includes('responseMimeType') || data.error.message.includes('thinkingConfig') || data.error.message.includes('thinking_summaries'))) {
+    delete payload.generationConfig.responseMimeType;
     delete payload.generationConfig.thinkingConfig;
     delete payload.generationConfig.thinking_summaries;
     response = await fetch(endpoint, {
